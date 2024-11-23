@@ -7,14 +7,10 @@
     },
     "importMap": "./import_map.json",
     "lint": {
-        "files": {
           "include": ["packages/"]
-        }
       },
       "fmt": {
-        "files": {
           "include": ["packages/"]
         }
-      }
-  }
+}
   
