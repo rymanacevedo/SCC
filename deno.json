@@ -1,16 +1,32 @@
 {
     "tasks": {
+      "check": "deno check packages/frontend",
       "start:frontend": "deno task --cwd packages/frontend start",
       "start:backend": "deno task --cwd packages/backend start",
       "test:frontend": "deno test --cwd packages/frontend",
       "test:backend": "deno test --cwd packages/backend"
     },
     "importMap": "./import_map.json",
+    "workspace": ["./packages/*"],
     "lint": {
           "include": ["packages/"]
       },
-      "fmt": {
-          "include": ["packages/"]
-        }
+    "fmt": {
+        "include": ["packages/"],
+        "singleQuote": true
+      },
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "lib": [
+          "DOM",
+          "DOM.Iterable",
+          "ES2022"
+        ],
+        "types": [
+          "node",
+          "vite/client"
+        ]
+      }
 }
   

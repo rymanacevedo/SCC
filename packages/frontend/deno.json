@@ -1,0 +1,11 @@
+{
+  "name": "@scope/frontend",
+  "exports":"./index.js",
+  "version": "0.1.0",
+  "tasks": {
+    "build": "deno run -A npm:react-router build",
+    "dev": "deno run -A npm:react-router dev",
+    "start": "deno run -A npm:@react-router/serve ./build/server/index.js",
+    "typecheck": "deno run -A npm:react-router typegen && tsc --build --noEmit"
+  }
+}

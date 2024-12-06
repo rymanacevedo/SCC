@@ -1,2 +1,2 @@
 export const badRequest = <T extends unknown>(data: T) =>
-	json(data, { status: 400 });
+  json(data, { status: 400 });
