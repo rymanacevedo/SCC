@@ -1,24 +1,24 @@
 {
-  "name": "scc",
-  "module": "index.ts",
-  "workspaces": ["packages/*"],
-  "scripts": {
-    "dev": "turbo run dev --filter=@scc/frontend...",
-    "build": "turbo run build",
-    "lint": "biome lint .",
-    "format": "biome format . --write",
-    "check": "biome check ."
-  },
-  "type": "module",
-  "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "turbo": "^2.3.4"
-  },
-  "packageManager": "bun@1.2.0"
+	"name": "scc",
+	"module": "index.ts",
+	"workspaces": ["packages/*"],
+	"scripts": {
+		"dev": "turbo run dev --filter=@scc/frontend...",
+		"build": "turbo run build",
+		"lint": "biome lint .",
+		"format": "biome format . --write",
+		"check": "biome check ."
+	},
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"turbo": "^2.3.4"
+	},
+	"packageManager": "bun@1.2.0"
 }
