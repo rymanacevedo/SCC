@@ -4,10 +4,14 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "dev": "turbo run dev --filter=@scc/frontend...",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "check": "biome check ."
   },
   "type": "module",
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/bun": "latest"
   },
   "peerDependencies": {
