@@ -1,0 +1,8 @@
+{
+    "name": "scc-monorepo",
+    "workspaces": ["packages/*"],
+    "scripts": {
+      "frontend": "bun --cwd packages/frontend"
+    }
+  }
+  
