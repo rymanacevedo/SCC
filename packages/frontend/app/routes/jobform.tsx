@@ -1,9 +1,7 @@
 import {
-  type ActionFunctionArgs,
   Form,
   Link as ReactRouterLink,
-  useActionData,
-} from 'react-router';
+  } from 'react-router';
 import { z } from 'zod';
 
 // Zod schema for form validation
@@ -32,25 +30,11 @@ export type ActionData<T> = {
   response?: Response;
 };
 
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = Object.fromEntries(await request.formData());
-  const fields = formData as unknown as JobFormFields;
-
-  const result = JobFormFieldsSchema.safeParse(fields);
-  if (!result.success) {
-    console.error('Form validation failed:', result.error.flatten());
-    // return badRequest({
-    // 	fields,
-    // 	errors: result.error.flatten(),
-    // });
-  }
-
-  console.log('Form submitted:', fields);
-  return { message: 'Submission successful' }; // Navigate to data display page
+export async function clientAction() {
+  
 }
 
 export default function JobForm() {
-  const data = useActionData<ActionData<JobFormFields>>();
 
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: 'auto' }}>
@@ -80,11 +64,7 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-          {data?.errors?.fieldErrors?.name && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.name[0]}
-            </span>
-          )}
+
         </div>
 
         {/* Email Address */}
@@ -102,11 +82,7 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-          {data?.errors?.fieldErrors?.email && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.email[0]}
-            </span>
-          )}
+
         </div>
         {/* Linkedin */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -123,11 +99,7 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-          {data?.errors?.fieldErrors?.email && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.email[0]}
-            </span>
-          )}
+
         </div>
 
         {/* Phone Number */}
@@ -145,11 +117,7 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-          {data?.errors?.fieldErrors?.phone && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.phone[0]}
-            </span>
-          )}
+
         </div>
 
         {/* State */}
@@ -218,11 +186,7 @@ export default function JobForm() {
             <option value="WI">Wisconsin</option>
             <option value="WY">Wyoming</option>
           </select>
-          {data?.errors?.fieldErrors?.state && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.state[0]}
-            </span>
-          )}
+
         </div>
         {/* City */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -239,11 +203,7 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-          {data?.errors?.fieldErrors?.city && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.city[0]}
-            </span>
-          )}
+
         </div>
 
         {/* Job Preference */}
@@ -265,11 +225,7 @@ export default function JobForm() {
             <option value="software">Software Development</option>
             <option value="mechanic">Mechanic</option>
           </select>
-          {data?.errors?.fieldErrors?.jobInterest && (
-            <span style={{ color: 'red', fontSize: '12px' }}>
-              {data.errors.fieldErrors.jobInterest[0]}
-            </span>
-          )}
+
         </div>
 
         {/* Submit Button: Span both columns */}
