@@ -1,0 +1,48 @@
+{
+  "extends": ["../../biome.json"],
+  "files": {
+    "include": [
+      "app/**/*.ts",
+      "app/**/*.tsx",
+      "app/**/*.js",
+      "app/**/*.jsx",
+      "app/**/*.css",
+      "./biome.json",
+      "./package.json",
+      "./tsconfig.json",
+      "./vite.config.ts"
+    ]
+  },
+  "linter": {
+    "ignore": [
+      "node_modules",
+      "docs",
+      "dist",
+      "public",
+      "**/node_modules/**",
+      "bin"
+    ],
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "noInferrableTypes": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": {
+            "labelAttributes": ["label"],
+            "labelComponents": ["Label"],
+            "inputComponents": ["BaseAriaCheckbox"]
+          }
+        }
+      }
+    }
+  },
+  "css": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  }
+}
