@@ -3,7 +3,8 @@
   "module": "index.ts",
   "workspaces": ["packages/*"],
   "scripts": {
-    "frontend": "bun --cwd packages/frontend"
+    "dev": "turbo run dev --filter=@scc/frontend...",
+    "build": "turbo run build"
   },
   "type": "module",
   "devDependencies": {
@@ -11,5 +12,9 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
-  }
+  },
+  "dependencies": {
+    "turbo": "^2.3.4"
+  },
+  "packageManager": "bun@1.2.0"
 }

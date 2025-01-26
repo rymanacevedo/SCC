@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 # Local Netlify folder
 .netlify
+# turbo cache
+.turbo
