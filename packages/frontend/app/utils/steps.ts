@@ -3,6 +3,7 @@ export const STEPS = [
   { id: 'experience', label: 'Work Experience' },
   { id: 'education', label: 'Education' },
   { id: 'skills', label: 'Skills' },
+  { id: 'summary', label: 'Summary' },
   { id: 'preview', label: 'Preview' },
 ] as const;
 

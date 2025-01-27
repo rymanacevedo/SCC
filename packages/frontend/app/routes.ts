@@ -7,4 +7,5 @@ export default [
   route('experience', 'routes/builder/experience.tsx'),
   route('education', 'routes/builder/education.tsx'),
   route('skills', 'routes/builder/skills.tsx'),
+  route('summary', 'routes/builder/summary.tsx'),
 ] satisfies RouteConfig;
