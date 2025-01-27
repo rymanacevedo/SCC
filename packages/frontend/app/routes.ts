@@ -8,4 +8,5 @@ export default [
   route('education', 'routes/builder/education.tsx'),
   route('skills', 'routes/builder/skills.tsx'),
   route('summary', 'routes/builder/summary.tsx'),
+  route('finish-up', 'routes/builder/finishup.tsx'),
 ] satisfies RouteConfig;

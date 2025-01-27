@@ -1,4 +1,3 @@
-// app/routes/builder.summary.tsx
 import { redirect } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
@@ -14,7 +13,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   try {
     const validatedData = SummarySchema.parse(data);
-    return redirect('/builder/skills');
+    return redirect('/');
   } catch (error) {
     if (error instanceof z.ZodError) {
       // return json({ success: false, errors: error.flatten().fieldErrors });
