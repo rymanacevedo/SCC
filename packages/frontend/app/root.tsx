@@ -28,7 +28,7 @@ export function HydrateFallback() {
     <div id="loading-splash">
       <p>Loading, please wait...</p>
     </div>
-  )
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

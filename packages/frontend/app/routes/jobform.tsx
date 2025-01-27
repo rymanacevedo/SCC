@@ -1,7 +1,4 @@
-import {
-  Form,
-  Link as ReactRouterLink,
-  } from 'react-router';
+import { Form, Link as ReactRouterLink } from 'react-router';
 import { z } from 'zod';
 
 // Zod schema for form validation
@@ -30,12 +27,9 @@ export type ActionData<T> = {
   response?: Response;
 };
 
-export async function clientAction() {
-  
-}
+export async function clientAction() {}
 
 export default function JobForm() {
-
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: 'auto' }}>
       <h1 style={{ fontSize: '24px', marginBottom: '20px' }}>
@@ -64,7 +58,6 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-
         </div>
 
         {/* Email Address */}
@@ -82,7 +75,6 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-
         </div>
         {/* Linkedin */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -99,7 +91,6 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-
         </div>
 
         {/* Phone Number */}
@@ -117,7 +108,6 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-
         </div>
 
         {/* State */}
@@ -186,7 +176,6 @@ export default function JobForm() {
             <option value="WI">Wisconsin</option>
             <option value="WY">Wyoming</option>
           </select>
-
         </div>
         {/* City */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -203,7 +192,6 @@ export default function JobForm() {
               borderRadius: '4px',
             }}
           />
-
         </div>
 
         {/* Job Preference */}
@@ -225,7 +213,6 @@ export default function JobForm() {
             <option value="software">Software Development</option>
             <option value="mechanic">Mechanic</option>
           </select>
-
         </div>
 
         {/* Submit Button: Span both columns */}
