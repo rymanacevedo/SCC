@@ -33,7 +33,7 @@ export default function JobForm() {
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: 'auto' }}>
       <h1 style={{ fontSize: '24px', marginBottom: '20px' }}>
-        Submit Job Application
+        What's your contact information?
       </h1>
       <Form
         method="post"
