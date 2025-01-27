@@ -1,7 +1,7 @@
 // app/routes/builder.personal.tsx
-import { Form, useActionData } from 'react-router';
+import { Form, redirect, useActionData } from 'react-router';
 import { z } from 'zod';
-import type { Route } from '../../.react-router/types/app/+types/root';
+import type { Route } from '../../../.react-router/types/app/+types/root';
 
 const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -21,6 +21,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const validatedData = PersonalInfoSchema.parse(data);
     // TODO: return json similar to v7
     // return json({ success: true, data: validatedData });
+    redirect('/builder/experience');
   } catch (error) {
     if (error instanceof z.ZodError) {
       // TODO: return json similar to v7
