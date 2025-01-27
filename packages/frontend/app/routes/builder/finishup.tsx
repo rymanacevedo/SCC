@@ -46,7 +46,7 @@ export default function Finish() {
     setEditingSection(section);
   };
 
-  const handleSectionSave = (section: string, newData: any) => {
+  const handleSectionSave = (section: string, newData: unknown) => {
     setResumeData((prev) => ({
       ...prev,
       [section]: newData,
@@ -71,6 +71,7 @@ export default function Finish() {
               Personal Information
             </h2>
             <button
+              type="button"
               onClick={() => handleSectionEdit('personal')}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -127,6 +128,7 @@ export default function Finish() {
               Professional Summary
             </h2>
             <button
+              type="button"
               onClick={() => handleSectionEdit('summary')}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -155,6 +157,7 @@ export default function Finish() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Education</h2>
             <button
+              type="button"
               onClick={() => handleSectionEdit('education')}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -207,6 +210,7 @@ export default function Finish() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
             <button
+              type="button"
               onClick={() => handleSectionEdit('skills')}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -216,7 +220,7 @@ export default function Finish() {
           {editingSection === 'skills' ? (
             <div className="space-y-2">
               {resumeData.skills.map((skill, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={skill} className="flex items-center gap-2">
                   <input
                     type="text"
                     value={skill}
@@ -228,6 +232,7 @@ export default function Finish() {
                     className="border rounded-md p-2"
                   />
                   <button
+                    type="button"
                     onClick={() => {
                       const newSkills = resumeData.skills.filter(
                         (_, i) => i !== index,
@@ -241,6 +246,7 @@ export default function Finish() {
                 </div>
               ))}
               <button
+                type="button"
                 onClick={() =>
                   setResumeData((prev) => ({
                     ...prev,
@@ -254,9 +260,9 @@ export default function Finish() {
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {resumeData.skills.map((skill, index) => (
+              {resumeData.skills.map((skill) => (
                 <span
-                  key={index}
+                  key={skill}
                   className="inline-flex items-center px-3 py-1 rounded-full 
                     text-sm font-medium bg-blue-50 text-blue-700"
                 >
@@ -282,7 +288,7 @@ export default function Finish() {
         </button>
         <Form method="post">
           <button
-            type="submit"
+            type="button"
             className="inline-flex justify-center rounded-md border border-transparent 
               bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm 
               hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 

@@ -71,6 +71,8 @@ export default function Skills() {
               />
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
                 <svg
+                  role="img"
+                  aria-label="plus sign"
                   className="h-5 w-5 text-gray-400"
                   fill="none"
                   stroke="currentColor"
@@ -94,6 +96,7 @@ export default function Skills() {
               {/* This would be populated based on search results */}
               {['JavaScript', 'React', 'Node.js', 'TypeScript'].map((skill) => (
                 <button
+                  type="button"
                   key={skill}
                   onClick={() => handleAddSkill(skill)}
                   className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 
@@ -110,9 +113,9 @@ export default function Skills() {
         <div>
           <Form method="post" className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <h3 className="block text-sm font-medium text-gray-700 mb-2">
                 Your Skills
-              </label>
+              </h3>
 
               {/* User's Selected Skills */}
               <div className="min-h-[200px] bg-white border rounded-md p-4">
@@ -125,7 +128,7 @@ export default function Skills() {
                   <div className="flex flex-wrap gap-2">
                     {userSkills.map((skill, index) => (
                       <div
-                        key={index}
+                        key={skill}
                         className="group flex items-center bg-blue-50 text-blue-700 
                           px-3 py-1 rounded-full text-sm"
                       >
@@ -147,9 +150,9 @@ export default function Skills() {
               <div className="mt-4">
                 <input
                   type="text"
-                  className="w-full border shadow-sm rounded-md"
+                  className="w-full border shadow-sm pl-2 py-2 rounded-md"
                   placeholder="Type a skill and press Enter"
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       const input = e.target as HTMLInputElement;
@@ -164,8 +167,8 @@ export default function Skills() {
             </div>
 
             {/* Hidden inputs to submit all skills */}
-            {userSkills.map((skill, index) => (
-              <input key={index} type="hidden" name="skills" value={skill} />
+            {userSkills.map((skill) => (
+              <input key={skill} type="hidden" name="skills" value={skill} />
             ))}
 
             {/* Navigation Buttons */}

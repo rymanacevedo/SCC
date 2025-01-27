@@ -120,9 +120,9 @@ export default function Summary() {
             Example Summaries
           </h2>
           <div className="space-y-4">
-            {exampleSummaries.map((example, index) => (
+            {exampleSummaries.map((example) => (
               <div
-                key={index}
+                key={example.text}
                 className="bg-gray-50 p-4 rounded-md cursor-pointer 
                   hover:bg-gray-100 transition-colors"
               >
