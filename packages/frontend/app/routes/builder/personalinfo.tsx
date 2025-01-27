@@ -18,10 +18,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    const validatedData = PersonalInfoSchema.parse(data);
+    // const validatedData = PersonalInfoSchema.parse(data);
     // TODO: return json similar to v7
     // return json({ success: true, data: validatedData });
-    redirect('/experience');
+    return redirect('/experience');
   } catch (error) {
     if (error instanceof z.ZodError) {
       // TODO: return json similar to v7

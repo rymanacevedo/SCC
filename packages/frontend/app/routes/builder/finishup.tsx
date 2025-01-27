@@ -1,9 +1,8 @@
 // app/routes/builder.finish.tsx
 import { redirect } from 'react-router';
-import { Form, useActionData } from 'react-router';
-import { z } from 'zod';
-import type { Route } from '../../../.react-router/types/app/+types/root';
+import { Form } from 'react-router';
 import { useState } from 'react';
+import type { Route } from '../../../.react-router/types/app/+types/root';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -28,7 +27,7 @@ export default function Finish() {
       state: 'NY',
       zipCode: '10001',
       phone: '(555) 555-5555',
-      email: 'john.doe@example.com'
+      email: 'john.doe@example.com',
     },
     summary: `Results-driven software developer with 5 years of experience building web applications. 
       Proficient in JavaScript, React, and Node.js. Strong problem-solving abilities and experience 
@@ -38,15 +37,9 @@ export default function Finish() {
       degree: "Bachelor's Degree",
       fieldOfStudy: 'Computer Science',
       location: 'Boston, MA',
-      graduationDate: '2022-05'
+      graduationDate: '2022-05',
     },
-    skills: [
-      'JavaScript',
-      'React',
-      'Node.js',
-      'TypeScript',
-      'Python'
-    ]
+    skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python'],
   });
 
   const handleSectionEdit = (section: string) => {
@@ -54,9 +47,9 @@ export default function Finish() {
   };
 
   const handleSectionSave = (section: string, newData: any) => {
-    setResumeData(prev => ({
+    setResumeData((prev) => ({
       ...prev,
-      [section]: newData
+      [section]: newData,
     }));
     setEditingSection(null);
   };
@@ -64,9 +57,7 @@ export default function Finish() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Review Your Resume
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900">Review Your Resume</h1>
         <p className="mt-2 text-sm text-gray-600">
           Review and edit your information before finalizing your resume.
         </p>
@@ -91,10 +82,12 @@ export default function Finish() {
               <input
                 type="text"
                 value={resumeData.personal.firstName}
-                onChange={(e) => setResumeData(prev => ({
-                  ...prev,
-                  personal: { ...prev.personal, firstName: e.target.value }
-                }))}
+                onChange={(e) =>
+                  setResumeData((prev) => ({
+                    ...prev,
+                    personal: { ...prev.personal, firstName: e.target.value },
+                  }))
+                }
                 className="border rounded-md p-2"
                 placeholder="First Name"
               />
@@ -111,7 +104,8 @@ export default function Finish() {
               <div>
                 <p className="text-sm text-gray-500">Location</p>
                 <p className="font-medium">
-                  {resumeData.personal.city}, {resumeData.personal.state} {resumeData.personal.zipCode}
+                  {resumeData.personal.city}, {resumeData.personal.state}{' '}
+                  {resumeData.personal.zipCode}
                 </p>
               </div>
               <div>
@@ -142,10 +136,12 @@ export default function Finish() {
           {editingSection === 'summary' ? (
             <textarea
               value={resumeData.summary}
-              onChange={(e) => setResumeData(prev => ({
-                ...prev,
-                summary: e.target.value
-              }))}
+              onChange={(e) =>
+                setResumeData((prev) => ({
+                  ...prev,
+                  summary: e.target.value,
+                }))
+              }
               className="w-full border rounded-md p-3"
               rows={4}
             />
@@ -157,9 +153,7 @@ export default function Finish() {
         {/* Education Section */}
         <div className="p-6 border-b">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Education
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Education</h2>
             <button
               onClick={() => handleSectionEdit('education')}
               className="text-sm text-blue-600 hover:text-blue-800"
@@ -172,10 +166,15 @@ export default function Finish() {
               <input
                 type="text"
                 value={resumeData.education.schoolName}
-                onChange={(e) => setResumeData(prev => ({
-                  ...prev,
-                  education: { ...prev.education, schoolName: e.target.value }
-                }))}
+                onChange={(e) =>
+                  setResumeData((prev) => ({
+                    ...prev,
+                    education: {
+                      ...prev.education,
+                      schoolName: e.target.value,
+                    },
+                  }))
+                }
                 className="w-full border rounded-md p-2"
                 placeholder="School Name"
               />
@@ -194,7 +193,9 @@ export default function Finish() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Field of Study</p>
-                  <p className="font-medium">{resumeData.education.fieldOfStudy}</p>
+                  <p className="font-medium">
+                    {resumeData.education.fieldOfStudy}
+                  </p>
                 </div>
               </div>
             </div>
@@ -204,9 +205,7 @@ export default function Finish() {
         {/* Skills Section */}
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Skills
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
             <button
               onClick={() => handleSectionEdit('skills')}
               className="text-sm text-blue-600 hover:text-blue-800"
@@ -224,14 +223,16 @@ export default function Finish() {
                     onChange={(e) => {
                       const newSkills = [...resumeData.skills];
                       newSkills[index] = e.target.value;
-                      setResumeData(prev => ({ ...prev, skills: newSkills }));
+                      setResumeData((prev) => ({ ...prev, skills: newSkills }));
                     }}
                     className="border rounded-md p-2"
                   />
                   <button
                     onClick={() => {
-                      const newSkills = resumeData.skills.filter((_, i) => i !== index);
-                      setResumeData(prev => ({ ...prev, skills: newSkills }));
+                      const newSkills = resumeData.skills.filter(
+                        (_, i) => i !== index,
+                      );
+                      setResumeData((prev) => ({ ...prev, skills: newSkills }));
                     }}
                     className="text-red-600 hover:text-red-800"
                   >
@@ -240,10 +241,12 @@ export default function Finish() {
                 </div>
               ))}
               <button
-                onClick={() => setResumeData(prev => ({
-                  ...prev,
-                  skills: [...prev.skills, '']
-                }))}
+                onClick={() =>
+                  setResumeData((prev) => ({
+                    ...prev,
+                    skills: [...prev.skills, ''],
+                  }))
+                }
                 className="text-blue-600 hover:text-blue-800"
               >
                 Add Skill

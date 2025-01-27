@@ -13,10 +13,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    const validatedData = SkillsSchema.parse({
-      skills: formData.getAll('skills'),
-    });
-    return redirect('/builder/preview');
+    // const validatedData = SkillsSchema.parse({
+    //   skills: formData.getAll('skills'),
+    // });
+    return redirect('/summary');
   } catch (error) {
     if (error instanceof z.ZodError) {
       // return json({ success: false, errors: error.flatten().fieldErrors });

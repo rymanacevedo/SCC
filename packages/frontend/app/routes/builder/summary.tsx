@@ -12,8 +12,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    const validatedData = SummarySchema.parse(data);
-    return redirect('/');
+    // const validatedData = SummarySchema.parse(data);
+    return redirect('/finish-up');
   } catch (error) {
     if (error instanceof z.ZodError) {
       // return json({ success: false, errors: error.flatten().fieldErrors });

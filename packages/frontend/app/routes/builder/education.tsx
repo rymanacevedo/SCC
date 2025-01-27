@@ -19,12 +19,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    const validatedData = EducationSchema.parse({
-      ...data,
-      current: data.current === 'on',
-    });
+    // const validatedData = EducationSchema.parse({
+    //   ...data,
+    //   current: data.current === 'on',
+    // });
     // Save data to session or database
-    return redirect('/builder/skills');
+    return redirect('/skills');
   } catch (error) {
     if (error instanceof z.ZodError) {
       //   return json({ success: false, errors: error.flatten().fieldErrors });
