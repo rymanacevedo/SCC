@@ -7,8 +7,7 @@
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["build/client/**"]
+      "dependsOn": ["^build"]
     },
     "lint": {
       "dependsOn": ["^lint"],
