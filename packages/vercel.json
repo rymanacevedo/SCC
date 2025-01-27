@@ -2,10 +2,12 @@
   "buildCommand": "turbo run build",
   "outputDirectory": "dist/client",
   "framework": "vite",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ]
-}
+  
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  
+  }
