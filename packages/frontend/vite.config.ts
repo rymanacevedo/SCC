@@ -3,5 +3,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  build: {
+    outDir: 'build',
+  },
   plugins: [reactRouter(), tailwindcss()],
 });
