@@ -5,5 +5,6 @@ export default [
   // possible layout route here
   route('info', 'routes/builder/personalinfo.tsx'),
   route('experience', 'routes/builder/experience.tsx'),
-  route('education', 'routes/builder/education.tsx')
+  route('education', 'routes/builder/education.tsx'),
+  route('skills', 'routes/builder/skills.tsx'),
 ] satisfies RouteConfig;
