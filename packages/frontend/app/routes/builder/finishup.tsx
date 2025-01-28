@@ -3,6 +3,7 @@ import { redirect } from 'react-router';
 import { Form } from 'react-router';
 import { useState } from 'react';
 import type { Route } from '../../../.react-router/types/app/+types/root';
+import Button from '../../components/Button';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -276,26 +277,15 @@ export default function Finish() {
 
       {/* Action Buttons */}
       <div className="mt-6 flex justify-between">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="inline-flex justify-center rounded-md border border-gray-300 
-            bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm 
-            hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 
-            focus:ring-offset-2"
-        >
-          Previous
-        </button>
+        <Button
+          text="Previous"
+          type="secondary"
+          action="button"
+          callback={() => window.history.back()}
+        />
+
         <Form method="post">
-          <button
-            type="button"
-            className="inline-flex justify-center rounded-md border border-transparent 
-              bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm 
-              hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 
-              focus:ring-offset-2"
-          >
-            Generate Resume
-          </button>
+          <Button text="Generate Resume" action="button" />
         </Form>
       </div>
     </div>
