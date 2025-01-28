@@ -44,14 +44,14 @@ export default function WorkExperience() {
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Input name="Job Title" type="text" id="jobTitle" />
+          <Input label="Job Title" type="text" id="jobTitle" />
 
-          <Input name="Employer" type="text" id="employer" />
-          <Input name="Location" type="text" id="location" />
+          <Input label="Employer" type="text" id="employer" />
+          <Input label="Location" type="text" id="location" />
 
-          <Input name="Start Date" type="month" id="startDate" />
+          <Input label="Start Date" type="month" id="startDate" />
 
-          <Input name="End Date" type="month" id="endDate" />
+          <Input label="End Date" type="month" id="endDate" />
         </div>
 
         <div className="mt-4">

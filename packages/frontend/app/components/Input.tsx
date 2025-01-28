@@ -1,10 +1,9 @@
 import { type InputTypes, inputTypes } from '../utils/inputTypes';
 
 type Input = {
-  name: string;
+  label: string;
   type: keyof InputTypes;
   placeholder?: string;
-  label?: string;
   id: string;
   required?: boolean;
   value?: string | number;
@@ -13,12 +12,18 @@ type Input = {
   classNames?: string;
 };
 
-export default function Input({ name, type, required, classNames, id }: Input) {
+export default function Input({
+  label,
+  type,
+  required,
+  classNames,
+  id,
+}: Input) {
   const inputStyles = inputTypes[type];
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-        {name}
+        {label}
       </label>
       <input
         required={required}

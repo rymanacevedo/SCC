@@ -50,25 +50,25 @@ export default function PersonalInfo() {
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* First Name */}
-          <Input name="First Name" type="text" id="firstname" />
+          <Input label="First Name" type="text" id="firstname" />
 
           {/* Last Name */}
-          <Input name="Last Name" type="text" id="lastName" />
+          <Input label="Last Name" type="text" id="lastName" />
 
           {/* City */}
-          <Input name="City" type="text" id="city" />
+          <Input label="City" type="text" id="city" />
 
           {/* State */}
-          <Input name="State" type="text" id="state" />
+          <Input label="State" type="text" id="state" />
 
           {/* ZIP Code */}
-          <Input name="Zip Code" type="text" id="zipCode" />
+          <Input label="Zip Code" type="text" id="zipCode" />
 
           {/* Phone */}
-          <Input name="Phone" type="text" id="phone" />
+          <Input label="Phone" type="text" id="phone" />
 
           {/* Email */}
-          <Input name="Email" type="email" id="email" />
+          <Input label="Email" type="email" id="email" />
         </div>
 
         <div className="flex justify-end">

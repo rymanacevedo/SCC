@@ -51,13 +51,13 @@ export default function Education() {
       </div>
 
       <Form method="post" className="space-y-6">
-        <Input name="School Name" type="text" id="schoolName" />
+        <Input label="School Name" type="text" id="schoolName" />
 
-        <Input name="Degree" type="text" id="degree" />
+        <Input label="Degree" type="text" id="degree" />
 
-        <Input name="Location" type="text" id="location" />
+        <Input label="Location" type="text" id="location" />
 
-        <Input name="Graduation Date" type="text" id="graduationDate" />
+        <Input label="Graduation Date" type="text" id="graduationDate" />
 
         {/* Current Student Checkbox */}
         <div className="flex items-center">
