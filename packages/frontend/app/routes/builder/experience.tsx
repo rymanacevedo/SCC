@@ -2,6 +2,7 @@ import { Form, redirect } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
+import Input from '../../components/Input';
 
 const EducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required'),
@@ -43,79 +44,14 @@ export default function WorkExperience() {
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="jobTitle"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Job Title
-            </label>
-            <input
-              type="text"
-              name="jobTitle"
-              id="jobTitle"
-              className="mt-1 block w-full border shadow-sm"
-            />
-          </div>
+          <Input name="Job Title" type="text" id="jobTitle" />
 
-          <div>
-            <label
-              htmlFor="employer"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Employer
-            </label>
-            <input
-              type="text"
-              name="employer"
-              id="employer"
-              className="mt-1 block w-full border shadow-sm"
-            />
-          </div>
+          <Input name="Employer" type="text" id="employer" />
+          <Input name="Location" type="text" id="location" />
 
-          <div>
-            <label
-              htmlFor="location"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Location
-            </label>
-            <input
-              type="text"
-              name="location"
-              id="location"
-              className="mt-1 block w-full border shadow-sm"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="startDate"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Start Date
-            </label>
-            <input
-              className="mt-1 block w-full border shadow-sm"
-              type="month"
-              name="startMonth"
-              id="startMonth"
-            />
-          </div>
+          <Input name="Start Date" type="month" id="startDate" />
 
-          <div>
-            <label
-              htmlFor="endDate"
-              className="block text-sm font-medium text-gray-700"
-            >
-              End Date
-            </label>
-            <input
-              className="mt-1 block w-full border shadow-sm"
-              type="month"
-              name="endMonth"
-              id="endMonth"
-            />
-          </div>
+          <Input name="End Date" type="month" id="endDate" />
         </div>
 
         <div className="mt-4">
@@ -143,10 +79,7 @@ export default function WorkExperience() {
             callback={() => window.history.back()}
           />
 
-          <Button
-            action="submit"
-            text="Next Step"
-          />
+          <Button action="submit" text="Next Step" />
         </div>
       </Form>
     </div>

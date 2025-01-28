@@ -98,10 +98,7 @@ export default function Summary() {
                 action="button"
                 callback={() => window.history.back()}
               />
-              <Button
-                action="submit"
-                text="Next Step"
-              />
+              <Button action="submit" text="Next Step" />
             </div>
           </Form>
         </div>

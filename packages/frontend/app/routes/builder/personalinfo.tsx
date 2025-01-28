@@ -3,6 +3,7 @@ import { Form, redirect, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
+import Input from '../../components/Input';
 
 const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -49,158 +50,29 @@ export default function PersonalInfo() {
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* First Name */}
-          <div>
-            <label
-              htmlFor="firstName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              First Name
-            </label>
-            <input
-              type="text"
-              name="firstName"
-              id="firstName"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.firstName && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.firstName[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="First Name" type="text" id="firstname" />
 
           {/* Last Name */}
-          <div>
-            <label
-              htmlFor="lastName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Last Name
-            </label>
-            <input
-              type="text"
-              name="lastName"
-              id="lastName"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.lastName && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.lastName[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="Last Name" type="text" id="lastName" />
 
           {/* City */}
-          <div>
-            <label
-              htmlFor="city"
-              className="block text-sm font-medium text-gray-700"
-            >
-              City
-            </label>
-            <input
-              type="text"
-              name="city"
-              id="city"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.city && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.city[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="City" type="text" id="city" />
 
           {/* State */}
-          <div>
-            <label
-              htmlFor="state"
-              className="block text-sm font-medium text-gray-700"
-            >
-              State
-            </label>
-            <input
-              type="text"
-              name="state"
-              id="state"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.state && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.state[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="State" type="text" id="state" />
 
           {/* ZIP Code */}
-          <div>
-            <label
-              htmlFor="zipCode"
-              className="block text-sm font-medium text-gray-700"
-            >
-              ZIP Code
-            </label>
-            <input
-              type="text"
-              name="zipCode"
-              id="zipCode"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.zipCode && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.zipCode[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="Zip Code" type="text" id="zipCode" />
 
           {/* Phone */}
-          <div>
-            <label
-              htmlFor="phone"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Phone
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              id="phone"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.phone && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.phone[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="Phone" type="text" id="phone" />
 
           {/* Email */}
-          <div className="sm:col-span-2">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              className="mt-1 block w-full border shadow-sm"
-            />
-            {/* {actionData?.errors?.email && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.email[0]}
-              </p>
-            )} */}
-          </div>
+          <Input name="Email" type="email" id="email" />
         </div>
 
         <div className="flex justify-end">
-          <Button
-            action="submit"
-            text="Next Step"
-          />
+          <Button action="submit" text="Next Step" />
         </div>
       </Form>
     </div>
