@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
+import Heading from '../../components/Heading';
 
 const EducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required'),
@@ -41,13 +42,20 @@ export default function Education() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Tell us about your education
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Enter your education experience so far, even if you are a current
-          student or did not graduate.
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="Tell us about your education"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="Enter your education experience so far, even if you are a current
+          student or did not graduate."
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <Form method="post" className="space-y-6">
@@ -68,7 +76,10 @@ export default function Education() {
             className="h-4 w-4 rounded border-gray-300 text-blue-600 
               focus:ring-blue-500"
           />
-          <label htmlFor="current" className="ml-2 block text-sm text-gray-700">
+          <label
+            htmlFor="current"
+            className="ml-2 block text-sm dark:text-gray-300 text-gray-700"
+          >
             I am currently studying here
           </label>
         </div>

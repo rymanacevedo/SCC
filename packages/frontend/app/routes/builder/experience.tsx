@@ -3,6 +3,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
+import Heading from '../../components/Heading';
 
 const EducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required'),
@@ -32,14 +33,21 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 export default function WorkExperience() {
   return (
-    <div className="max-w-2xl mx-auto">
+    <main className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Tell us about your most recent job
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          We'll start there and work backwards.
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="Tell us about your most recent job"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="We'll start there and work backwards."
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <Form method="post" className="space-y-6">
@@ -64,7 +72,7 @@ export default function WorkExperience() {
             />
             <label
               htmlFor="currentlyEmployed"
-              className="ml-2 block text-sm text-gray-700"
+              className="ml-2 block text-sm dark:text-gray-300 text-gray-700"
             >
               I currently work here
             </label>
@@ -82,6 +90,6 @@ export default function WorkExperience() {
           <Button action="submit" text="Next Step" />
         </div>
       </Form>
-    </div>
+    </main>
   );
 }

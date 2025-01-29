@@ -22,7 +22,10 @@ export default function Input({
   const inputStyles = inputTypes[type];
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium dark:text-gray-300 text-gray-700"
+      >
         {label}
       </label>
       <input

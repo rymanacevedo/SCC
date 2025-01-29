@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
+import Heading from '../../components/Heading';
 
 const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -37,14 +38,21 @@ export default function PersonalInfo() {
   const actionData = useActionData<typeof clientAction>();
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <main className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Tell us a bit about yourself
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Let's start with your basic information
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="Tell us a bit about yourself"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="Let's start with your basic information"
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <Form method="post" className="space-y-6">
@@ -75,6 +83,6 @@ export default function PersonalInfo() {
           <Button action="submit" text="Next Step" />
         </div>
       </Form>
-    </div>
+    </main>
   );
 }

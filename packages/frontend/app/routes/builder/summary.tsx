@@ -3,6 +3,7 @@ import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
+import Heading from '../../components/Heading';
 
 const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -42,15 +43,22 @@ export default function Summary() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <main className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Create Your Professional Summary
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Write a compelling summary that highlights your key achievements and
-          career goals. This is often the first thing employers read.
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="Create Your Professional Summary"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="Write a compelling summary that highlights your key achievements and
+          career goals. This is often the first thing employers read."
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -138,6 +146,6 @@ export default function Summary() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

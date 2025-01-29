@@ -4,6 +4,7 @@ import { Form } from 'react-router';
 import { useState } from 'react';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
+import Heading from '../../components/Heading';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -56,12 +57,21 @@ export default function Finish() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <main className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Review Your Resume</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Review and edit your information before finalizing your resume.
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="Review Your Resume"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="Review and edit your information before finalizing your resume."
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -288,6 +298,6 @@ export default function Finish() {
           <Button text="Generate Resume" action="button" />
         </Form>
       </div>
-    </div>
+    </main>
   );
 }

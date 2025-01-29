@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { useState } from 'react';
 import Button from '../../components/Button';
+import Heading from '../../components/Heading';
 
 const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
@@ -41,14 +42,21 @@ export default function Skills() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <main className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          What skills would you like to highlight?
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Add skills that are relevant to your experience and the job you want.
-        </p>
+        <Heading
+          level="h1"
+          size="text-2xl"
+          text="What skills would you like to highlight?"
+          bold={true}
+          classNames="mb-2"
+        />
+        <Heading
+          level="h2"
+          size="text-sm"
+          text="Add skills that are relevant to your experience and the job you want."
+          color="dark:text-gray-400 text-gray-600"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -181,14 +189,11 @@ export default function Skills() {
                 callback={() => window.history.back()}
               />
 
-              <Button
-                action="submit"
-                text="Next Step"
-              />
+              <Button action="submit" text="Next Step" />
             </div>
           </Form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

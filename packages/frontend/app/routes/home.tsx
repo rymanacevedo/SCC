@@ -2,14 +2,14 @@ import { NavLink } from 'react-router';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl font-bold dark:text-white text-gray-900 mb-6">
             Create Your Professional Resume
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg dark:text-gray-400 text-gray-600 mb-8">
             Get started with our easy-to-use resume builder.
           </p>
           <NavLink
@@ -21,7 +21,7 @@ export default function HomePage() {
             Create My Resume
           </NavLink>
         </div>
-      </div>
-    </div>
+      </main>
+    </>
   );
 }
