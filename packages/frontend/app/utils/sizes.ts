@@ -14,6 +14,13 @@ export const sizes = {
     16: '4rem',
   },
 
+  // Padding for buttons
+  buttonPadding: {
+    small: 'py-1 px-2',
+    medium: 'py-2 px-4',
+    large: 'py-4 px-8',
+  },
+
   // Font sizes
   fontSize: {
     'text-xs': '0.75rem',

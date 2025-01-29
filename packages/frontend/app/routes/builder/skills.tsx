@@ -29,39 +29,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 export default function Skills() {
-  const actionData = useActionData<typeof clientAction>();
   const fetcher = useFetcher<TSkills>();
 
   const [userSkills, setUserSkills] = useState<string[]>([]);
-  const [suggestedSkills, setSuggestedSkills] = useState<{
-    expertRecommended: string[];
-    otherSkills: string[];
-  }>({ expertRecommended: [], otherSkills: [] });
-
   const handleAddSkill = (skill: string) => {
     if (!userSkills.includes(skill)) {
       setUserSkills([...userSkills, skill]);
     }
-  };
-
-  const handleJobSearch = async (jobTitle: string) => {
-    setSuggestedSkills({ expertRecommended: [], otherSkills: [] });
-
-    // try {
-    //   const skills = await getSkillsFromAI(jobTitle);
-    //   if (skills && skills['Expert Recommended'] && skills['Other Skills']) {
-    //     setSuggestedSkills({
-    //       expertRecommended: skills['Expert Recommended'],
-    //       otherSkills: skills['Other Skills'],
-    //     });
-    //   } else {
-    //     setError('Failed to get skills. Please try again.');
-    //   }
-    // } catch (error) {
-    //   setError('An error occurred while fetching skills. Please try again.');
-    // } finally {
-    //   setIsLoading(false);
-    // }
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
@@ -94,6 +68,7 @@ export default function Skills() {
             method="post"
             className="flex justify-around mb-6"
           >
+            {/* TODO: adjust the size */}
             <Input
               type="text"
               label="Search by Job Title for Pre-Written Examples"
@@ -124,32 +99,12 @@ export default function Skills() {
                     placeholder="e.g., Software Engineer, Project Manager"
                   /> */}
             <Button
+              textSize="text-xs"
+              size="small"
               text={fetcher.state !== 'idle' ? 'Searching...' : 'Search'}
               action="submit"
             />
-            {/* <button
-                  type="button"
-                  onClick={() => handleJobSearch(searchTerm)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
-                    transition-colors disabled:opacity-50"
-                  disabled={!searchTerm.trim()}
-                >
-                  {isLoading ? 'Searching...' : 'Search'}
-                </button> */}
           </fetcher.Form>
-          {/* {fetcher.data && (
-            <ul
-              style={{
-                opacity: fetcher.state === 'idle' ? 1 : 0.25,
-              }}
-            >
-              {fetcher.data.skills.expertRecommended.map((skill) => (
-                <li key={skill} className="mb-2">
-                  +{skill}
-                </li>
-              ))}
-            </ul>
-          )} */}
 
           {/* Example Skills Based on Search */}
           <div className="p-4 rounded-md">
@@ -181,12 +136,12 @@ export default function Skills() {
                   type="custom"
                   callback={() => handleAddSkill(skill)}
                   text={`+ ${skill}`}
-                  size="text-sm"
+                  textSize="text-sm"
                   action="button"
                   classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
-
+                  py-2 px-4
                   hover:bg-gray-200
                   text-gray-800
                   dark:text-gray-300
@@ -215,12 +170,12 @@ export default function Skills() {
                   type="custom"
                   callback={() => handleAddSkill(skill)}
                   text={`+ ${skill}`}
-                  size="text-sm"
+                  textSize="text-sm"
                   action="button"
                   classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
-
+                  py-2 px-4
                   hover:bg-gray-200
                   text-gray-800
                   dark:text-gray-300
