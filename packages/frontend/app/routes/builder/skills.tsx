@@ -176,17 +176,24 @@ export default function Skills() {
                   'Public Speaking',
                 ]
               ).map((skill) => (
-                <button
-                  type="button"
+                <Button
                   key={skill}
-                  onClick={() => handleAddSkill(skill)}
-                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-400 
+                  type="custom"
+                  callback={() => handleAddSkill(skill)}
+                  text={`+ ${skill}`}
+                  size="text-sm"
+                  action="button"
+                  classNames="
+                  w-full text-left
                   dark:hover:bg-gray-800
-                  cursor-pointer
-                  transition-colors text-sm"
-                >
-                  + {skill}
-                </button>
+
+                  hover:bg-gray-200
+                  text-gray-800
+                  dark:text-gray-300
+                  rounded-md border
+                  transition-colors
+                  "
+                />
               ))}
               <Heading
                 level="h4"
@@ -203,17 +210,24 @@ export default function Skills() {
                   'Active Listening',
                 ]
               ).map((skill) => (
-                <button
-                  type="button"
+                <Button
                   key={skill}
-                  onClick={() => handleAddSkill(skill)}
-                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-400 
+                  type="custom"
+                  callback={() => handleAddSkill(skill)}
+                  text={`+ ${skill}`}
+                  size="text-sm"
+                  action="button"
+                  classNames="
+                  w-full text-left
                   dark:hover:bg-gray-800
-                  cursor-pointer
-                  transition-colors text-sm"
-                >
-                  + {skill}
-                </button>
+
+                  hover:bg-gray-200
+                  text-gray-800
+                  dark:text-gray-300
+                  rounded-md border
+                  transition-colors
+                  "
+                />
               ))}
             </div>
           </div>

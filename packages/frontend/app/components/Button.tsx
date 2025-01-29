@@ -23,7 +23,7 @@ export default function Button({
     <button
       type={action}
       onClick={callback}
-      className={`${buttonStyle.base} ${buttonStyle.hover} py-2 px-4 font-medium ${size} ${classNames}`}
+      className={`${buttonStyle.base} ${buttonStyle.hover} py-2 px-4 ${size} ${classNames}`}
     >
       {text}
     </button>
