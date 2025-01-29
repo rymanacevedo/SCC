@@ -65,7 +65,7 @@ export default function Skills() {
           <div className="mb-6">
             <label
               htmlFor="jobSearch"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-2"
             >
               Search by Job Title for Pre-Written Examples
             </label>
@@ -99,9 +99,14 @@ export default function Skills() {
           </div>
 
           {/* Example Skills Based on Search */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h3 className="font-medium text-gray-900 mb-3">Suggested Skills</h3>
-            <div className="space-y-2">
+          <div className="p-4 rounded-md">
+            <Heading
+              level="h3"
+              text="Suggested Skills"
+              size="text-base"
+              classNames="mb-3"
+            />
+            <div className="space-y-2 border rounded-md p-4">
               {/* This would be populated based on search results */}
               {['JavaScript', 'React', 'Node.js', 'TypeScript'].map((skill) => (
                 <button
@@ -109,6 +114,8 @@ export default function Skills() {
                   key={skill}
                   onClick={() => handleAddSkill(skill)}
                   className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 
+                  dark:hover:bg-gray-800
+                  cursor-pointer
                     transition-colors text-sm"
                 >
                   + {skill}
@@ -122,14 +129,17 @@ export default function Skills() {
         <div>
           <Form method="post" className="space-y-6">
             <div>
-              <h3 className="block text-sm font-medium text-gray-700 mb-2">
-                Your Skills
-              </h3>
+              <Heading
+                level="h3"
+                text="Your Skills"
+                size="text-sm"
+                classNames="mb-2"
+              />
 
               {/* User's Selected Skills */}
-              <div className="min-h-[200px] bg-white border rounded-md p-4">
+              <div className="min-h-[200px]  border rounded-md p-4">
                 {userSkills.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-sm">
                     No skills added yet. Search and add skills from the left, or
                     manually add them below.
                   </p>
@@ -145,7 +155,7 @@ export default function Skills() {
                         <button
                           type="button"
                           onClick={() => handleRemoveSkill(skill)}
-                          className="ml-2 text-blue-400 hover:text-blue-600"
+                          className="ml-2 text-blue-400 hover:text-blue-600 cursor-pointer"
                         >
                           ×
                         </button>

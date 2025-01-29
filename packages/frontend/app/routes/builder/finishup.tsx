@@ -74,13 +74,16 @@ export default function Finish() {
         />
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="shadow rounded-lg overflow-hidden">
         {/* Personal Information Section */}
         <div className="p-6 border-b">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Personal Information
-            </h2>
+            <Heading
+              text="Personal Information"
+              level="h2"
+              size="text-lg"
+              classNames="font-semibold"
+            />
             <button
               type="button"
               onClick={() => handleSectionEdit('personal')}
@@ -108,20 +111,35 @@ export default function Finish() {
           ) : (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Name</p>
+                <Heading
+                  text="Name"
+                  level="h3"
+                  size="text-sm"
+                  color="dark:text-gray-400 text-gray-500"
+                />
                 <p className="font-medium">
                   {resumeData.personal.firstName} {resumeData.personal.lastName}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Location</p>
+                <Heading
+                  text="Location"
+                  level="h3"
+                  size="text-sm"
+                  color="dark:text-gray-400 text-gray-500"
+                />
                 <p className="font-medium">
                   {resumeData.personal.city}, {resumeData.personal.state}{' '}
                   {resumeData.personal.zipCode}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Phone</p>
+                <Heading
+                  text="Phone"
+                  level="h3"
+                  size="text-sm"
+                  color="dark:text-gray-400 text-gray-500"
+                />
                 <p className="font-medium">{resumeData.personal.phone}</p>
               </div>
               <div>
@@ -135,9 +153,12 @@ export default function Finish() {
         {/* Summary Section */}
         <div className="p-6 border-b">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Professional Summary
-            </h2>
+            <Heading
+              text="Professional Summary"
+              level="h2"
+              size="text-lg"
+              classNames="font-semibold"
+            />
             <button
               type="button"
               onClick={() => handleSectionEdit('summary')}
@@ -159,14 +180,21 @@ export default function Finish() {
               rows={4}
             />
           ) : (
-            <p className="text-gray-700">{resumeData.summary}</p>
+            <p className="dark:text-gray-400 text-gray-600">
+              {resumeData.summary}
+            </p>
           )}
         </div>
 
         {/* Education Section */}
         <div className="p-6 border-b">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Education</h2>
+            <Heading
+              text="Education"
+              level="h2"
+              size="text-lg"
+              classNames="font-semibold"
+            />
             <button
               type="button"
               onClick={() => handleSectionEdit('education')}
@@ -197,16 +225,31 @@ export default function Finish() {
           ) : (
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">School</p>
+                <Heading
+                  text="School"
+                  level="h3"
+                  size="text-sm"
+                  color="dark:text-gray-400 text-gray-500"
+                />
                 <p className="font-medium">{resumeData.education.schoolName}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Degree</p>
+                  <Heading
+                    text="Degree"
+                    level="h3"
+                    size="text-sm"
+                    color="dark:text-gray-400 text-gray-500"
+                  />
                   <p className="font-medium">{resumeData.education.degree}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Field of Study</p>
+                  <Heading
+                    text="Field of Study"
+                    level="h3"
+                    size="text-sm"
+                    color="dark:text-gray-400 text-gray-500"
+                  />
                   <p className="font-medium">
                     {resumeData.education.fieldOfStudy}
                   </p>
@@ -219,7 +262,12 @@ export default function Finish() {
         {/* Skills Section */}
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
+            <Heading
+              text="Skills"
+              level="h2"
+              size="text-lg"
+              classNames="font-semibold"
+            />
             <button
               type="button"
               onClick={() => handleSectionEdit('skills')}

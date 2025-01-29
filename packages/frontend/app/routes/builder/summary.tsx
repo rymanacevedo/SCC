@@ -68,7 +68,7 @@ export default function Summary() {
             <div>
               <label
                 htmlFor="summary"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium dark:text-white text-gray-700 mb-2"
               >
                 Professional Summary
               </label>
@@ -79,7 +79,7 @@ export default function Summary() {
                 className="w-full border rounded-md shadow-sm p-3"
                 placeholder="Write a professional summary that highlights your key skills and experience..."
               />
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
                 Aim for 3-5 sentences that capture your strongest
                 qualifications.
               </p>
@@ -87,7 +87,13 @@ export default function Summary() {
 
             {/* Tips */}
             <div className="bg-blue-50 p-4 rounded-md">
-              <h3 className="font-medium text-blue-800 mb-2">Writing Tips</h3>
+              <Heading
+                text="Writing Tips"
+                level="h2"
+                size="text-base"
+                color="text-blue-800"
+                classNames="mb-2 font-medium"
+              />
               <ul className="text-sm text-blue-700 space-y-2">
                 <li>
                   Start with your professional title and years of experience
@@ -113,20 +119,28 @@ export default function Summary() {
 
         {/* Right Column - Examples */}
         <div>
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Example Summaries
-          </h2>
+          <Heading
+            text="Example Summaries"
+            level="h2"
+            size="text-lg"
+            classNames="mb-4"
+          />
           <div className="space-y-4">
             {exampleSummaries.map((example) => (
               <div
                 key={example.text}
-                className="bg-gray-50 p-4 rounded-md cursor-pointer 
-                  hover:bg-gray-100 transition-colors"
+                className="border p-4 rounded-md cursor-pointer 
+                  hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <h3 className="font-medium text-gray-900 mb-2">
-                  {example.title}
-                </h3>
-                <p className="text-sm text-gray-600">{example.text}</p>
+                <Heading
+                  text={example.title}
+                  level="h3"
+                  size="text-base"
+                  classNames="mb-2"
+                />
+                <p className="text-sm dark:text-gray-400 text-gray-600">
+                  {example.text}
+                </p>
                 <button
                   type="button"
                   className="mt-2 text-sm text-blue-600 hover:text-blue-800"
