@@ -1,10 +1,33 @@
-import { redirect } from 'react-router';
+import { redirect, useFetcher } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { useState } from 'react';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import Input from '../../components/Input';
+
+const getSkillsFromAI = async (jobTitle: string) => {
+  try {
+    const response = await fetch('/api/skills', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch skills');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error getting skills from AI:', error);
+    return null;
+  }
+};
 
 const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
@@ -28,13 +51,40 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 export default function Skills() {
   const actionData = useActionData<typeof clientAction>();
+  const fetcher = useFetcher();
+
   const [userSkills, setUserSkills] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [suggestedSkills, setSuggestedSkills] = useState<{
+    expertRecommended: string[];
+    otherSkills: string[];
+  }>({ expertRecommended: [], otherSkills: [] });
 
   const handleAddSkill = (skill: string) => {
     if (!userSkills.includes(skill)) {
       setUserSkills([...userSkills, skill]);
     }
+  };
+
+  const handleJobSearch = async (jobTitle: string) => {
+    setSuggestedSkills({ expertRecommended: [], otherSkills: [] });
+
+    fetcher.submit({});
+
+    // try {
+    //   const skills = await getSkillsFromAI(jobTitle);
+    //   if (skills && skills['Expert Recommended'] && skills['Other Skills']) {
+    //     setSuggestedSkills({
+    //       expertRecommended: skills['Expert Recommended'],
+    //       otherSkills: skills['Other Skills'],
+    //     });
+    //   } else {
+    //     setError('Failed to get skills. Please try again.');
+    //   }
+    // } catch (error) {
+    //   setError('An error occurred while fetching skills. Please try again.');
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
@@ -62,23 +112,8 @@ export default function Skills() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Search and Suggestions */}
         <div>
-          <div className="mb-6">
-            <label
-              htmlFor="jobSearch"
-              className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-2"
-            >
-              Search by Job Title for Pre-Written Examples
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="jobSearch"
-                className="w-full border shadow-sm pl-10 pr-4 py-2 rounded-md"
-                placeholder="e.g., Software Engineer, Project Manager"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+            <fetcher.Form className="flex justify-around mb-6">
+              {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
                 <svg
                   role="img"
                   aria-label="plus sign"
@@ -94,9 +129,32 @@ export default function Skills() {
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-              </div>
-            </div>
-          </div>
+              </div> */}
+              <Input
+                type="text"
+                label="Search by Job Title for Pre-Written Examples"
+                id="jobSearch"
+              />
+              {/* <input
+                    type="text"
+                    id="jobSearch"
+                    className="flex-1 border shadow-sm pl-10 pr-4 py-2 rounded-md"
+                    placeholder="e.g., Software Engineer, Project Manager"
+                  /> */}
+              <Button
+                text={fetcher.state !== 'idle' ? 'Searching...' : 'Search'}
+                action="submit"
+              />
+              {/* <button
+                  type="button"
+                  onClick={() => handleJobSearch(searchTerm)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
+                    transition-colors disabled:opacity-50"
+                  disabled={!searchTerm.trim()}
+                >
+                  {isLoading ? 'Searching...' : 'Search'}
+                </button> */}
+            </fetcher.Form>
 
           {/* Example Skills Based on Search */}
           <div className="p-4 rounded-md">

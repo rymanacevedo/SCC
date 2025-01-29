@@ -1,5 +1,4 @@
-const defaultShape =
-  'inline-flex justify-center rounded-md border border-transparent cursor-pointer';
+const defaultShape = 'rounded-md border border-transparent cursor-pointer';
 const defaultFocus =
   'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2';
 export const buttonTypes = {
