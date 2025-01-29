@@ -1,7 +1,13 @@
-import { openai } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
+import { createOpenAI, type OpenAIProvider } from '@ai-sdk/openai';
+import { generateObject, type LanguageModelV1 } from 'ai';
 import { z } from 'zod';
-const model = openai('gpt-3.5-turbo');
+const openai: OpenAIProvider = createOpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  compatibility: 'strict',
+});
+
+const model: LanguageModelV1 = openai('gpt-3.5-turbo');
+
 const schema = z.object({
   skills: z.object({
     expertRecommended: z
@@ -24,7 +30,6 @@ export const createSkills = async (prompt: string) => {
         When I give you the title, return the skills as a json object.
         Be as specific as possible.
         `,
-    output: 'object',
   });
 
   return result.object;

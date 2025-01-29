@@ -6,28 +6,7 @@ import { useState } from 'react';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Input from '../../components/Input';
-
-const getSkillsFromAI = async (jobTitle: string) => {
-  try {
-    const response = await fetch('/api/skills', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch skills');
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error getting skills from AI:', error);
-    return null;
-  }
-};
+import type { TSkills } from '../api/skills';
 
 const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
@@ -51,7 +30,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 export default function Skills() {
   const actionData = useActionData<typeof clientAction>();
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<TSkills>();
 
   const [userSkills, setUserSkills] = useState<string[]>([]);
   const [suggestedSkills, setSuggestedSkills] = useState<{
@@ -67,8 +46,6 @@ export default function Skills() {
 
   const handleJobSearch = async (jobTitle: string) => {
     setSuggestedSkills({ expertRecommended: [], otherSkills: [] });
-
-    fetcher.submit({});
 
     // try {
     //   const skills = await getSkillsFromAI(jobTitle);
@@ -112,8 +89,17 @@ export default function Skills() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Search and Suggestions */}
         <div>
-            <fetcher.Form className="flex justify-around mb-6">
-              {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+          <fetcher.Form
+            action="/api/skills"
+            method="post"
+            className="flex justify-around mb-6"
+          >
+            <Input
+              type="text"
+              label="Search by Job Title for Pre-Written Examples"
+              id="jobSearch"
+            />
+            {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
                 <svg
                   role="img"
                   aria-label="plus sign"
@@ -130,22 +116,18 @@ export default function Skills() {
                   />
                 </svg>
               </div> */}
-              <Input
-                type="text"
-                label="Search by Job Title for Pre-Written Examples"
-                id="jobSearch"
-              />
-              {/* <input
+
+            {/* <input
                     type="text"
                     id="jobSearch"
                     className="flex-1 border shadow-sm pl-10 pr-4 py-2 rounded-md"
                     placeholder="e.g., Software Engineer, Project Manager"
                   /> */}
-              <Button
-                text={fetcher.state !== 'idle' ? 'Searching...' : 'Search'}
-                action="submit"
-              />
-              {/* <button
+            <Button
+              text={fetcher.state !== 'idle' ? 'Searching...' : 'Search'}
+              action="submit"
+            />
+            {/* <button
                   type="button"
                   onClick={() => handleJobSearch(searchTerm)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
@@ -154,7 +136,20 @@ export default function Skills() {
                 >
                   {isLoading ? 'Searching...' : 'Search'}
                 </button> */}
-            </fetcher.Form>
+          </fetcher.Form>
+          {/* {fetcher.data && (
+            <ul
+              style={{
+                opacity: fetcher.state === 'idle' ? 1 : 0.25,
+              }}
+            >
+              {fetcher.data.skills.expertRecommended.map((skill) => (
+                <li key={skill} className="mb-2">
+                  +{skill}
+                </li>
+              ))}
+            </ul>
+          )} */}
 
           {/* Example Skills Based on Search */}
           <div className="p-4 rounded-md">
@@ -166,15 +161,56 @@ export default function Skills() {
             />
             <div className="space-y-2 border rounded-md p-4">
               {/* This would be populated based on search results */}
-              {['JavaScript', 'React', 'Node.js', 'TypeScript'].map((skill) => (
+              <Heading
+                level="h3"
+                text="Expert Skills"
+                size="text-sm"
+                classNames="mb-3"
+              />
+              {(
+                fetcher.data?.skills.expertRecommended || [
+                  'Microsoft Office',
+                  'Collaboration',
+                  'Decision-making',
+                  'Organization skills',
+                  'Public Speaking',
+                ]
+              ).map((skill) => (
                 <button
                   type="button"
                   key={skill}
                   onClick={() => handleAddSkill(skill)}
-                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 
+                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-400 
                   dark:hover:bg-gray-800
                   cursor-pointer
-                    transition-colors text-sm"
+                  transition-colors text-sm"
+                >
+                  + {skill}
+                </button>
+              ))}
+              <Heading
+                level="h4"
+                text="Other Skills"
+                size="text-sm"
+                classNames="mb-3"
+              />
+              {(
+                fetcher.data?.skills.other || [
+                  'Time Management',
+                  'Communication',
+                  'Problem Solving',
+                  'Leadership',
+                  'Active Listening',
+                ]
+              ).map((skill) => (
+                <button
+                  type="button"
+                  key={skill}
+                  onClick={() => handleAddSkill(skill)}
+                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-400 
+                  dark:hover:bg-gray-800
+                  cursor-pointer
+                  transition-colors text-sm"
                 >
                   + {skill}
                 </button>
