@@ -16,6 +16,12 @@ export const buttonTypes = {
     focus: `${defaultFocus}`,
     size: `${defaultSize}`,
   },
+  icon: {
+    base: 'rounded-full text-center bg-blue-600 text-white inline-flex items-center me-2 cursor-pointer',
+    hover: 'hover:bg-blue-700',
+    focus: `${defaultFocus}`,
+    size: 'p-2.5',
+  },
   custom: {
     base: 'cursor-pointer',
     hover: undefined,

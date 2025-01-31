@@ -1,11 +1,16 @@
-import { buttonTypes, type ButtonTypes } from '../utils/buttonTypes';
-import { sizes, type Sizes } from '../utils/sizes';
+import { buttonTypes } from '../utils/buttonTypes';
+import type { ButtonTypes } from '../utils/buttonTypes';
+import type { Sizes } from '../utils/sizes';
+import { sizes } from '../utils/sizes';
+
+const visuallyHidden = 'absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0';
 
 type Button = {
   text: string;
   textSize?: keyof Sizes['fontSize'];
   type?: keyof ButtonTypes;
   size?: keyof Sizes['buttonPadding'];
+  icon?: React.ReactNode;
   action: 'submit' | 'button';
   callback?: () => void;
   classNames?: string;
@@ -15,6 +20,7 @@ export default function Button({
   text,
   textSize = 'text-base',
   size,
+  icon,
   type = 'primary',
   action,
   callback,
@@ -28,7 +34,8 @@ export default function Button({
       onClick={callback}
       className={`${buttonStyle.base} ${buttonStyle.hover} ${buttonPadding} ${textSize} ${classNames}`}
     >
-      {text}
+      {icon ? icon : null}
+      <span className={type === 'icon' ? visuallyHidden : undefined}>{text}</span>
     </button>
   );
 }
