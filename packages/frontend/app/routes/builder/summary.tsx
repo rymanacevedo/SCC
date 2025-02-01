@@ -103,17 +103,6 @@ export default function Summary() {
                 <li>Keep it concise and focused</li>
               </ul>
             </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-4">
-              <Button
-                type="secondary"
-                text="Previous"
-                action="button"
-                callback={() => window.history.back()}
-              />
-              <Button action="submit" text="Next Step" />
-            </div>
           </Form>
         </div>
 
@@ -127,10 +116,19 @@ export default function Summary() {
           />
           <div className="space-y-4">
             {exampleSummaries.map((example) => (
-              <div
+              <button
+                type="button"
                 key={example.text}
-                className="border p-4 rounded-md cursor-pointer 
+                className="text-left border p-4 rounded-md cursor-pointer 
                   hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                onClick={() => {
+                  const textarea = document.getElementById(
+                    'summary',
+                  ) as HTMLTextAreaElement;
+                  if (textarea) {
+                    textarea.value = example.text;
+                  }
+                }}
               >
                 <Heading
                   text={example.title}
@@ -141,22 +139,18 @@ export default function Summary() {
                 <p className="text-sm dark:text-gray-400 text-gray-600">
                   {example.text}
                 </p>
-                <button
-                  type="button"
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                  onClick={() => {
-                    const textarea = document.getElementById(
-                      'summary',
-                    ) as HTMLTextAreaElement;
-                    if (textarea) {
-                      textarea.value = example.text;
-                    }
-                  }}
-                >
-                  Use this example
-                </button>
-              </div>
+              </button>
             ))}
+          </div>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-4">
+            <Button
+              type="secondary"
+              text="Previous"
+              action="button"
+              callback={() => window.history.back()}
+            />
+            <Button action="submit" text="Next Step" />
           </div>
         </div>
       </div>
