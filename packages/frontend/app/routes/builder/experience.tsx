@@ -57,9 +57,10 @@ export default function WorkExperience() {
           <Input label="Employer" type="text" id="employer" />
           <Input label="Location" type="text" id="location" />
 
-          <Input label="Start Date" type="month" id="startDate" />
-
-          <Input label="End Date" type="month" id="endDate" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
+            <Input label="Start Date" type="month" id="startDate" />
+            <Input label="End Date" type="month" id="endDate" />
+          </div>
         </div>
 
         <div className="mt-4">
