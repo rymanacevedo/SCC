@@ -61,9 +61,9 @@ export default function Summary() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* Left Column - Writing Area */}
-        <div>
+        <div className="order-2 md:order-1">
           <Form method="post" className="space-y-6">
             <div>
               <label
@@ -103,11 +103,21 @@ export default function Summary() {
                 <li>Keep it concise and focused</li>
               </ul>
             </div>
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-4">
+              <Button
+                type="secondary"
+                text="Previous"
+                action="button"
+                callback={() => window.history.back()}
+              />
+              <Button action="submit" text="Next Step" />
+            </div>
           </Form>
         </div>
 
         {/* Right Column - Examples */}
-        <div>
+        <div className="order-1 md:order-2">
           <Heading
             text="Example Summaries"
             level="h2"
@@ -120,7 +130,7 @@ export default function Summary() {
                 type="button"
                 key={example.text}
                 className="text-left border p-4 rounded-md cursor-pointer 
-                  hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 onClick={() => {
                   const textarea = document.getElementById(
                     'summary',
@@ -141,16 +151,6 @@ export default function Summary() {
                 </p>
               </button>
             ))}
-          </div>
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-4">
-            <Button
-              type="secondary"
-              text="Previous"
-              action="button"
-              callback={() => window.history.back()}
-            />
-            <Button action="submit" text="Next Step" />
           </div>
         </div>
       </div>
