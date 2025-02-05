@@ -43,8 +43,7 @@ export default function ExperienceEntry() {
 
   const handleUpdateExperience = (
     e: any,
-    index: number,
-    experienceToUpdate: string,
+    index: number
   ) => {
     const updatedExperience = e.currentTarget.textContent || '';
     const newUserExperience = [...userExperience];
@@ -135,7 +134,7 @@ export default function ExperienceEntry() {
               ).map((experience, index) => (
                 <Button
                   callback={() => handleAddExperience(experience)}
-                  key={`${experience}${index}`}
+                  key={`${experience}-${index}`}
                   type="custom"
                   text={`+ ${experience}`}
                   textSize="text-sm"
@@ -169,7 +168,7 @@ export default function ExperienceEntry() {
               ).map((experience, index) => (
                 <Button
                   callback={() => handleAddExperience(experience)}
-                  key={`${experience}${index}`}
+                  key={`${experience}-${index}`}
                   type="custom"
                   text={`+ ${experience}`}
                   textSize="text-sm"
@@ -194,23 +193,23 @@ export default function ExperienceEntry() {
         <div>
           <div className="space-y-6">
             <Heading
-              level="h3"
+              level="h2"
               size="text-sm"
               text="Job Description"
               classNames="font-medium mb-2"
             />
-            <ul className="w-full border rounded-md shadow-sm pl-7  p-3 list-disc">
+            <ul className="w-full border rounded-md shadow-sm pl-7 p-3 list-disc">
               {userExperience.map((experience, index) => (
+                // TODO: contenteditable needs XSS sanitation
                 <li
-                  contentEditable
                   key={`${experience}${index}`}
-                  onInput={(e) => handleUpdateExperience(e, index, experience)}
+                  onBlur={(e) => handleUpdateExperience(e, index)}
                 >
                   {experience}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
+            <p className="mb-3 mt-3 text-sm dark:text-gray-400 text-gray-600">
               Aim for 3-6 bullets that capture your experience at the role.
             </p>
           </div>
@@ -231,7 +230,7 @@ export default function ExperienceEntry() {
             </ul>
           </div>
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-4">
+          <Form method='post' className="flex justify-between pt-4">
             <Button
               type="secondary"
               text="Previous"
@@ -239,7 +238,7 @@ export default function ExperienceEntry() {
               callback={() => window.history.back()}
             />
             <Button action="submit" text="Next Step" />
-          </div>
+          </Form>
         </div>
       </div>
     </main>
