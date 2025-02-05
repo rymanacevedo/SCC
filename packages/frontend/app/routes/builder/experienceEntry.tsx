@@ -1,12 +1,56 @@
-import { Form, useFetcher } from 'react-router';
+import { Form, redirect, useFetcher } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import { useState } from 'react';
 import Input from '../../components/Input';
+import { Route } from '../../../.react-router/types/app/+types/root';
+import { z } from 'zod';
+import { TExperience } from '../api/experience';
+
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  const formData = await request.formData();
+  const data = Object.fromEntries(formData);
+
+  try {
+    // const validatedData = SkillsSchema.parse({
+    //   skills: formData.getAll('skills'),
+    // });
+    return redirect('/education');
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      // return json({ success: false, errors: error.flatten().fieldErrors });
+    }
+  }
+}
+
+// TODO: add a preflight loader to find info on the job title
 
 export default function ExperienceEntry() {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<TExperience>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
+
+  const handleAddExperience = (experience: string) => {
+    if (!userExperience.includes(experience)) {
+      setUserExperience([...userExperience, experience]);
+    }
+  };
+
+  const handleRemoveExperience = (experienceToRemove: string) => {
+    setUserExperience(
+      userExperience.filter((experience) => experience !== experienceToRemove),
+    );
+  };
+
+  const handleUpdateExperience = (
+    e: any,
+    index: number,
+    experienceToUpdate: string,
+  ) => {
+    const updatedExperience = e.currentTarget.textContent || '';
+    const newUserExperience = [...userExperience];
+    newUserExperience[index] = updatedExperience;
+    setUserExperience(newUserExperience);
+  };
 
   return (
     <main className="max-w-6xl mx-auto">
@@ -14,6 +58,7 @@ export default function ExperienceEntry() {
         <Heading
           level="h1"
           size="text-2xl"
+          // TODO: adjust the naming to be a prop
           text="What did you do as a Test Engineer?"
           bold={true}
           classNames="mb-2"
@@ -27,106 +72,174 @@ export default function ExperienceEntry() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Writing Area */}
-        <fetcher.Form
-          action="/api/skills"
-          method="post"
-          className="inline-flex gap-2 w-full"
-        >
-          {/* TODO: adjust the size */}
-          <Input
-            type="text"
-            label="Search by Job Title for Pre-Written Examples"
-            id="jobSearch"
-          />
-
-          <div className="flex items-center">
-            <Button
-              textSize="text-xs"
-              type="icon"
-              text="Search"
-              icon={
-                <svg
-                  aria-hidden="true"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              }
-              action="submit"
-            />
-          </div>
-        </fetcher.Form>
-        <div>g
-          <Form method="post" className="space-y-6">
-            <div>
-              <label
-                htmlFor="summary"
-                className="block text-sm font-medium dark:text-white text-gray-700 mb-2"
-              >
-                Job Description
-              </label>
-              <textarea
-                id="summary"
-                name="summary"
-                rows={8}
-                className="w-full border rounded-md shadow-sm p-3"
-              />
-              <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
-                Aim for 3-6 bullets that capture your experience at the role.
-              </p>
-            </div>
-
-            {/* Tips */}
-            <div className="bg-blue-50 p-4 rounded-md">
-              <Heading
-                text="Writing Tips"
-                level="h2"
-                size="text-base"
-                color="text-blue-800"
-                classNames="mb-2 font-medium"
-              />
-              <ul className="text-sm text-blue-700 space-y-2">
-                <li>Highlight 2-3 key achievements</li>
-                <li>Mention your career goals or what you're looking for</li>
-                <li>Keep it concise and focused</li>
-              </ul>
-            </div>
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-4">
-              <Button
-                type="secondary"
-                text="Previous"
-                action="button"
-                callback={() => window.history.back()}
-              />
-              <Button action="submit" text="Next Step" />
-            </div>
-          </Form>
-        </div>
-
-        {/* Right Column - Examples */}
-        <div className="order-1 md:order-2">
-          <fetcher.Form>
+        <div>
+          <fetcher.Form
+            action="/api/experience"
+            method="post"
+            className="inline-flex w-100 gap-2"
+          >
             <Input
               type="text"
               label="Search by Job Title for Pre-Written Examples"
-              id="jobSearch"
+              id="jobTitleSearch"
             />
+
+            <div className="flex items-center">
+              <Button
+                textSize="text-xs"
+                type="icon"
+                text="Search"
+                icon={
+                  <svg
+                    aria-hidden="true"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                }
+                action="submit"
+              />
+            </div>
           </fetcher.Form>
-          <Heading
-            text="Example Summaries"
-            level="h2"
-            size="text-lg"
-            classNames="mb-4"
-          />
+          <div className="p-4 rounded-md">
+            <Heading
+              level="h3"
+              text="Suggested Experience"
+              size="text-base"
+              classNames="mb-3"
+            />
+            <div className="space-y-2 border rounded-md p-4">
+              {/* This would be populated based on search results */}
+              <Heading
+                level="h3"
+                text="Recommended Experience"
+                size="text-sm"
+                classNames="mb-3"
+              />
+              {(
+                fetcher.data?.expertRecommended || [
+                  'Microsoft Office',
+                  'Collaboration',
+                  'Decision-making',
+                  'Organization skills',
+                  'Public Speaking',
+                ]
+              ).map((experience, index) => (
+                <Button
+                  callback={() => handleAddExperience(experience)}
+                  key={`${experience}${index}`}
+                  type="custom"
+                  text={`+ ${experience}`}
+                  textSize="text-sm"
+                  action="button"
+                  classNames="
+                          w-full text-left
+                          dark:hover:bg-gray-800
+                          py-2 px-4
+                          hover:bg-gray-200
+                          text-gray-800
+                          dark:text-gray-300
+                          rounded-md border
+                          transition-colors
+                          "
+                />
+              ))}
+              <Heading
+                level="h4"
+                text="Other Examples"
+                size="text-sm"
+                classNames="mb-3"
+              />
+              {(
+                fetcher.data?.other || [
+                  'Time Management',
+                  'Communication',
+                  'Problem Solving',
+                  'Leadership',
+                  'Active Listening',
+                ]
+              ).map((experience, index) => (
+                <Button
+                  callback={() => handleAddExperience(experience)}
+                  key={`${experience}${index}`}
+                  type="custom"
+                  text={`+ ${experience}`}
+                  textSize="text-sm"
+                  action="button"
+                  classNames="
+                          w-full text-left
+                          dark:hover:bg-gray-800
+                          py-2 px-4
+                          hover:bg-gray-200
+                          text-gray-800
+                          dark:text-gray-300
+                          rounded-md border
+                          transition-colors
+                          "
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Examples */}
+        <div>
+          <div className="space-y-6">
+            <Heading
+              level="h3"
+              size="text-sm"
+              text="Job Description"
+              classNames="font-medium mb-2"
+            />
+            <ul className="w-full border rounded-md shadow-sm pl-7  p-3 list-disc">
+              {userExperience.map((experience, index) => (
+                <li
+                  contentEditable
+                  key={`${experience}${index}`}
+                  onInput={(e) => handleUpdateExperience(e, index, experience)}
+                >
+                  {experience}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
+              Aim for 3-6 bullets that capture your experience at the role.
+            </p>
+          </div>
+
+          {/* Tips */}
+          <div className="bg-blue-50 p-4 rounded-md">
+            <Heading
+              text="Writing Tips"
+              level="h2"
+              size="text-base"
+              color="text-blue-800"
+              classNames="mb-2 font-medium"
+            />
+            <ul className="text-sm text-blue-700 space-y-2">
+              <li>Highlight 2-3 key achievements.</li>
+              <li>Mention your career goals or what you're looking for.</li>
+              <li>Keep it concise and focused.</li>
+            </ul>
+          </div>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-4">
+            <Button
+              type="secondary"
+              text="Previous"
+              action="button"
+              callback={() => window.history.back()}
+            />
+            <Button action="submit" text="Next Step" />
+          </div>
         </div>
       </div>
     </main>

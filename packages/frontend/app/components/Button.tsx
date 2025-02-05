@@ -3,7 +3,8 @@ import type { ButtonTypes } from '../utils/buttonTypes';
 import type { Sizes } from '../utils/sizes';
 import { sizes } from '../utils/sizes';
 
-const visuallyHidden = 'absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0';
+const visuallyHidden =
+  'absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0';
 
 type Button = {
   text: string;
@@ -35,7 +36,9 @@ export default function Button({
       className={`${buttonStyle.base} ${buttonStyle.hover} ${buttonPadding} ${textSize} ${classNames}`}
     >
       {icon ? icon : null}
-      <span className={type === 'icon' ? visuallyHidden : undefined}>{text}</span>
+      <span className={type === 'icon' ? visuallyHidden : undefined}>
+        {text}
+      </span>
     </button>
   );
 }
