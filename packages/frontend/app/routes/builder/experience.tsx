@@ -4,14 +4,14 @@ import { z } from 'zod';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
+import { updateUser } from '../../utils/user';
 
 export const ExperienceSchema = z.object({
   jobTitle: z.string().min(1, 'School name is required'),
-  degree: z.string().min(1, 'Degree is required'),
-  fieldOfStudy: z.string().min(1, 'Field of study is required'),
+  employer: z.string().min(1, 'Employer is required'),
   location: z.string().min(1, 'Location is required'),
-  graduationDate: z.string().min(1, 'Graduation date is required'),
-  currentlyStudying: z.boolean().optional(),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End Date is reque'),
 });
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -19,13 +19,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    // const validatedData = EducationSchema.parse(data);
-    // TODO: return json similar to v7
-    // return json({ success: true, data: validatedData });
+    const validatedData = ExperienceSchema.parse(data);
 
-    //check the data
-
-    //validate then submit to session
+    updateUser('experience', validatedData);
 
     return redirect('/experience-entry');
   } catch (error) {
