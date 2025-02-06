@@ -2,8 +2,10 @@ import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 export default [
   index('routes/home.tsx'),
+  // api resource routes
   route('/api/skills', 'routes/api/skills.tsx'),
   route('/api/experience', 'routes/api/experience.tsx'),
+  route('/api/experienceEntry', 'routes/api/experienceEntry.tsx'),
   // possible layout route here
   route('info', 'routes/builder/personalinfo.tsx'),
   route('experience', 'routes/builder/experience.tsx'),

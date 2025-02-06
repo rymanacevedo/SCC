@@ -12,6 +12,7 @@ import Input from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
+import { getRequiredUserTrait } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -29,17 +30,17 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-// TODO: add a preflight loader to find info on the job title
-
-export async function clientLoader({ request }: ClientActionFunctionArgs) {
+export async function clientLoader() {
+  const { jobTitle } = getRequiredUserTrait('experience');
+  // return results from an api call as well for what the jobtitle experience
   return {
-    title: 'Software',
+    jobTitle,
   };
 }
 
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
-  const { title } = useLoaderData();
+  const { jobTitle } = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
   const handleAddExperience = (experience: string) => {
@@ -61,6 +62,12 @@ export default function ExperienceEntry() {
     setUserExperience(newUserExperience);
   };
 
+  const startsWithVowel = (word: string) => {
+    if (!word || word.length === 0) return false;
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    return vowels.includes(word[0].toLowerCase());
+  };
+
   return (
     <main className="max-w-6xl mx-auto">
       <div className="mb-8">
@@ -68,7 +75,11 @@ export default function ExperienceEntry() {
           level="h1"
           size="text-2xl"
           // TODO: adjust the naming to be a prop
-          text={`What did you do as a ${title}?`}
+          text={
+            startsWithVowel(jobTitle)
+              ? `What did you do as an ${jobTitle}?`
+              : `What did you do as a ${jobTitle}?`
+          }
           bold={true}
           classNames="mb-2"
         />
