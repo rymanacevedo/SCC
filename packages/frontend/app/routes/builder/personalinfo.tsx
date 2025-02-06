@@ -5,6 +5,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
+import { setUser, updateUser } from '../../utils/user';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -21,9 +22,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    // const validatedData = PersonalInfoSchema.parse(data);
-    // TODO: return json similar to v7
-    // return json({ success: true, data: validatedData });
+    const validatedData = PersonalInfoSchema.parse(data);
+
+    updateUser('info', validatedData);
     return redirect('/experience');
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -58,7 +59,7 @@ export default function PersonalInfo() {
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* First Name */}
-          <Input label="First Name" type="text" id="firstname" />
+          <Input label="First Name" type="text" id="firstName" />
 
           {/* Last Name */}
           <Input label="Last Name" type="text" id="lastName" />
