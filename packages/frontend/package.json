@@ -9,6 +9,7 @@
     "typecheck": "react-router typegen && tsc --build --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.1.10",
     "@ai-sdk/openai": "^1.1.5",
     "@react-router/node": "^7.0.1",
     "@react-router/serve": "^7.0.1",
