@@ -7,6 +7,7 @@ import {
   isRouteErrorResponse,
 } from 'react-router';
 
+import { getUser, setUser, type User } from './utils/user';
 import type { Route } from '../.react-router/types/app/+types/root.ts';
 import './app.css';
 
@@ -29,6 +30,18 @@ export function HydrateFallback() {
       <p>Loading, please wait...</p>
     </div>
   );
+}
+
+export async function clientLoader() {
+  const user = getUser();
+
+  if (!user) {
+    const user: User = {
+      userId: crypto.randomUUID(),
+    };
+
+    setUser(user);
+  }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
