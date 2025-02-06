@@ -7,7 +7,7 @@ import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
 
-const EducationSchema = z.object({
+export const EducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required'),
   degree: z.string().min(1, 'Degree is required'),
   fieldOfStudy: z.string().min(1, 'Field of study is required'),

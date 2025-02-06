@@ -8,7 +8,7 @@ import Heading from '../../components/Heading';
 import Input from '../../components/Input';
 import type { TSkills } from '../api/skills';
 
-const SkillsSchema = z.object({
+export const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
 });
 

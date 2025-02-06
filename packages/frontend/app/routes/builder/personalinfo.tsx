@@ -6,7 +6,7 @@ import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
 
-const PersonalInfoSchema = z.object({
+export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   city: z.string().min(1, 'City is required'),

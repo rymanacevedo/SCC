@@ -5,7 +5,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 
-const SummarySchema = z.object({
+export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
 });
 

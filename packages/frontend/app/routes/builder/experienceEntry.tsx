@@ -1,11 +1,17 @@
-import { Form, redirect, useFetcher } from 'react-router';
+import {
+  type ClientActionFunctionArgs,
+  Form,
+  redirect,
+  useFetcher,
+  useLoaderData,
+} from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import { useState } from 'react';
 import Input from '../../components/Input';
-import { Route } from '../../../.react-router/types/app/+types/root';
+import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
-import { TExperience } from '../api/experience';
+import type { TExperience } from '../api/experienceEntry';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -25,8 +31,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 // TODO: add a preflight loader to find info on the job title
 
+export async function clientLoader({ request }: ClientActionFunctionArgs) {
+  return {
+    title: 'Software',
+  };
+}
+
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
+  const { title } = useLoaderData();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
   const handleAddExperience = (experience: string) => {
@@ -41,10 +54,7 @@ export default function ExperienceEntry() {
     );
   };
 
-  const handleUpdateExperience = (
-    e: any,
-    index: number
-  ) => {
+  const handleUpdateExperience = (e: any, index: number) => {
     const updatedExperience = e.currentTarget.textContent || '';
     const newUserExperience = [...userExperience];
     newUserExperience[index] = updatedExperience;
@@ -58,7 +68,7 @@ export default function ExperienceEntry() {
           level="h1"
           size="text-2xl"
           // TODO: adjust the naming to be a prop
-          text="What did you do as a Test Engineer?"
+          text={`What did you do as a ${title}?`}
           bold={true}
           classNames="mb-2"
         />
@@ -73,7 +83,7 @@ export default function ExperienceEntry() {
         {/* Left Column - Writing Area */}
         <div>
           <fetcher.Form
-            action="/api/experience"
+            action="/api/experienceEntry"
             method="post"
             className="inline-flex w-100 gap-2"
           >
@@ -202,7 +212,7 @@ export default function ExperienceEntry() {
               {userExperience.map((experience, index) => (
                 // TODO: contenteditable needs XSS sanitation
                 <li
-                  key={`${experience}${index}`}
+                  key={`${experience}-${index}`}
                   onBlur={(e) => handleUpdateExperience(e, index)}
                 >
                   {experience}
@@ -230,7 +240,7 @@ export default function ExperienceEntry() {
             </ul>
           </div>
           {/* Navigation Buttons */}
-          <Form method='post' className="flex justify-between pt-4">
+          <Form method="post" className="flex justify-between pt-4">
             <Button
               type="secondary"
               text="Previous"

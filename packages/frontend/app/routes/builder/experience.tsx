@@ -5,8 +5,8 @@ import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
 
-const EducationSchema = z.object({
-  schoolName: z.string().min(1, 'School name is required'),
+export const ExperienceSchema = z.object({
+  jobTitle: z.string().min(1, 'School name is required'),
   degree: z.string().min(1, 'Degree is required'),
   fieldOfStudy: z.string().min(1, 'Field of study is required'),
   location: z.string().min(1, 'Location is required'),
@@ -22,6 +22,11 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     // const validatedData = EducationSchema.parse(data);
     // TODO: return json similar to v7
     // return json({ success: true, data: validatedData });
+
+    //check the data
+
+    //validate then submit to session
+
     return redirect('/experience-entry');
   } catch (error) {
     if (error instanceof z.ZodError) {
