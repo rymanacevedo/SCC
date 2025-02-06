@@ -41,3 +41,25 @@ export function getUser(): User | null {
 export function setUser(user: User) {
   return window.sessionStorage.setItem('user', JSON.stringify(user));
 }
+
+export function updateUser<K extends Exclude<keyof User, 'userId'>>(
+  key: K,
+  newData: Partial<User[K]>,
+): void {
+  const currentUser = getUser();
+  if (!currentUser) {
+    console.warn('No user found in sessionStorage. Unable to update.');
+    return;
+  }
+
+  const updatedField = currentUser[key]
+    ? { ...currentUser[key], ...newData }
+    : newData;
+
+  const updatedUser: User = {
+    ...currentUser,
+    [key]: updatedField,
+  };
+
+  setUser(updatedUser);
+}
