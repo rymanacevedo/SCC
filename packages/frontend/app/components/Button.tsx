@@ -36,7 +36,11 @@ export default function Button({
       className={`${buttonStyle.base} ${buttonStyle.hover} ${buttonPadding} ${textSize} ${classNames}`}
     >
       {icon ? icon : null}
-      <span className={type === 'icon' ? visuallyHidden : undefined}>
+      <span
+        className={
+          type === 'icon' || type === 'iconCustom' ? visuallyHidden : undefined
+        }
+      >
         {text}
       </span>
     </button>
