@@ -2,6 +2,8 @@ import { type InputTypes, inputTypes } from '../utils/inputTypes';
 
 type Input = {
   label: string;
+  hideLabel?: boolean;
+  defaultValue?: string;
   type: keyof InputTypes;
   placeholder?: string;
   id: string;
@@ -14,6 +16,8 @@ type Input = {
 
 export default function Input({
   label,
+  hideLabel,
+  defaultValue,
   type,
   required,
   classNames,
@@ -24,15 +28,17 @@ export default function Input({
     <div>
       <label
         htmlFor={id}
-        className="block text-sm font-medium dark:text-gray-300 text-gray-700"
+        className={`block text-sm font-medium dark:text-gray-300 text-gray-700 ${hideLabel ? 'sr-only' : null}`}
       >
         {label}
       </label>
+      {/* TODO: disable when user selects I currently work here */}
       <input
         required={required}
         type={type}
         id={id}
         name={id}
+        defaultValue={defaultValue}
         className={`${inputStyles} ${classNames}`}
       />
       {/* {actionData?.errors?.firstName && (
