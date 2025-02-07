@@ -43,7 +43,7 @@ const ExperienceSchema = z.object({
 
 export const createSkills = async (prompt: string) => {
   const result = await generateObject({
-    model: OpenAIModel,
+    model: GeminiModel,
     schema: SkillsSchema,
     schemaName: 'Skills',
     prompt,

@@ -27,7 +27,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     //   current: data.current === 'on',
     // });
     // Save data to session or database
-    return redirect('/education');
+    return redirect('/skills');
   } catch (error) {
     if (error instanceof z.ZodError) {
       //   return json({ success: false, errors: error.flatten().fieldErrors });
