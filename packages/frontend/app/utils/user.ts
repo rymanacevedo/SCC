@@ -63,3 +63,33 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
 
   setUser(updatedUser);
 }
+
+export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
+  key: K,
+): Required<NonNullable<User[K]>> {
+  const user = getUser();
+  if (!user) {
+    // TODO: redirect
+    throw new Error('User not found in session storage.');
+  }
+
+  const trait = user[key];
+  if (!trait) {
+    // TODO: redirect
+    throw new Error(`User trait "${String(key)}" is missing.`);
+  }
+
+  // Here, we iterate over the properties of the trait.
+  // This is only a shallow check. If you need a deep check, you’d have to
+  // perform a recursive validation.
+  const traitRecord = trait as Record<string, unknown>;
+  for (const subKey in traitRecord) {
+    if (traitRecord[subKey] == null) {
+      throw new Error(
+        `User trait property "${String(key)}.${subKey}" is missing or null.`,
+      );
+    }
+  }
+
+  return trait as Required<NonNullable<User[K]>>;
+}
