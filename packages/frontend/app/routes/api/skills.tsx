@@ -45,16 +45,15 @@ export const clientAction: ClientActionFunction = async ({
   };
   if (result.jobSearch) {
     // api call for cost savings
-    // skills = await createSkills(result.jobSearch);
+    skills = await createSkills(result.jobSearch);
     const finalResult = SkillsSchema.parse(skills);
 
-    console.log(finalResult);
     return Response.json(finalResult);
   }
   return Response.json(skills);
 };
 
 // example of how to do a clientLoader
-export async function clientLoader({ request }: ClientActionFunction) {
+export async function clientLoader({ request }: ClientActionFunctionArgs) {
   return Response.json({ ok: true });
 }
