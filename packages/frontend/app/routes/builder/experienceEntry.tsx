@@ -218,7 +218,7 @@ export default function ExperienceEntry() {
             <Heading
               level="h2"
               size="text-sm"
-              text="Job Description"
+              text="Job Experience"
               classNames="font-medium mb-2 mt-2"
             />
             {/* Navigation Buttons */}
