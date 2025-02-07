@@ -1,10 +1,4 @@
-import {
-  type ClientActionFunctionArgs,
-  Form,
-  redirect,
-  useFetcher,
-  useLoaderData,
-} from 'react-router';
+import { Form, redirect, useFetcher, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import { useState } from 'react';
@@ -55,13 +49,6 @@ export default function ExperienceEntry() {
     );
   };
 
-  const handleUpdateExperience = (e: any, index: number) => {
-    const updatedExperience = e.currentTarget.textContent || '';
-    const newUserExperience = [...userExperience];
-    newUserExperience[index] = updatedExperience;
-    setUserExperience(newUserExperience);
-  };
-
   const startsWithVowel = (word: string) => {
     if (!word || word.length === 0) return false;
     const vowels = ['a', 'e', 'i', 'o', 'u'];
@@ -74,7 +61,6 @@ export default function ExperienceEntry() {
         <Heading
           level="h1"
           size="text-2xl"
-          // TODO: adjust the naming to be a prop
           text={
             startsWithVowel(jobTitle)
               ? `What did you do as an ${jobTitle}?`
@@ -212,29 +198,6 @@ export default function ExperienceEntry() {
 
         {/* Right Column - Examples */}
         <div>
-          <div className="space-y-6">
-            <Heading
-              level="h2"
-              size="text-sm"
-              text="Job Description"
-              classNames="font-medium mb-2"
-            />
-            <ul className="w-full border rounded-md shadow-sm pl-7 p-3 list-disc">
-              {userExperience.map((experience, index) => (
-                // TODO: contenteditable needs XSS sanitation
-                <li
-                  key={`${experience}-${index}`}
-                  onBlur={(e) => handleUpdateExperience(e, index)}
-                >
-                  {experience}
-                </li>
-              ))}
-            </ul>
-            <p className="mb-3 mt-3 text-sm dark:text-gray-400 text-gray-600">
-              Aim for 3-6 bullets that capture your experience at the role.
-            </p>
-          </div>
-
           {/* Tips */}
           <div className="bg-blue-50 p-4 rounded-md">
             <Heading
@@ -250,16 +213,74 @@ export default function ExperienceEntry() {
               <li>Keep it concise and focused.</li>
             </ul>
           </div>
-          {/* Navigation Buttons */}
-          <Form method="post" className="flex justify-between pt-4">
-            <Button
-              type="secondary"
-              text="Previous"
-              action="button"
-              callback={() => window.history.back()}
+          <div className="space-y-6">
+            <Heading
+              level="h2"
+              size="text-sm"
+              text="Job Description"
+              classNames="font-medium mb-2 mt-2"
             />
-            <Button action="submit" text="Next Step" />
-          </Form>
+            {/* Navigation Buttons */}
+            <Form method="post">
+              <div className="border rounded-md shadow-sm p-3">
+                {userExperience.map((experience, index) => (
+                  <div
+                    key={`experience-${index}`}
+                    className="flex items-center gap-2 mb-2"
+                  >
+                    <Button
+                      text={`Remove ${experience}`}
+                      icon={
+                        <svg
+                          className="fill-gray-900 dark:fill-white cursor-pointer"
+                          height="10px"
+                          width="10px"
+                          version="1.1"
+                          id={`remove-experience-${index}`}
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 460.775 460.775"
+                        >
+                          <title>{`Remove ${experience}`}</title>
+                          <g id="SVGRepo_bgCarrier" stroke-width="0" />
+                          <g
+                            id="SVGRepo_tracerCarrier"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <g id="SVGRepo_iconCarrier">
+                            <path d="M285.08,230.397L456.218,59.27c6.076-6.077,6.076-15.911,0-21.986L423.511,4.565c-2.913-2.911-6.866-4.55-10.992-4.55 c-4.127,0-8.08,1.639-10.993,4.55l-171.138,171.14L59.25,4.565c-2.913-2.911-6.866-4.55-10.993-4.55 c-4.126,0-8.08,1.639-10.992,4.55L4.558,37.284c-6.077,6.075-6.077,15.909,0,21.986l171.138,171.128L4.575,401.505 c-6.074,6.077-6.074,15.911,0,21.986l32.709,32.719c2.911,2.911,6.865,4.55,10.992,4.55c4.127,0,8.08-1.639,10.994-4.55 l171.117-171.12l171.118,171.12c2.913,2.911,6.866,4.55,10.993,4.55c4.128,0,8.081-1.639,10.992-4.55l32.709-32.719 c6.074-6.075,6.074-15.909,0-21.986L285.08,230.397z" />
+                          </g>
+                        </svg>
+                      }
+                      type="iconCustom"
+                      action="button"
+                      callback={() => handleRemoveExperience(experience)}
+                    />
+
+                    <textarea
+                      className="w-full border-0 field-sizing-content"
+                      wrap="soft"
+                      id={`experience-${index}`}
+                      defaultValue={experience}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-3">
+                <Button
+                  type="secondary"
+                  text="Previous"
+                  action="button"
+                  callback={() => window.history.back()}
+                />
+                <Button action="submit" text="Next Step" />
+              </div>
+            </Form>
+
+            <p className="mb-3 mt-3 text-sm dark:text-gray-400 text-gray-600">
+              Aim for 3-6 bullets that capture your experience at the role.
+            </p>
+          </div>
         </div>
       </div>
     </main>
