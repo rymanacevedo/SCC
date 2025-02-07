@@ -1,5 +1,8 @@
 {
+  "include": [".react-router/types/**/*"],
   "compilerOptions": {
+    "types": ["@react-router/node", "vite/client"],
+    "rootDirs": [".", "./.react-router/types"],
     "target": "ES2020",
     "lib": ["DOM", "DOM.Iterable", "ES2020"],
     "module": "ESNext",
