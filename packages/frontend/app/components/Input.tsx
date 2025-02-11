@@ -1,3 +1,4 @@
+import { FormErrors } from '../routes/builder/personalinfo';
 import { type InputTypes, inputTypes } from '../utils/inputTypes';
 
 type Input = {
@@ -12,6 +13,7 @@ type Input = {
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   classNames?: string;
+  error?: FormErrors;
 };
 
 export default function Input({
@@ -22,6 +24,7 @@ export default function Input({
   required,
   classNames,
   id,
+  error,
 }: Input) {
   const inputStyles = inputTypes[type];
   return (
@@ -41,11 +44,7 @@ export default function Input({
         defaultValue={defaultValue}
         className={`${inputStyles} ${classNames}`}
       />
-      {/* {actionData?.errors?.firstName && (
-              <p className="mt-1 text-sm text-red-600">
-                {actionData.errors.firstName[0]}
-              </p>
-            )} */}
+      {error ? <p className="mt-1 text-sm text-red-600">{error[id]}</p> : null}
     </div>
   );
 }

@@ -1,11 +1,33 @@
 // app/routes/builder.personal.tsx
-import { Form, redirect, useActionData } from 'react-router';
+import { Form, redirect, useActionData, data } from 'react-router';
+
+export type FormErrors = {
+  [key: string]: string[] | undefined;
+};
+
+type ActionData =
+  | {
+      data: {
+        errors: FormErrors;
+      };
+      type: 'DataWithResponseInit';
+      init: Record<string, unknown>;
+    }
+  | {
+      data: {
+        success: boolean;
+        errors: { _form: string[] };
+      };
+      type: 'DataWithResponseInit';
+      init: Record<string, unknown>;
+    };
+
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Heading from '../../components/Heading';
-import { setUser, updateUser } from '../../utils/user';
+import { updateUser } from '../../utils/user';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -19,24 +41,28 @@ export const PersonalInfoSchema = z.object({
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const entries = Object.fromEntries(formData);
 
   try {
-    const validatedData = PersonalInfoSchema.parse(data);
+    const validatedData = PersonalInfoSchema.parse(entries);
 
     updateUser('info', validatedData);
     return redirect('/experience');
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // TODO: return json similar to v7
-      //   return json({ success: false, errors: error.flatten().fieldErrors });
+      return data(
+        { errors: error.flatten().fieldErrors as FormErrors },
+        { status: 400 },
+      );
     }
-    // return json({ success: false, errors: { _form: ['An error occurred'] } });
+    return data({ success: false, errors: { _form: ['An error occurred'] } });
   }
 }
 
+
 export default function PersonalInfo() {
-  const actionData = useActionData<typeof clientAction>();
+  const actionData = useActionData<ActionData>();
+  const errors = actionData?.data.errors;
 
   return (
     <main className="max-w-2xl mx-auto">
@@ -59,25 +85,25 @@ export default function PersonalInfo() {
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* First Name */}
-          <Input label="First Name" type="text" id="firstName" />
+          <Input label="First Name" type="text" id="firstName" error={errors} />
 
           {/* Last Name */}
-          <Input label="Last Name" type="text" id="lastName" />
+          <Input label="Last Name" type="text" id="lastName" error={errors} />
 
           {/* City */}
-          <Input label="City" type="text" id="city" />
+          <Input label="City" type="text" id="city" error={errors} />
 
           {/* State */}
-          <Input label="State" type="text" id="state" />
+          <Input label="State" type="text" id="state" error={errors} />
 
           {/* ZIP Code */}
-          <Input label="Zip Code" type="text" id="zipCode" />
+          <Input label="Zip Code" type="text" id="zipCode" error={errors} />
 
           {/* Phone */}
-          <Input label="Phone" type="text" id="phone" />
+          <Input label="Phone" type="text" id="phone" error={errors} />
 
           {/* Email */}
-          <Input label="Email" type="email" id="email" />
+          <Input label="Email" type="email" id="email" error={errors} />
         </div>
 
         <div className="flex justify-end">
