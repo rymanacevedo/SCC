@@ -7,6 +7,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import { getRequiredUserTrait } from '../../utils/user';
+import type { ActionData } from './personalinfo';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -34,6 +35,7 @@ export async function clientLoader() {
 
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
+  const errors: any = fetcher.data?.data?.errors;
   const { jobTitle } = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
@@ -88,6 +90,7 @@ export default function ExperienceEntry() {
               type="text"
               label="Search by Job Title for Pre-Written Examples"
               id="jobTitleSearch"
+              error={errors}
             />
 
             <div className="flex items-center">

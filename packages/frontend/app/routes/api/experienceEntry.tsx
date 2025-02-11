@@ -1,13 +1,15 @@
-import type {
-  ClientActionFunction,
-  ClientActionFunctionArgs,
+import {
+  data,
+  type ClientActionFunction,
+  type ClientActionFunctionArgs,
 } from 'react-router';
 import { z } from 'zod';
 import { createExperience } from '../../utils/aiServices';
 import { Filter } from 'bad-words';
+import type { FormErrors } from '../../components/Input';
 
 const formSchema = z.object({
-  jobTitleSearch: z.string(),
+  jobTitleSearch: z.string().min(3, 'Job Title is required to search.'),
 });
 
 export const JobTitleSchema = z.object({
@@ -60,7 +62,21 @@ export const clientAction: ClientActionFunction = async ({
   const cloneData = request.clone();
   const formData = await cloneData.formData();
   const fields = Object.fromEntries(formData.entries());
-  const result = formSchema.parse(fields);
+  let result: any;
+  try {
+    result = formSchema.parse(fields);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return data(
+        { errors: error.flatten().fieldErrors as FormErrors },
+        { status: 400 },
+      );
+    }
+    return data(
+      { errors: { _form: ['An errored occured.'] } },
+      { status: 409 },
+    );
+  }
 
   const badWord = containsInappropriateWords(result.jobTitleSearch);
   if (badWord) {
