@@ -1,43 +1,61 @@
 // app/routes/builder.education.tsx
-import { redirect } from 'react-router';
+import { data, redirect } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
-import Input from '../../components/Input';
+import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
+import { updateUser } from '../../utils/user';
+import type { ActionData } from './personalinfo';
 
-export const EducationSchema = z.object({
-  schoolName: z.string().min(1, 'School name is required'),
-  degree: z.string().min(1, 'Degree is required'),
-  fieldOfStudy: z.string().min(1, 'Field of study is required'),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().optional(),
-  current: z.boolean().optional(),
-  location: z.string().optional(),
+export const BaseEducationSchema = z.object({
+  schoolName: z.string().min(1, 'School name is required.'),
+  degree: z.string().min(1, 'Degree is required.'),
+  location: z.string().min(1, 'Location is required.'),
+  graduationDate: z.string().optional(),
+  currentlyEnrolled: z.enum(['on']).optional(),
 });
+
+const EducationSchema = BaseEducationSchema.refine(
+  (data) => {
+    if (!data.currentlyEnrolled) {
+      return !!data.graduationDate;
+    }
+    return true;
+  },
+  {
+    message: 'Graducation Date is required if not currently enrolled.',
+    path: ['graduationDate'],
+  },
+);
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const entries = Object.fromEntries(formData);
 
   try {
-    // const validatedData = EducationSchema.parse({
-    //   ...data,
-    //   current: data.current === 'on',
-    // });
-    // Save data to session or database
+    const validatedData = EducationSchema.parse(entries);
+
+    updateUser('education', validatedData);
     return redirect('/skills');
   } catch (error) {
     if (error instanceof z.ZodError) {
-      //   return json({ success: false, errors: error.flatten().fieldErrors });
+      return data(
+        { errors: error.flatten().fieldErrors as FormErrors },
+        { status: 400 },
+      );
     }
-    // return json({ success: false, errors: { _form: ['An error occurred'] } });
+    return data(
+      { errors: { _form: ['An errored occured.'] } },
+      { status: 409 },
+    );
   }
 }
 
 export default function Education() {
-  const actionData = useActionData<typeof clientAction>();
+  const actionData = useActionData<ActionData>();
+  const errors = actionData?.data.errors;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -59,25 +77,30 @@ export default function Education() {
       </div>
 
       <Form method="post" className="space-y-6">
-        <Input label="School Name" type="text" id="schoolName" />
+        <Input label="School Name" type="text" id="schoolName" error={errors} />
 
-        <Input label="Degree" type="text" id="degree" />
+        <Input label="Degree" type="text" id="degree" error={errors} />
 
-        <Input label="Location" type="text" id="location" />
+        <Input label="Location" type="text" id="location" error={errors} />
 
-        <Input label="Graduation Date" type="text" id="graduationDate" />
+        <Input
+          label="Graduation Date"
+          type="text"
+          id="graduationDate"
+          error={errors}
+        />
 
         {/* Current Student Checkbox */}
         <div className="flex items-center">
           <input
             type="checkbox"
-            name="current"
-            id="current"
+            name="currentlyEnrolled"
+            id="currentlyEnrolled"
             className="h-4 w-4 rounded border-gray-300 text-blue-600 
               focus:ring-blue-500"
           />
           <label
-            htmlFor="current"
+            htmlFor="currentlyEnrolled"
             className="ml-2 block text-sm dark:text-gray-300 text-gray-700"
           >
             I am currently studying here
