@@ -1,7 +1,7 @@
 import { Form, redirect, useFetcher, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Input from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
@@ -39,17 +39,25 @@ export default function ExperienceEntry() {
   const { jobTitle } = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
-  const handleAddExperience = (experience: string) => {
-    if (!userExperience.includes(experience)) {
-      setUserExperience([...userExperience, experience]);
-    }
-  };
+  const handleAddExperience = useCallback(
+    (experience: string) => {
+      if (!userExperience.includes(experience)) {
+        setUserExperience([...userExperience, experience]);
+      }
+    },
+    [userExperience],
+  );
 
-  const handleRemoveExperience = (experienceToRemove: string) => {
-    setUserExperience(
-      userExperience.filter((experience) => experience !== experienceToRemove),
-    );
-  };
+  const handleRemoveExperience = useCallback(
+    (experienceToRemove: string) => {
+      setUserExperience(
+        userExperience.filter(
+          (experience) => experience !== experienceToRemove,
+        ),
+      );
+    },
+    [userExperience],
+  );
 
   const startsWithVowel = (word: string) => {
     if (!word || word.length === 0) return false;

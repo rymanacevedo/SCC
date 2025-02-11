@@ -17,22 +17,14 @@ export const PersonalInfoSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-export type ActionData =
-  | {
-      data: {
-        errors: FormErrors;
-      };
-      type: 'DataWithResponseInit';
-      init: Record<string, unknown>;
-    }
-  | {
-      data: {
-        success: boolean;
-        errors: { _form: string[] };
-      };
-      type: 'DataWithResponseInit';
-      init: Record<string, unknown>;
-    };
+export type ActionData = {
+  data: {
+    success?: boolean;
+    errors: FormErrors;
+  };
+  type: 'DataWithResponseInit';
+  init: Record<string, unknown>;
+};
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();

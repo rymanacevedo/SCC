@@ -7,7 +7,6 @@ import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Input from '../../components/Input';
 import type { TSkills } from '../api/skills';
-import useCb from '../../hooks/useCallback';
 
 export const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
