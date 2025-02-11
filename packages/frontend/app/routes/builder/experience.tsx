@@ -8,12 +8,14 @@ import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 
 export const BaseExperienceSchema = z.object({
+  jobId: z.string().min(1),
   jobTitle: z.string().min(1, 'Job Title is required.'),
   employer: z.string().min(1, 'Employer is required.'),
   location: z.string().min(1, 'Location is required.'),
   startDate: z.string().min(1, 'Start date is required.'),
   endDate: z.string().optional(),
   currentlyEmployed: z.enum(['on']).optional(),
+  details: z.array(z.string()).optional(),
 });
 
 const ExperienceSchema = BaseExperienceSchema.refine(
@@ -35,7 +37,6 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   try {
     const validatedData = ExperienceSchema.parse(entries);
-
     updateUser('experience', validatedData);
 
     return redirect('/experience-entry');
@@ -75,11 +76,15 @@ export default function WorkExperience() {
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <input
+            type="hidden"
+            name="jobId"
+            id="jobId"
+            value={crypto.randomUUID()}
+          />
           <Input label="Job Title" type="text" id="jobTitle" error={errors} />
-
           <Input label="Employer" type="text" id="employer" error={errors} />
           <Input label="Location" type="text" id="location" error={errors} />
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
             <Input
               label="Start Date"

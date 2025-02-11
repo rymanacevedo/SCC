@@ -1,43 +1,78 @@
-import { Form, redirect, useFetcher, useLoaderData } from 'react-router';
+import { data, Form, redirect, useFetcher, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
 import { useCallback, useState } from 'react';
-import Input from '../../components/Input';
+import Input, { type FormErrors } from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
-import { getRequiredUserTrait } from '../../utils/user';
+import {
+  getRequiredUserTrait,
+  updateExperienceDetails,
+} from '../../utils/user';
 import type { ActionData } from './personalinfo';
+
+const ExperienceEntrySchema = z.object({
+  jobId: z.string(),
+  jobDetails: z.array(z.string()),
+});
+
+function transformExperienceDetails(obj: {
+  [k: string]: FormDataEntryValue;
+}) {
+  const jobDetails: string[] = [];
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (key.startsWith('experience-')) {
+      jobDetails.push(value as string);
+    }
+  }
+  return {
+    jobId: obj.jobId,
+    jobDetails,
+  };
+}
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const entries = Object.fromEntries(formData);
 
+  const formattedData = transformExperienceDetails(entries);
   try {
-    // const validatedData = SkillsSchema.parse({
-    //   skills: formData.getAll('skills'),
-    // });
-    return redirect('/education');
+    const validatedData = ExperienceEntrySchema.parse(formattedData);
+    updateExperienceDetails(validatedData.jobId, validatedData.jobDetails);
+    return redirect('/experience-summary');
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // return json({ success: false, errors: error.flatten().fieldErrors });
+      if (error instanceof z.ZodError) {
+        return data(
+          { errors: error.flatten().fieldErrors as FormErrors },
+          { status: 400 },
+        );
+      }
+      return data(
+        { errors: { _form: ['An errored occured.'] } },
+        { status: 409 },
+      );
     }
   }
 }
 
 export async function clientLoader() {
-  const { jobTitle } = getRequiredUserTrait('experience');
-  // return results from an api call as well for what the jobtitle experience
+  const experiences = getRequiredUserTrait('experience');
+  const first = experiences[0];
+  const { jobTitle, jobId } = first;
   return {
     jobTitle,
+    jobId,
   };
 }
 
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   const errors: any = fetcher.data?.data?.errors;
-  const { jobTitle } = useLoaderData<typeof clientLoader>();
+  const { jobTitle, jobId } = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
   const handleAddExperience = useCallback(
@@ -284,6 +319,8 @@ export default function ExperienceEntry() {
                       <textarea
                         className="w-full border-0 field-sizing-content"
                         wrap="soft"
+                        name={`experience-${index}`}
+                        id={`experience-${index}`}
                         value={experience}
                         onChange={(e) => {
                           const newExperiences = [...userExperience];
@@ -314,6 +351,7 @@ export default function ExperienceEntry() {
                 />
               </div>
               <div className="flex justify-between mt-3">
+                <input type="hidden" name="jobId" id="jobId" value={jobId} />
                 <Button
                   type="secondary"
                   text="Previous"
