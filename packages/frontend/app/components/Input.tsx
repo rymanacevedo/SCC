@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { type InputTypes, inputTypes } from '../utils/inputTypes';
 
 export type FormErrors = {
@@ -19,7 +20,7 @@ type Input = {
   error?: FormErrors;
 };
 
-export default function Input({
+function Input({
   label,
   hideLabel,
   defaultValue,
@@ -51,3 +52,5 @@ export default function Input({
     </div>
   );
 }
+
+export default memo(Input);

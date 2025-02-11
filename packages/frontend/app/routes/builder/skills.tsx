@@ -2,11 +2,12 @@ import { redirect, useFetcher } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Input from '../../components/Input';
 import type { TSkills } from '../api/skills';
+import useCb from '../../hooks/useCallback';
 
 export const SkillsSchema = z.object({
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
@@ -32,15 +33,22 @@ export default function Skills() {
   const fetcher = useFetcher<TSkills>();
 
   const [userSkills, setUserSkills] = useState<string[]>([]);
-  const handleAddSkill = (skill: string) => {
-    if (!userSkills.includes(skill)) {
-      setUserSkills([...userSkills, skill]);
-    }
-  };
 
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setUserSkills(userSkills.filter((skill) => skill !== skillToRemove));
-  };
+  const handleAddSkill = useCallback(
+    (skill: string) => {
+      if (!userSkills.includes(skill)) {
+        setUserSkills([...userSkills, skill]);
+      }
+    },
+    [userSkills],
+  );
+
+  const handleRemoveSkill = useCallback(
+    (skillToRemove: string) => {
+      setUserSkills(userSkills.filter((skill) => skill !== skillToRemove));
+    },
+    [userSkills],
+  );
 
   return (
     <main className="max-w-6xl mx-auto">
@@ -74,36 +82,6 @@ export default function Skills() {
               label="Search by Job Title for Pre-Written Examples"
               id="jobSearch"
             />
-            {/* <div className="absolute block  top-35 bg-white text-black">
-              <li className=''>Cashier</li>
-              <li>Truck Driver</li>
-              <li>Construction Worker</li>
-              <li>Metal Sheetworker</li>
-            </div> */}
-            {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                <svg
-                  role="img"
-                  aria-label="plus sign"
-                  className="h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div> */}
-
-            {/* <input
-                    type="text"
-                    id="jobSearch"
-                    className="flex-1 border shadow-sm pl-10 pr-4 py-2 rounded-md"
-                    placeholder="e.g., Software Engineer, Project Manager"
-                  /> */}
             <div className="flex items-center">
               <Button
                 textSize="text-xs"
@@ -232,7 +210,7 @@ export default function Skills() {
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {userSkills.map((skill, index) => (
+                    {userSkills.map((skill) => (
                       <div
                         key={skill}
                         className="group flex items-center bg-blue-50 text-blue-700 

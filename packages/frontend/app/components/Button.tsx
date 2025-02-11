@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react';
 import { buttonTypes } from '../utils/buttonTypes';
 import type { ButtonTypes } from '../utils/buttonTypes';
 import type { Sizes } from '../utils/sizes';
@@ -17,7 +18,7 @@ type Button = {
   classNames?: string;
 };
 
-export default function Button({
+function Button({
   text,
   textSize = 'text-base',
   size,
@@ -29,10 +30,17 @@ export default function Button({
 }: Button) {
   const buttonStyle = buttonTypes[type];
   const buttonPadding = size ? sizes.buttonPadding[size] : buttonStyle.size;
+
+  const handleCallback = useCallback(() => {
+    if (callback) {
+      callback();
+    }
+  }, [callback]);
+
   return (
     <button
       type={action}
-      onClick={callback}
+      onClick={handleCallback}
       className={`${buttonStyle.base} ${buttonStyle.hover} ${buttonPadding} ${textSize} ${classNames}`}
     >
       {icon ? icon : null}
@@ -46,3 +54,5 @@ export default function Button({
     </button>
   );
 }
+
+export default memo(Button);

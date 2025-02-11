@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Sizes } from '../utils/sizes';
 
 type HeadingLevel = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
@@ -10,14 +11,7 @@ type Heading = {
   color?: string;
   classNames?: string;
 };
-export default function Heading({
-  text,
-  level,
-  size,
-  bold,
-  color,
-  classNames,
-}: Heading) {
+function Heading({ text, level, size, bold, color, classNames }: Heading) {
   const Component = level;
   return (
     <Component
@@ -32,3 +26,5 @@ export default function Heading({
     </Component>
   );
 }
+
+export default memo(Heading);
