@@ -17,7 +17,7 @@ export const PersonalInfoSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-type ActionData =
+export type ActionData =
   | {
       data: {
         errors: FormErrors;

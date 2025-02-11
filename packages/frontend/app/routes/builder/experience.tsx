@@ -1,10 +1,11 @@
-import { Form, redirect } from 'react-router';
+import { data, Form, redirect, useActionData } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
-import Input from '../../components/Input';
+import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
+import type { ActionData } from './personalinfo';
 
 export const ExperienceSchema = z.object({
   jobTitle: z.string().min(1, 'School name is required'),
@@ -16,23 +17,30 @@ export const ExperienceSchema = z.object({
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const entries = Object.fromEntries(formData);
 
   try {
-    const validatedData = ExperienceSchema.parse(data);
+    const validatedData = ExperienceSchema.parse(entries);
 
     updateUser('experience', validatedData);
 
     return redirect('/experience-entry');
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // TODO: return json similar to v7
-      //   return json({ success: false, errors: error.flatten().fieldErrors });
+      return data(
+        { errors: error.flatten().fieldErrors as FormErrors },
+        { status: 400 },
+      );
     }
-    // return json({ success: false, errors: { _form: ['An error occurred'] } });
+    return data(
+      { errors: { _form: ['An errored occured.'] } },
+      { status: 409 },
+    );
   }
 }
 export default function WorkExperience() {
+  const actionData = useActionData<ActionData>();
+  const errors = actionData?.data.errors;
   return (
     <main className="max-w-2xl mx-auto">
       <div className="mb-8">
@@ -53,13 +61,19 @@ export default function WorkExperience() {
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Input label="Job Title" type="text" id="jobTitle" />
+          <Input label="Job Title" type="text" id="jobTitle" error={errors} />
 
-          <Input label="Employer" type="text" id="employer" />
-          <Input label="Location" type="text" id="location" />
+          <Input label="Employer" type="text" id="employer" error={errors} />
+          <Input label="Location" type="text" id="location" error={errors} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
-            <Input label="Start Date" type="month" id="startDate" />
+            <Input
+              label="Start Date"
+              type="month"
+              id="startDate"
+              error={errors}
+            />
+            {/* TODO: handle end date if I work here is checked */}
             <Input label="End Date" type="month" id="endDate" />
           </div>
         </div>
