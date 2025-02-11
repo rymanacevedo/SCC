@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { ExperienceSchema } from '../routes/builder/experience';
+import { BaseExperienceSchema } from '../routes/builder/experience';
 import { EducationSchema } from '../routes/builder/education';
 import { PersonalInfoSchema } from '../routes/builder/personalinfo';
 import { SkillsSchema } from '../routes/builder/skills';
 import { SummarySchema } from '../routes/builder/summary';
 
 const PartialPersonalInfo = PersonalInfoSchema.partial();
-const PartialExperienceSchema = ExperienceSchema.partial();
+const PartialExperienceSchema = BaseExperienceSchema.partial();
 const PartialEducationSchema = EducationSchema.partial();
 const PartialSkillsSchema = SkillsSchema.partial();
 const PartialSummarySchema = SummarySchema.partial();

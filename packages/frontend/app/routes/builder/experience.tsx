@@ -7,13 +7,27 @@ import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 
-export const ExperienceSchema = z.object({
+export const BaseExperienceSchema = z.object({
   jobTitle: z.string().min(1, 'School name is required'),
   employer: z.string().min(1, 'Employer is required'),
   location: z.string().min(1, 'Location is required'),
   startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().min(1, 'End Date is reque'),
+  endDate: z.string().optional(),
+  currentlyEmployed: z.enum(['on']).optional(),
 });
+
+const ExperienceSchema = BaseExperienceSchema.refine(
+  (data) => {
+    if (!data.currentlyEmployed) {
+      return !!data.endDate;
+    }
+    return true;
+  },
+  {
+    message: 'End date is required if not currently employed',
+    path: ['endDate'],
+  },
+);
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -74,7 +88,7 @@ export default function WorkExperience() {
               error={errors}
             />
             {/* TODO: handle end date if I work here is checked */}
-            <Input label="End Date" type="month" id="endDate" />
+            <Input label="End Date" type="month" id="endDate" error={errors} />
           </div>
         </div>
 
