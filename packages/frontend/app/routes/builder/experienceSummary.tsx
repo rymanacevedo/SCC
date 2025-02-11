@@ -4,17 +4,28 @@ import { getRequiredUserTrait } from '../../utils/user';
 import { useLoaderData } from 'react-router';
 
 export async function clientLoader() {
-  const { jobTitle } = getRequiredUserTrait('experience');
-  // return results from an api call as well for what the jobtitle experience
-  return {
-    jobTitle,
-  };
+  const experiences = getRequiredUserTrait('experience');
+  return experiences;
 }
 function ExperienceSummary() {
-  const { jobTitle } = useLoaderData<typeof clientLoader>();
+  const ex = useLoaderData<typeof clientLoader>();
   return (
     <main className="max-w-6xl mx-auto">
-      <Heading text="Work history summary" level="h1" size="text-2xl" />
+      <Heading text="Work history summary" level="h1" size="text-3xl" />
+      {ex.map((e) => (
+        <>
+          <Heading key={e.jobId} level="h2" size="text-2xl" text={e.jobTitle} />
+          <em key={e.jobId}>{e.location}</em> |
+          <em key={e.jobId}>
+            {e.startDate} - {e.endDate}
+          </em>
+          <ul className="p-3 list-disc" key={e.jobId}>
+            {e.details?.map((d, index) => (
+              <li key={`${e.jobId}-detail-${index}`}>{d}</li>
+            ))}
+          </ul>
+        </>
+      ))}
     </main>
   );
 }

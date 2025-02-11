@@ -60,7 +60,7 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
   let updatedField;
   if (key === 'experience') {
     const currentExperience = (currentUser.experience || []) as (
-      | Partial<BaseExperienceSchema['_output']>
+      | Partial<typeof BaseExperienceSchema['_output']>
       | undefined
     )[];
 
