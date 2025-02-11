@@ -1,9 +1,21 @@
 // app/routes/builder.personal.tsx
 import { Form, redirect, useActionData, data } from 'react-router';
+import { z } from 'zod';
+import type { Route } from '../../../.react-router/types/app/+types/root';
+import Button from '../../components/Button';
+import Input, { type FormErrors } from '../../components/Input';
+import Heading from '../../components/Heading';
+import { updateUser } from '../../utils/user';
 
-export type FormErrors = {
-  [key: string]: string[] | undefined;
-};
+export const PersonalInfoSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(2, 'State is required'),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
+  phone: z.string().regex(/^\d{10}$/, 'Phone number must be 10 digits'),
+  email: z.string().email('Invalid email address'),
+});
 
 type ActionData =
   | {
@@ -22,23 +34,6 @@ type ActionData =
       init: Record<string, unknown>;
     };
 
-import { z } from 'zod';
-import type { Route } from '../../../.react-router/types/app/+types/root';
-import Button from '../../components/Button';
-import Input from '../../components/Input';
-import Heading from '../../components/Heading';
-import { updateUser } from '../../utils/user';
-
-export const PersonalInfoSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().min(2, 'State is required'),
-  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
-  phone: z.string().regex(/^\d{10}$/, 'Phone number must be 10 digits'),
-  email: z.string().email('Invalid email address'),
-});
-
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
@@ -55,10 +50,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
         { status: 400 },
       );
     }
-    return data({ success: false, errors: { _form: ['An error occurred'] } });
+    return data(
+      { errors: { _form: ['An errored occured.'] } },
+      { status: 409 },
+    );
   }
 }
-
 
 export default function PersonalInfo() {
   const actionData = useActionData<ActionData>();

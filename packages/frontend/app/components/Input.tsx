@@ -1,5 +1,8 @@
-import { FormErrors } from '../routes/builder/personalinfo';
 import { type InputTypes, inputTypes } from '../utils/inputTypes';
+
+export type FormErrors = {
+  [key: string]: string[] | undefined;
+};
 
 type Input = {
   label: string;
