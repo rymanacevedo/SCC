@@ -1,6 +1,7 @@
 import { Form, redirect, useFetcher, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import Loading from '../../components/Loading';
 import { useCallback, useState } from 'react';
 import Input from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
@@ -158,43 +159,24 @@ export default function ExperienceEntry() {
                 size="text-sm"
                 classNames="mb-3"
               />
-              {fetcher.state !== 'idle' ? (
-                <div className="flex justify-center items-center py-4">
-                  <p>Loading...</p>
-                  <svg
-                    aria-hidden="true"
-                    className="h-5 w-5 animate-spin text-gray-500"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <>
-                  {(
-                    fetcher.data?.expertRecommended || [
-                      'Microsoft Office',
-                      'Collaboration',
-                      'Decision-making',
-                      'Organization skills',
-                      'Public Speaking',
-                    ]
-                  ).map((experience, index) => (
-                    <Button
-                      callback={() => handleAddExperience(experience)}
-                      key={`${experience}-${index}`}
-                      type="custom"
-                      text={`+ ${experience}`}
-                      textSize="text-sm"
-                      action="button"
-                      classNames="
+              <Loading fetcher={fetcher}>
+                {(
+                  fetcher.data?.expertRecommended || [
+                    'Microsoft Office',
+                    'Collaboration',
+                    'Decision-making',
+                    'Organization skills',
+                    'Public Speaking',
+                  ]
+                ).map((experience, index) => (
+                  <Button
+                    callback={() => handleAddExperience(experience)}
+                    key={`${experience}-${index}`}
+                    type="custom"
+                    text={`+ ${experience}`}
+                    textSize="text-sm"
+                    action="button"
+                    classNames="
                           w-full text-left
                           dark:hover:bg-gray-800
                           py-2 px-4
@@ -204,53 +186,33 @@ export default function ExperienceEntry() {
                           rounded-md border
                           transition-colors
                           "
-                    />
-                  ))}
-                </>
-              )}
+                  />
+                ))}
+              </Loading>
               <Heading
                 level="h4"
                 text="Other Examples"
                 size="text-sm"
                 classNames="mb-3"
               />
-              {fetcher.state !== 'idle' ? (
-                <div className="flex justify-center items-center py-4">
-                  <p>Loading...</p>
-                  <svg
-                    aria-hidden="true"
-                    className="h-5 w-5 animate-spin text-gray-500"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <>
-                  {(
-                    fetcher.data?.other || [
-                      'Time Management',
-                      'Communication',
-                      'Problem Solving',
-                      'Leadership',
-                      'Active Listening',
-                    ]
-                  ).map((experience, index) => (
-                    <Button
-                      callback={() => handleAddExperience(experience)}
-                      key={`${experience}-${index}`}
-                      type="custom"
-                      text={`+ ${experience}`}
-                      textSize="text-sm"
-                      action="button"
-                      classNames="
+              <Loading fetcher={fetcher}>
+                {(
+                  fetcher.data?.other || [
+                    'Time Management',
+                    'Communication',
+                    'Problem Solving',
+                    'Leadership',
+                    'Active Listening',
+                  ]
+                ).map((experience, index) => (
+                  <Button
+                    callback={() => handleAddExperience(experience)}
+                    key={`${experience}-${index}`}
+                    type="custom"
+                    text={`+ ${experience}`}
+                    textSize="text-sm"
+                    action="button"
+                    classNames="
                           w-full text-left
                           dark:hover:bg-gray-800
                           py-2 px-4
@@ -260,10 +222,9 @@ export default function ExperienceEntry() {
                           rounded-md border
                           transition-colors
                           "
-                    />
-                  ))}
-                </>
-              )}
+                  />
+                ))}
+              </Loading>
             </div>
           </div>
         </div>
