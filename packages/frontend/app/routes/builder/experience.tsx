@@ -8,10 +8,10 @@ import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 
 export const BaseExperienceSchema = z.object({
-  jobTitle: z.string().min(1, 'School name is required'),
-  employer: z.string().min(1, 'Employer is required'),
-  location: z.string().min(1, 'Location is required'),
-  startDate: z.string().min(1, 'Start date is required'),
+  jobTitle: z.string().min(1, 'Job Title is required.'),
+  employer: z.string().min(1, 'Employer is required.'),
+  location: z.string().min(1, 'Location is required.'),
+  startDate: z.string().min(1, 'Start date is required.'),
   endDate: z.string().optional(),
   currentlyEmployed: z.enum(['on']).optional(),
 });
