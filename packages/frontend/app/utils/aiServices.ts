@@ -22,14 +22,12 @@ const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
 
 const SkillsSchema = z.object({
-  skills: z.object({
-    expertRecommended: z
-      .array(z.string())
-      .describe('The top 5 skills necessary for the job.'),
-    other: z.array(
-      z.string().describe('The other skills necessary for the job.'),
-    ),
-  }),
+  expertRecommended: z
+    .array(z.string())
+    .describe('The top 5 skills necessary for the job.'),
+  other: z.array(
+    z.string().describe('The other skills necessary for the job.'),
+  ),
 });
 
 const ExperienceSchema = z.object({

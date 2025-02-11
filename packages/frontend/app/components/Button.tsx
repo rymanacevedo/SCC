@@ -16,6 +16,7 @@ type Button = {
   action: 'submit' | 'button';
   callback?: () => void;
   classNames?: string;
+  disabled?: boolean;
 };
 
 function Button({
@@ -27,6 +28,7 @@ function Button({
   action,
   callback,
   classNames,
+  disabled,
 }: Button) {
   const buttonStyle = buttonTypes[type];
   const buttonPadding = size ? sizes.buttonPadding[size] : buttonStyle.size;
@@ -37,11 +39,24 @@ function Button({
     }
   }, [callback]);
 
+  const getButtonClasses = () => {
+    const baseClasses = `${buttonStyle.base} ${buttonPadding} ${textSize} ${
+      classNames || ''
+    }`;
+
+    if (disabled) {
+      return `${baseClasses} opacity-50 bg-gray-300 hover:bg-gray-300`;
+    }
+
+    return `${baseClasses} ${buttonStyle.hover}`;
+  };
+
   return (
     <button
       type={action}
       onClick={handleCallback}
-      className={`${buttonStyle.base} ${buttonStyle.hover} ${buttonPadding} ${textSize} ${classNames}`}
+      className={getButtonClasses()}
+      disabled={disabled}
     >
       {icon ? icon : null}
       <span
