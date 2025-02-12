@@ -12,8 +12,23 @@ export const BaseExperienceSchema = z.object({
   jobTitle: z.string().min(1, 'Job Title is required.'),
   employer: z.string().min(1, 'Employer is required.'),
   location: z.string().min(1, 'Location is required.'),
-  startDate: z.string().min(1, 'Start date is required.'),
-  endDate: z.string().optional(),
+  startDate: z
+    .string()
+    .min(1, 'Start date is required.')
+    .transform((date) => new Date(date))
+    .refine((date) => !Number.isNaN(date.getTime), {
+      message: 'Invalid state date format.',
+    })
+    .refine((date) => date <= new Date(), {
+      message: 'State date cannot be in the future.',
+    }),
+  endDate: z
+    .string()
+    .transform((date) => (date ? new Date(date) : undefined))
+    .optional()
+    .refine((date) => !date || !Number.isNaN(date.getTime), {
+      message: 'Invalid end date format',
+    }),
   currentlyEmployed: z.enum(['on']).optional(),
   details: z.array(z.string()).optional(),
 });
@@ -27,6 +42,17 @@ const ExperienceSchema = BaseExperienceSchema.refine(
   },
   {
     message: 'End date is required if not currently employed',
+    path: ['endDate'],
+  },
+).refine(
+  (data) => {
+    if (data.endDate) {
+      return data.startDate <= data.endDate;
+    }
+    return true;
+  },
+  {
+    message: 'End date cannot be before start date',
     path: ['endDate'],
   },
 );
