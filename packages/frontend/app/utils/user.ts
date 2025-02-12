@@ -60,7 +60,7 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
   let updatedField;
   if (key === 'experience') {
     const currentExperience = (currentUser.experience || []) as (
-      | Partial<typeof BaseExperienceSchema['_output']>
+      | Partial<(typeof BaseExperienceSchema)['_output']>
       | undefined
     )[];
 
@@ -150,6 +150,25 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
     : Required<NonNullable<User[K]>>;
 }
 
+export function getExperienceDetails(jobId: string) {
+  const currentUser = getUser();
+  if (!currentUser?.experience) {
+    console.warn('No user or experience found in sessionStorage.');
+    return;
+  }
+
+  const experienceIndex = currentUser.experience.findIndex(
+    (exp) => exp.jobId === jobId,
+  );
+
+  if (experienceIndex === -1) {
+    console.warn(`No experience found for jobId: ${jobId}`);
+    return;
+  }
+
+  return currentUser.experience[experienceIndex];
+}
+
 export function updateExperienceDetails(jobId: string, details: string[]) {
   const currentUser = getUser();
   if (!currentUser?.experience) {
@@ -159,7 +178,7 @@ export function updateExperienceDetails(jobId: string, details: string[]) {
 
   const currentExperience = [...currentUser.experience];
   const experienceIndex = currentExperience.findIndex(
-    (exp) => exp?.jobId === jobId
+    (exp) => exp?.jobId === jobId,
   );
 
   if (experienceIndex === -1) {
@@ -174,4 +193,3 @@ export function updateExperienceDetails(jobId: string, details: string[]) {
 
   updateUser('experience', currentExperience);
 }
-

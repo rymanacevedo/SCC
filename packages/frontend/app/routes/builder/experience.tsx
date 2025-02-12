@@ -39,7 +39,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const validatedData = ExperienceSchema.parse(entries);
     updateUser('experience', validatedData);
 
-    return redirect('/experience-entry');
+    return redirect(`/experience-entry?jobId=${validatedData.jobId}`);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return data(

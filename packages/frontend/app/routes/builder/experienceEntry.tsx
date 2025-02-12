@@ -1,4 +1,11 @@
-import { data, Form, redirect, useFetcher, useLoaderData } from 'react-router';
+import {
+  type ClientLoaderFunctionArgs,
+  data,
+  Form,
+  redirect,
+  useFetcher,
+  useLoaderData,
+} from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
@@ -8,7 +15,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import {
-  getRequiredUserTrait,
+  getExperienceDetails,
   updateExperienceDetails,
 } from '../../utils/user';
 import type { ActionData } from './personalinfo';
@@ -59,13 +66,17 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-export async function clientLoader() {
-  const experiences = getRequiredUserTrait('experience');
-  const first = experiences[0];
-  const { jobTitle, jobId } = first;
+export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const jobId = url.searchParams.get('jobId');
+  let experience;
+  if (jobId) {
+    experience = getExperienceDetails(jobId);
+  }
+
   return {
-    jobTitle,
     jobId,
+    jobTitle: experience?.jobTitle,
   };
 }
 
