@@ -6,6 +6,7 @@ import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
+import { useState } from 'react';
 
 export const BaseExperienceSchema = z.object({
   jobId: z.string().min(1),
@@ -82,6 +83,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
   const errors = actionData?.data.errors;
+
+  const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsCurrentlyEmployed(e.target.checked);
+  };
+
   return (
     <main className="max-w-2xl mx-auto">
       <div className="mb-8">
@@ -118,8 +126,13 @@ export default function WorkExperience() {
               id="startDate"
               error={errors}
             />
-            {/* TODO: handle end date if I work here is checked */}
-            <Input label="End Date" type="month" id="endDate" error={errors} />
+            <Input
+              disabled={isCurrentlyEmployed}
+              label="End Date"
+              type="month"
+              id="endDate"
+              error={errors}
+            />
           </div>
         </div>
 
@@ -130,6 +143,8 @@ export default function WorkExperience() {
               name="currentlyEmployed"
               id="currentlyEmployed"
               className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              onChange={handleCheckboxChange} // Add this handler
+              checked={isCurrentlyEmployed} // Add this prop
             />
             <label
               htmlFor="currentlyEmployed"

@@ -18,6 +18,7 @@ type Input = {
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   classNames?: string;
   error?: FormErrors;
+  disabled?: boolean;
 };
 
 function Input({
@@ -29,6 +30,7 @@ function Input({
   classNames,
   id,
   error,
+  disabled,
 }: Input) {
   const inputStyles = inputTypes[type];
   return (
@@ -39,14 +41,18 @@ function Input({
       >
         {label}
       </label>
-      {/* TODO: disable when user selects I currently work here */}
       <input
         required={required}
         type={type}
         id={id}
         name={id}
         defaultValue={defaultValue}
-        className={`${inputStyles} ${classNames}`}
+        className={`${inputStyles} ${classNames} ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
+            : ''
+        }`}
+        disabled={disabled}
       />
       {error ? <p className="mt-1 text-sm text-red-600">{error[id]}</p> : null}
     </div>
