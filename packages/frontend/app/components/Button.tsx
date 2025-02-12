@@ -17,6 +17,8 @@ type Button = {
   callback?: () => void;
   classNames?: string;
   disabled?: boolean;
+  name?: string;
+  value?: string;
 };
 
 function Button({
@@ -29,6 +31,8 @@ function Button({
   callback,
   classNames,
   disabled,
+  name,
+  value,
 }: Button) {
   const buttonStyle = buttonTypes[type];
   const buttonPadding = size ? sizes.buttonPadding[size] : buttonStyle.size;
@@ -57,6 +61,8 @@ function Button({
       onClick={handleCallback}
       className={getButtonClasses()}
       disabled={disabled}
+      name={name}
+      value={value}
     >
       {icon ? icon : null}
       <span

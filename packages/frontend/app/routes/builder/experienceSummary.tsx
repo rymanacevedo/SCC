@@ -5,7 +5,7 @@ import { Form, NavLink, redirect, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 
 export async function clientAction() {
-  return redirect('/education');
+  return redirect('/education-level');
 }
 
 export async function clientLoader() {

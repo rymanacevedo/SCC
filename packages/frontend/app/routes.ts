@@ -11,6 +11,7 @@ export default [
   route('experience', 'routes/builder/experience.tsx'),
   route('experience-entry', 'routes/builder/experienceEntry.tsx'),
   route('experience-summary', 'routes/builder/experienceSummary.tsx'),
+  route('education-level', 'routes/builder/educationLevel.tsx'),
   route('education', 'routes/builder/education.tsx'),
   route('skills', 'routes/builder/skills.tsx'),
   route('summary', 'routes/builder/summary.tsx'),

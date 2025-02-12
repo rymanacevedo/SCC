@@ -8,9 +8,11 @@ import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
+import educationLevel from './educationLevel';
 
 export const BaseEducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required.'),
+  educationLevel: z.string().min(1).optional(),
   degree: z.string().min(1, 'Degree is required.'),
   location: z.string().min(1, 'Location is required.'),
   graduationDate: z.string().optional(),

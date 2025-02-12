@@ -1,18 +1,17 @@
-const defaultShape =
-  'rounded-md border border-transparent cursor-pointer font-medium';
+const defaultShape = 'rounded-md cursor-pointer font-medium shadow-md';
 const defaultSize = 'py-2 px-4';
 const defaultFocus =
-  'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2';
+  'focus:outline-none focus:ring focus:ring-2 focus:ring-offset-2';
 export const buttonTypes = {
   primary: {
-    base: `${defaultShape} bg-blue-600 text-white`,
+    base: `${defaultShape} bg-blue-600 active:bg-blue-800 text-white`,
     hover: 'hover:bg-blue-700',
     focus: `${defaultFocus}`,
     size: `${defaultSize}`,
   },
   secondary: {
-    base: `${defaultShape} border-gray-300 bg-white text-gray-700 shadow-sm`,
-    hover: 'hover:bg-gray-50',
+    base: `${defaultShape} bg-white active:bg-gray-300 text-gray-700`,
+    hover: 'hover:bg-gray-200',
     focus: `${defaultFocus}`,
     size: `${defaultSize}`,
   },
