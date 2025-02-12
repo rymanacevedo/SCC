@@ -2,7 +2,6 @@ import { memo } from 'react';
 import Heading from '../../components/Heading';
 import { getRequiredUserTrait } from '../../utils/user';
 import { NavLink, useLoaderData } from 'react-router';
-import Button from '../../components/Button';
 
 export async function clientLoader() {
   const experiences = getRequiredUserTrait('experience');
@@ -12,11 +11,16 @@ function ExperienceSummary() {
   const ex = useLoaderData<typeof clientLoader>();
   return (
     <main className="max-w-6xl mx-auto">
-      <Heading text="Work history summary" level="h1" size="text-3xl" />
-      <div className="space-y-4">
+      <Heading
+        text="Work history summary"
+        level="h1"
+        size="text-3xl"
+        classNames="mb-2"
+      />
+      <div>
         {ex.map((e, index) => (
           <div
-            className="border pr-10 pl-14 pt-3 pb-3 rounded-md  cursor-pointer 
+            className="border mb-4 pr-10 pl-14 pt-3 pb-3 rounded-md cursor-pointer 
           hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
             key={e.jobId}
           >
@@ -39,7 +43,14 @@ function ExperienceSummary() {
         ))}
       </div>
 
-      <NavLink to="/experience">+ Add another position</NavLink>
+      {/* TODO: maintain consistent button styles */}
+      <NavLink
+        className="table mr-auto ml-auto w-full text-center p-4 border border-dashed"
+        to="/experience"
+      >
+        + Add another position
+      </NavLink>
+      
     </main>
   );
 }
