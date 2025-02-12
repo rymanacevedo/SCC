@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import Heading from '../../components/Heading';
 import { getRequiredUserTrait } from '../../utils/user';
-import { NavLink, useLoaderData } from 'react-router';
+import { Form, NavLink, redirect, useLoaderData } from 'react-router';
+import Button from '../../components/Button';
+
+export async function clientAction() {
+  return redirect('/education');
+}
 
 export async function clientLoader() {
   const experiences = getRequiredUserTrait('experience');
@@ -45,12 +50,21 @@ function ExperienceSummary() {
 
       {/* TODO: maintain consistent button styles */}
       <NavLink
-        className="table mr-auto ml-auto w-full text-center p-4 border border-dashed"
+        className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
         to="/experience"
       >
         + Add another position
       </NavLink>
-      
+      <Form method="post" className="flex justify-end space-x-5">
+        <Button
+          text="Previous"
+          type="secondary"
+          action="button"
+          callback={() => window.history.back()}
+        />
+
+        <Button action="submit" text="Next Step" />
+      </Form>
     </main>
   );
 }
