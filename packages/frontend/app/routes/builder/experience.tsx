@@ -30,7 +30,9 @@ export const BaseExperienceSchema = z.object({
     .refine((date) => !date || !Number.isNaN(date.getTime), {
       message: 'Invalid end date format',
     }),
-  currentlyEmployed: z.enum(['on']).optional(),
+  currentlyEmployed: z
+    .boolean()
+    .default(false),
   details: z.array(z.string()).optional(),
 });
 
@@ -62,8 +64,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
 
+  const createdData = {
+    ...entries,
+    currentlyEmployed: formData.get('currentlyEmployed') === 'on'
+  }
+
   try {
-    const validatedData = ExperienceSchema.parse(entries);
+    const validatedData = ExperienceSchema.parse(createdData);
     updateUser('experience', validatedData);
 
     return redirect(`/experience-entry?jobId=${validatedData.jobId}`);
@@ -143,8 +150,8 @@ export default function WorkExperience() {
               name="currentlyEmployed"
               id="currentlyEmployed"
               className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-              onChange={handleCheckboxChange} // Add this handler
-              checked={isCurrentlyEmployed} // Add this prop
+              onChange={handleCheckboxChange}
+              checked={isCurrentlyEmployed}
             />
             <label
               htmlFor="currentlyEmployed"
