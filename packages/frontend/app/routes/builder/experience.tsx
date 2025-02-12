@@ -6,7 +6,7 @@ import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
-import { useState } from 'react';
+import { type ChangeEvent, useCallback, useState } from 'react';
 
 export const BaseExperienceSchema = z.object({
   jobId: z.string().min(1),
@@ -30,9 +30,7 @@ export const BaseExperienceSchema = z.object({
     .refine((date) => !date || !Number.isNaN(date.getTime), {
       message: 'Invalid end date format',
     }),
-  currentlyEmployed: z
-    .boolean()
-    .default(false),
+  currentlyEmployed: z.boolean().default(false),
   details: z.array(z.string()).optional(),
 });
 
@@ -66,8 +64,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   const createdData = {
     ...entries,
-    currentlyEmployed: formData.get('currentlyEmployed') === 'on'
-  }
+    currentlyEmployed: formData.get('currentlyEmployed') === 'on',
+  };
 
   try {
     const validatedData = ExperienceSchema.parse(createdData);
@@ -93,9 +91,12 @@ export default function WorkExperience() {
 
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsCurrentlyEmployed(e.target.checked);
-  };
+  const handleCheckboxChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setIsCurrentlyEmployed(e.target.checked);
+    },
+    [],
+  );
 
   return (
     <main className="max-w-2xl mx-auto">

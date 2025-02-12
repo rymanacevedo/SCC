@@ -8,15 +8,22 @@ import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
-import educationLevel from './educationLevel';
+import { EducationLevelSchema } from './educationLevel';
+import { type ChangeEvent, useCallback, useState } from 'react';
 
 export const BaseEducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required.'),
-  educationLevel: z.string().min(1).optional(),
+  educationLevel: EducationLevelSchema.optional(),
   degree: z.string().min(1, 'Degree is required.'),
   location: z.string().min(1, 'Location is required.'),
-  graduationDate: z.string().optional(),
-  currentlyEnrolled: z.enum(['on']).optional(),
+  graduationDate: z
+    .string()
+    .transform((date) => (date ? new Date(date) : undefined))
+    .optional()
+    .refine((date) => !date || !Number.isNaN(date.getTime), {
+      message: 'Invalid end date format',
+    }),
+  currentlyEnrolled: z.boolean().default(false),
 });
 
 const EducationSchema = BaseEducationSchema.refine(
@@ -36,8 +43,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
 
+  const createdData = {
+    ...entries,
+    currentlyEnrolled: formData.get('currentlyEnrolled') === 'on',
+  };
+
   try {
-    const validatedData = EducationSchema.parse(entries);
+    const validatedData = EducationSchema.parse(createdData);
 
     updateUser('education', validatedData);
     return redirect('/skills');
@@ -58,6 +70,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export default function Education() {
   const actionData = useActionData<ActionData>();
   const errors = actionData?.data.errors;
+
+  const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(false);
+
+  const handleCheckboxChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setIsCurrentlyEnrolled(e.target.checked);
+    },
+    [],
+  );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -86,8 +107,9 @@ export default function Education() {
         <Input label="Location" type="text" id="location" error={errors} />
 
         <Input
+          disabled={isCurrentlyEnrolled}
           label="Graduation Date"
-          type="text"
+          type="month"
           id="graduationDate"
           error={errors}
         />
@@ -100,6 +122,8 @@ export default function Education() {
             id="currentlyEnrolled"
             className="h-4 w-4 rounded border-gray-300 text-blue-600 
               focus:ring-blue-500"
+            onChange={handleCheckboxChange}
+            checked={isCurrentlyEnrolled}
           />
           <label
             htmlFor="currentlyEnrolled"
