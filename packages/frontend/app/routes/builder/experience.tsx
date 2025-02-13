@@ -1,10 +1,21 @@
-import { data, Form, redirect, useActionData } from 'react-router';
+import {
+  data,
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useLocation,
+} from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
-import { z } from 'zod';
+import { date, z } from 'zod';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import { updateUser } from '../../utils/user';
+import {
+  getExperienceDetails,
+  getRequiredUserTrait,
+  updateUser,
+} from '../../utils/user';
 import type { ActionData } from './personalinfo';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
@@ -85,11 +96,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     );
   }
 }
+
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+  const url = new URL(request.url);
+  const jobId = url.searchParams.get('jobId');
+  let experience;
+  if (jobId) {
+    experience = getExperienceDetails(jobId);
+  }
+  return experience;
+}
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
+  const prevExperience = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
-
-  const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(false);
+  const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(
+    prevExperience?.currentlyEmployed ?? false,
+  );
 
   const handleCheckboxChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -97,6 +120,11 @@ export default function WorkExperience() {
     },
     [],
   );
+
+  const dateToMonthString = (date: Date | undefined) => {
+    if (!date) return;
+    return date.toISOString().slice(0, 7);
+  };
 
   return (
     <main className="max-w-2xl mx-auto">
@@ -122,17 +150,36 @@ export default function WorkExperience() {
             type="hidden"
             name="jobId"
             id="jobId"
-            value={crypto.randomUUID()}
+            value={prevExperience?.jobId ? prevExperience.jobId : crypto.randomUUID()}
           />
-          <Input label="Job Title" type="text" id="jobTitle" error={errors} />
-          <Input label="Employer" type="text" id="employer" error={errors} />
-          <Input label="Location" type="text" id="location" error={errors} />
+          <Input
+            label="Job Title"
+            type="text"
+            id="jobTitle"
+            error={errors}
+            defaultValue={prevExperience?.jobTitle}
+          />
+          <Input
+            label="Employer"
+            type="text"
+            id="employer"
+            error={errors}
+            defaultValue={prevExperience?.employer}
+          />
+          <Input
+            label="Location"
+            type="text"
+            id="location"
+            error={errors}
+            defaultValue={prevExperience?.location}
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
             <Input
               label="Start Date"
               type="month"
               id="startDate"
               error={errors}
+              defaultValue={dateToMonthString(prevExperience?.startDate)}
             />
             <Input
               disabled={isCurrentlyEmployed}
@@ -140,6 +187,7 @@ export default function WorkExperience() {
               type="month"
               id="endDate"
               error={errors}
+              defaultValue={dateToMonthString(prevExperience?.endDate)}
             />
           </div>
         </div>

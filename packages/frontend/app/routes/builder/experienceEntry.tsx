@@ -5,6 +5,7 @@ import {
   redirect,
   useFetcher,
   useLoaderData,
+  useNavigate,
 } from 'react-router';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
@@ -83,6 +84,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   const errors: any = fetcher.data?.data?.errors;
+  const navigate = useNavigate();
   const { jobTitle, jobId } = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>([]);
 
@@ -367,8 +369,8 @@ export default function ExperienceEntry() {
                   type="secondary"
                   text="Previous"
                   action="button"
-                  callback={() => window.history.back()}
-                />
+                  callback={() => navigate(`/experience?jobId=${jobId}`)}
+                  />
                 <Button action="submit" text="Next Step" />
               </div>
             </Form>
