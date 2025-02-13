@@ -4,6 +4,8 @@ export const inputTypes = {
   text: `${defaultShape}`,
   email: `${defaultShape}`,
   month: `${defaultShape}`,
+  number: `${defaultShape}`,
 } as const;
 
 export type InputTypes = typeof inputTypes;
+export type InputTypeKeys = keyof InputTypes;

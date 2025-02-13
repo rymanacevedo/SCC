@@ -1,16 +1,14 @@
 import { memo } from 'react';
-import { type InputTypes, inputTypes } from '../utils/inputTypes';
+import { type InputTypeKeys, inputTypes } from '../utils/inputTypes';
 
 export type FormErrors = {
   [key: string]: string[] | undefined;
 };
 
-type Input = {
+type BaseInputProps = {
   label: string;
   hideLabel?: boolean;
   defaultValue?: string;
-  type: keyof InputTypes;
-  placeholder?: string;
   id: string;
   required?: boolean;
   value?: string | number;
@@ -21,23 +19,50 @@ type Input = {
   disabled?: boolean;
 };
 
-function Input({
-  label,
-  hideLabel,
-  defaultValue,
-  type,
-  required,
-  classNames,
-  id,
-  error,
-  disabled,
-}: Input) {
-  const inputStyles = inputTypes[type];
+type NumberRequiredProps = {
+  min: number | string;
+  max: number | string;
+  step: number | string;
+};
+
+type InputProps =
+  | (BaseInputProps & { type: 'number' } & NumberRequiredProps)
+  | (BaseInputProps & {
+      type: Exclude<InputTypeKeys, 'number'>;
+      min?: string;
+      max?: string;
+      placeholder?: string;
+    });
+
+function Input(props: InputProps) {
+  const inputStyles = inputTypes[props.type];
+  const {
+    label,
+    hideLabel,
+    defaultValue,
+    type,
+    required,
+    classNames,
+    id,
+    error,
+    disabled,
+  } = props;
+
+  const isNumberInput = (
+    p: unknown,
+  ): p is BaseInputProps & { type: 'number' } & NumberRequiredProps => {
+    return (
+      typeof p === 'object' && p !== null && 'type' in p && p.type === 'number'
+    );
+  };
+
   return (
     <div>
       <label
         htmlFor={id}
-        className={`block text-sm font-medium dark:text-gray-300 text-gray-700 ${hideLabel ? 'sr-only' : null}`}
+        className={`block text-sm font-medium dark:text-gray-300 text-gray-700 ${
+          hideLabel ? 'sr-only' : null
+        }`}
       >
         {label}
       </label>
@@ -45,6 +70,9 @@ function Input({
         required={required}
         type={type}
         id={id}
+        min={isNumberInput(props) ? props.min : undefined}
+        max={isNumberInput(props) ? props.max : undefined}
+        step={isNumberInput(props) ? props.step : undefined}
         name={id}
         defaultValue={defaultValue}
         className={`${inputStyles} ${classNames} ${

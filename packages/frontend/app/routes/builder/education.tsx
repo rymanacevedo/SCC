@@ -108,8 +108,11 @@ export default function Education() {
 
         <Input
           disabled={isCurrentlyEnrolled}
-          label="Graduation Date"
-          type="month"
+          label="Graduation Year"
+          type="number"
+          min={1900}
+          max={2099}
+          step={1}
           id="graduationDate"
           error={errors}
         />
