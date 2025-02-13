@@ -5,8 +5,8 @@ import {
 } from 'react-router';
 import { z } from 'zod';
 import { createSkills } from '../../utils/aiServices';
-import { Filter } from 'bad-words';
 import type { FormErrors } from '../../components/Input';
+import { filter } from '../../utils/filter';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -17,43 +17,12 @@ export const SkillsSchema = z.object({
   other: z.array(z.string()),
 });
 
-const filter = new Filter();
-const blacklist = [
-  'Sex Worker',
-  'Porn Star',
-  'Adult Film',
-  'Escort',
-  'Cam Model',
-  'Stripper',
-  'Exotic Dancer',
-  'Erotic Dancer',
-  'Pornographic Content Creator',
-  'Explicit Performer',
-  'Performer of Explicit Content',
-  'Shit Talker',
-  'OnlyFans',
-  'Fansly',
-  'Porn Addict',
-  'Terrorist',
-  'Extremist',
-  'Jihadist',
-  'Bomber',
-  'Assassin',
-  'Violent Extremist',
-  'Hate Crime Inciter',
-  'Radicalizer',
-  'Domestic Terrorist',
-];
-filter.addWords(...blacklist);
-
 const containsInappropriateWords = (input: string): string | null => {
   if (filter.isProfane(input)) {
     return input.split(' ').find((word) => filter.isProfane(word)) || null;
   }
   return null;
 };
-
-export type TSkills = z.infer<typeof SkillsSchema>;
 
 export const clientAction: ClientActionFunction = async ({
   request,

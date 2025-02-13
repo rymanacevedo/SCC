@@ -1,4 +1,4 @@
-import { redirect, useFetcher, useLoaderData } from 'react-router';
+import { redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
@@ -8,6 +8,7 @@ import Heading from '../../components/Heading';
 import { createSkills } from '../../utils/aiServices';
 import { getUser } from '../../utils/user';
 import { containsInappropriateWords } from '../../utils/filter';
+
 export const SkillsSchema = z.object({
   expertRecommended: z.array(z.string()),
   other: z.array(z.string()),
