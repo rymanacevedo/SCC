@@ -1,17 +1,19 @@
-import { redirect, useFetcher } from 'react-router';
-import { Form, useActionData } from 'react-router';
+import { redirect, useFetcher, useLoaderData } from 'react-router';
+import { Form } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { useCallback, useState } from 'react';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
-import Input from '../../components/Input';
-import type { TSkills } from '../api/skills';
-import Loading from '../../components/Loading';
-
+import { createSkills } from '../../utils/aiServices';
+import { getUser } from '../../utils/user';
+import { containsInappropriateWords } from '../../utils/filter';
 export const SkillsSchema = z.object({
-  skills: z.array(z.string()).min(1, 'At least one skill is required'),
+  expertRecommended: z.array(z.string()),
+  other: z.array(z.string()),
 });
+
+export type TSkills = z.infer<typeof SkillsSchema>;
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -29,9 +31,53 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+export async function clientLoader() {
+  const user = getUser();
+  let skills = {
+    expertRecommended: [
+      'Programming Languages (e.g., Java, Python, C++)',
+      'Problem-Solving',
+      'Software Development Lifecycle',
+      'Algorithms and Data Structures',
+      'Debugging',
+    ],
+    other: [
+      'Database Management',
+      'Version Control Systems',
+      'Agile Methodologies',
+      'Communication Skills',
+      'Teamwork',
+    ],
+  };
+
+  // TODO: get rid of null assertion
+  const badWord = containsInappropriateWords(user?.experience!);
+
+  if (badWord) {
+    return Response.json(
+      { error: `The term "${badWord}" is not allowed.` },
+      { status: 400 },
+    );
+  }
+
+  if (user?.experience) {
+    // TODO: batch job the jobs and give the model more "details"
+    const firstJob = user.experience[0].jobTitle;
+    // TODO: get rid of null assertion
+    skills = await createSkills(firstJob!);
+    const finalResult = SkillsSchema.parse(skills);
+
+    return Response.json(finalResult);
+  }
+  return Response.json(skills);
+}
+
+// Force the client loader to run during hydration
+clientLoader.hydrate = true as const;
+
 export default function Skills() {
-  const fetcher = useFetcher<TSkills>();
-  const errors: any = fetcher.data?.data?.errors;
+  const loaderData = useLoaderData<TSkills>();
+  // const errors: any = fetcher.data?.data?.errors;
   const [userSkills, setUserSkills] = useState<string[]>([]);
 
   const handleAddSkill = useCallback(
@@ -71,12 +117,12 @@ export default function Skills() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Search and Suggestions */}
         <div>
-          <fetcher.Form
+          {/* A/B Test this */}
+          {/* <fetcher.Form
             action="/api/skills"
             method="post"
             className="inline-flex gap-2 w-full"
           >
-            {/* TODO: adjust the size */}
             <Input
               type="text"
               label="Search by Job Title for Pre-Written Examples"
@@ -109,7 +155,8 @@ export default function Skills() {
                 action="submit"
               />
             </div>
-          </fetcher.Form>
+          </fetcher.Form> 
+          */}
 
           {/* Example Skills Based on Search */}
           <div className="p-4 rounded-md">
@@ -120,31 +167,29 @@ export default function Skills() {
               classNames="mb-3"
             />
             <div className="space-y-2 border rounded-md p-4">
-              {/* This would be populated based on search results */}
               <Heading
                 level="h3"
                 text="Expert Skills"
                 size="text-sm"
                 classNames="mb-3"
               />
-              <Loading fetcher={fetcher}>
-                {(
-                  fetcher.data?.expertRecommended || [
-                    'Microsoft Office',
-                    'Collaboration',
-                    'Decision-making',
-                    'Organization skills',
-                    'Public Speaking',
-                  ]
-                ).map((skill) => (
-                  <Button
-                    key={skill}
-                    type="custom"
-                    callback={() => handleAddSkill(skill)}
-                    text={`+ ${skill}`}
-                    textSize="text-sm"
-                    action="button"
-                    classNames="
+              {(
+                loaderData.expertRecommended || [
+                  'Microsoft Office',
+                  'Collaboration',
+                  'Decision-making',
+                  'Organization skills',
+                  'Public Speaking',
+                ]
+              ).map((skill) => (
+                <Button
+                  key={skill}
+                  type="custom"
+                  callback={() => handleAddSkill(skill)}
+                  text={`+ ${skill}`}
+                  textSize="text-sm"
+                  action="button"
+                  classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
                   py-2 px-4
@@ -154,33 +199,31 @@ export default function Skills() {
                   rounded-md border
                   transition-colors
                   "
-                  />
-                ))}
-              </Loading>
+                />
+              ))}
               <Heading
                 level="h4"
                 text="Other Skills"
                 size="text-sm"
                 classNames="mb-3"
               />
-              <Loading fetcher={fetcher}>
-                {(
-                  fetcher.data?.other || [
-                    'Time Management',
-                    'Communication',
-                    'Problem Solving',
-                    'Leadership',
-                    'Active Listening',
-                  ]
-                ).map((skill) => (
-                  <Button
-                    key={skill}
-                    type="custom"
-                    callback={() => handleAddSkill(skill)}
-                    text={`+ ${skill}`}
-                    textSize="text-sm"
-                    action="button"
-                    classNames="
+              {(
+                loaderData.other || [
+                  'Time Management',
+                  'Communication',
+                  'Problem Solving',
+                  'Leadership',
+                  'Active Listening',
+                ]
+              ).map((skill) => (
+                <Button
+                  key={skill}
+                  type="custom"
+                  callback={() => handleAddSkill(skill)}
+                  text={`+ ${skill}`}
+                  textSize="text-sm"
+                  action="button"
+                  classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
                   py-2 px-4
@@ -190,9 +233,8 @@ export default function Skills() {
                   rounded-md border
                   transition-colors
                   "
-                  />
-                ))}
-              </Loading>
+                />
+              ))}
             </div>
           </div>
         </div>
