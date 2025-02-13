@@ -35,9 +35,12 @@ function ExperienceSummary() {
               </span>
               <Heading level="h2" size="text-2xl" text={e.jobTitle} />
             </div>
-            <em>{e.location}</em> |
+            <em>{e.location}</em>
+            <span> | </span>
             <em>
-              {e.startDate} - {e.endDate}
+              {e.startDate.getFullYear()}
+              <span> - </span>
+              {e.endDate ? e.endDate.getFullYear() : 'Present'}
             </em>
             <ul className="p-4 list-disc">
               {e.details?.map((d, index) => (

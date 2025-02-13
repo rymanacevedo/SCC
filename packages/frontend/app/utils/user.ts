@@ -27,8 +27,8 @@ export function getUser(): User | null {
   try {
     if (value) {
       const user = JSON.parse(value);
-      UserSchema.parse(user);
-      return user;
+      const parsedUser = UserSchema.parse(user);
+      return parsedUser;
     }
 
     return null;
