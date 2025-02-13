@@ -45,9 +45,8 @@ export function setUser(user: User) {
 export function updateUser<K extends Exclude<keyof User, 'userId'>>(
   key: K,
   newData: K extends 'experience'
-    ?
-        | Partial<(typeof BaseExperienceSchema)['_output']>
-        | Partial<(typeof BaseExperienceSchema)['_output']>[]
+    ? Partial<(typeof BaseExperienceSchema)['_output']>
+    | Partial<(typeof BaseExperienceSchema)['_output']>[]
     : Partial<User[K]>,
   index?: number,
 ): void {
@@ -74,11 +73,22 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
         (typeof BaseExperienceSchema)['_output']
       >;
     } else {
-      // Handle adding new experience
-      updatedField = [
-        ...currentExperience,
-        newData as Partial<(typeof BaseExperienceSchema)['_output']>,
-      ];
+      // Check if an experience with the same jobId already exists
+      const newExperience = newData as Partial<
+        (typeof BaseExperienceSchema)['_output']
+      >;
+      const existingIndex = currentExperience.findIndex(
+        (exp) => exp?.jobId === newExperience.jobId
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing experience
+        updatedField = [...currentExperience];
+        updatedField[existingIndex] = newExperience;
+      } else {
+        // Add new experience
+        updatedField = [...currentExperience, newExperience];
+      }
     }
   } else {
     // Handle other fields
