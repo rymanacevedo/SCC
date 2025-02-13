@@ -78,6 +78,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   return {
     jobId,
     jobTitle: experience?.jobTitle,
+    details: experience?.details,
   };
 }
 
@@ -85,8 +86,10 @@ export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   const errors: any = fetcher.data?.data?.errors;
   const navigate = useNavigate();
-  const { jobTitle, jobId } = useLoaderData<typeof clientLoader>();
-  const [userExperience, setUserExperience] = useState<string[]>([]);
+  const { details, jobTitle, jobId } = useLoaderData<typeof clientLoader>();
+  const [userExperience, setUserExperience] = useState<string[]>(
+    details || [],
+  );
 
   const handleAddExperience = useCallback(
     (experience: string) => {
@@ -138,7 +141,8 @@ export default function ExperienceEntry() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Writing Area */}
         <div>
-          <fetcher.Form
+          {/* TODO: A/B test this */}
+          {/* <fetcher.Form
             action="/api/experienceEntry"
             method="post"
             className="inline-flex w-100 gap-2"
@@ -176,7 +180,7 @@ export default function ExperienceEntry() {
                 action="submit"
               />
             </div>
-          </fetcher.Form>
+          </fetcher.Form> */}
           <div className="p-4 rounded-md">
             <Heading
               level="h3"
@@ -370,7 +374,7 @@ export default function ExperienceEntry() {
                   text="Previous"
                   action="button"
                   callback={() => navigate(`/experience?jobId=${jobId}`)}
-                  />
+                />
                 <Button action="submit" text="Next Step" />
               </div>
             </Form>
