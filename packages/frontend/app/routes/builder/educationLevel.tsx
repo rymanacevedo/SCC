@@ -5,7 +5,9 @@ import {
   type ClientActionFunctionArgs,
   data,
   Form,
+  Link,
   redirect,
+  useNavigate,
 } from 'react-router';
 import { z } from 'zod';
 import { updateUser } from '../../utils/user';
@@ -17,7 +19,7 @@ export async function clientAction({ request }: ClientActionFunctionArgs) {
   const educationLevel = formData.get('educationLevel');
   try {
     const validatedData = EducationLevelSchema.parse(educationLevel);
-    updateUser('education', {educationLevel: validatedData});
+    updateUser('education', { educationLevel: validatedData });
     return redirect('/education');
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -27,6 +29,7 @@ export async function clientAction({ request }: ClientActionFunctionArgs) {
 }
 
 function EducationLevel() {
+  const navigate = useNavigate();
   return (
     <main className="max-w-2xl mx-auto">
       <div className="mb-8">
@@ -67,6 +70,12 @@ function EducationLevel() {
           />
         ))}
       </Form>
+      <Button
+        text="Previous"
+        type="secondary"
+        action="button"
+        callback={() => navigate(-1)}
+      />
     </main>
   );
 }

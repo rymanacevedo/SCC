@@ -1,12 +1,12 @@
 // app/routes/builder.education.tsx
-import { data, redirect } from 'react-router';
+import { data, redirect, useLoaderData } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import { updateUser } from '../../utils/user';
+import { getUser, updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 import { EducationLevelSchema } from './educationLevel';
 import { type ChangeEvent, useCallback, useState } from 'react';
@@ -67,11 +67,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+export async function clientLoader() {
+  const user = getUser();
+  if (user?.education) {
+    return user.education;
+  }
+
+  return {};
+}
+
 export default function Education() {
   const actionData = useActionData<ActionData>();
+  const prevEducation = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
 
-  const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(false);
+  const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(
+    prevEducation.currentlyEnrolled ?? false,
+  );
 
   const handleCheckboxChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -100,11 +112,29 @@ export default function Education() {
       </div>
 
       <Form method="post" className="space-y-6">
-        <Input label="School Name" type="text" id="schoolName" error={errors} />
+        <Input
+          label="School Name"
+          type="text"
+          id="schoolName"
+          error={errors}
+          defaultValue={prevEducation.schoolName}
+        />
 
-        <Input label="Degree" type="text" id="degree" error={errors} />
+        <Input
+          label="Degree"
+          type="text"
+          id="degree"
+          error={errors}
+          defaultValue={prevEducation.degree}
+        />
 
-        <Input label="Location" type="text" id="location" error={errors} />
+        <Input
+          label="Location"
+          type="text"
+          id="location"
+          error={errors}
+          defaultValue={prevEducation.location}
+        />
 
         <Input
           disabled={isCurrentlyEnrolled}
@@ -115,6 +145,7 @@ export default function Education() {
           step={1}
           id="graduationDate"
           error={errors}
+          defaultValue={prevEducation.graduationDate?.getFullYear().toString()}
         />
 
         {/* Current Student Checkbox */}
