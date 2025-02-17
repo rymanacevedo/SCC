@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [reactRouter(), tailwindcss()],
   server: {
     allowedHosts: true,
+    watch: {
+      usePolling: true,
+    },
   },
 });

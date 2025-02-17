@@ -45,8 +45,9 @@ export function setUser(user: User) {
 export function updateUser<K extends Exclude<keyof User, 'userId'>>(
   key: K,
   newData: K extends 'experience'
-    ? Partial<(typeof BaseExperienceSchema)['_output']>
-    | Partial<(typeof BaseExperienceSchema)['_output']>[]
+    ?
+        | Partial<(typeof BaseExperienceSchema)['_output']>
+        | Partial<(typeof BaseExperienceSchema)['_output']>[]
     : Partial<User[K]>,
   index?: number,
 ): void {
@@ -78,7 +79,7 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
         (typeof BaseExperienceSchema)['_output']
       >;
       const existingIndex = currentExperience.findIndex(
-        (exp) => exp?.jobId === newExperience.jobId
+        (exp) => exp?.jobId === newExperience.jobId,
       );
 
       if (existingIndex !== -1) {

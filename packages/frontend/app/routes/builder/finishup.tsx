@@ -1,10 +1,11 @@
 // app/routes/builder.finish.tsx
-import { redirect } from 'react-router';
+import { NavLink, redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import { useState } from 'react';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import { getUser, User } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -17,9 +18,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+export function clientLoader() {
+  const user = getUser();
+  return user;
+}
 export default function Finish() {
   const [editingSection, setEditingSection] = useState<string | null>(null);
-
+  const user = useLoaderData<User>();
   // This would be replaced with your actual data from previous steps
   const [resumeData, setResumeData] = useState({
     personal: {
@@ -84,70 +89,50 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <button
-              type="button"
-              onClick={() => handleSectionEdit('personal')}
+            <NavLink
+              to="/info"
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              {editingSection === 'personal' ? 'Save' : 'Edit'}
-            </button>
+              Edit
+            </NavLink>
           </div>
-          {editingSection === 'personal' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                value={resumeData.personal.firstName}
-                onChange={(e) =>
-                  setResumeData((prev) => ({
-                    ...prev,
-                    personal: { ...prev.personal, firstName: e.target.value },
-                  }))
-                }
-                className="border rounded-md p-2"
-                placeholder="First Name"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Heading
+                text="Name"
+                level="h3"
+                size="text-sm"
+                color="dark:text-gray-400 text-gray-500"
               />
-              {/* Add other personal info fields */}
+              <p className="font-medium">
+                {user.info?.firstName} {user.info?.lastName}
+              </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Heading
-                  text="Name"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">
-                  {resumeData.personal.firstName} {resumeData.personal.lastName}
-                </p>
-              </div>
-              <div>
-                <Heading
-                  text="Location"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">
-                  {resumeData.personal.city}, {resumeData.personal.state}{' '}
-                  {resumeData.personal.zipCode}
-                </p>
-              </div>
-              <div>
-                <Heading
-                  text="Phone"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">{resumeData.personal.phone}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{resumeData.personal.email}</p>
-              </div>
+            <div>
+              <Heading
+                text="Location"
+                level="h3"
+                size="text-sm"
+                color="dark:text-gray-400 text-gray-500"
+              />
+              <p className="font-medium">
+                {user.info?.city}, {user.info?.state} {user.info?.zipCode}
+              </p>
             </div>
-          )}
+            <div>
+              <Heading
+                text="Phone"
+                level="h3"
+                size="text-sm"
+                color="dark:text-gray-400 text-gray-500"
+              />
+              <p className="font-medium">{user.info?.phone}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium">{user.info?.email}</p>
+            </div>
+          </div>
         </div>
 
         {/* Summary Section */}
@@ -159,31 +144,16 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <button
-              type="button"
-              onClick={() => handleSectionEdit('summary')}
+            <NavLink
+              to="/summary"
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              {editingSection === 'summary' ? 'Save' : 'Edit'}
-            </button>
+              Edit
+            </NavLink>
           </div>
-          {editingSection === 'summary' ? (
-            <textarea
-              value={resumeData.summary}
-              onChange={(e) =>
-                setResumeData((prev) => ({
-                  ...prev,
-                  summary: e.target.value,
-                }))
-              }
-              className="w-full border rounded-md p-3"
-              rows={4}
-            />
-          ) : (
-            <p className="dark:text-gray-400 text-gray-600">
-              {resumeData.summary}
-            </p>
-          )}
+          <p className="dark:text-gray-400 text-gray-600">
+            {user.summary?.summary}
+          </p>
         </div>
 
         {/* Education Section */}
@@ -195,68 +165,44 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <button
-              type="button"
-              onClick={() => handleSectionEdit('education')}
+            <NavLink
+              to="/education"
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              {editingSection === 'education' ? 'Save' : 'Edit'}
-            </button>
+              Edit
+            </NavLink>
           </div>
-          {editingSection === 'education' ? (
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={resumeData.education.schoolName}
-                onChange={(e) =>
-                  setResumeData((prev) => ({
-                    ...prev,
-                    education: {
-                      ...prev.education,
-                      schoolName: e.target.value,
-                    },
-                  }))
-                }
-                className="w-full border rounded-md p-2"
-                placeholder="School Name"
+          <div className="space-y-3">
+            <div>
+              <Heading
+                text="School"
+                level="h3"
+                size="text-sm"
+                color="dark:text-gray-400 text-gray-500"
               />
-              {/* Add other education fields */}
+              <p className="font-medium">{user.education?.schoolName}</p>
             </div>
-          ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Heading
-                  text="School"
+                  text="Degree"
                   level="h3"
                   size="text-sm"
                   color="dark:text-gray-400 text-gray-500"
                 />
-                <p className="font-medium">{resumeData.education.schoolName}</p>
+                <p className="font-medium">{user.education?.educationLevel}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Heading
-                    text="Degree"
-                    level="h3"
-                    size="text-sm"
-                    color="dark:text-gray-400 text-gray-500"
-                  />
-                  <p className="font-medium">{resumeData.education.degree}</p>
-                </div>
-                <div>
-                  <Heading
-                    text="Field of Study"
-                    level="h3"
-                    size="text-sm"
-                    color="dark:text-gray-400 text-gray-500"
-                  />
-                  <p className="font-medium">
-                    {resumeData.education.fieldOfStudy}
-                  </p>
-                </div>
+              <div>
+                <Heading
+                  text="Field of Study"
+                  level="h3"
+                  size="text-sm"
+                  color="dark:text-gray-400 text-gray-500"
+                />
+                <p className="font-medium">{user.education?.degree}</p>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Skills Section */}
@@ -268,68 +214,33 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <button
-              type="button"
-              onClick={() => handleSectionEdit('skills')}
+            <NavLink
+              to="/skills"
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              {editingSection === 'skills' ? 'Save' : 'Edit'}
-            </button>
+              Edit
+            </NavLink>
           </div>
-          {editingSection === 'skills' ? (
-            <div className="space-y-2">
-              {resumeData.skills.map((skill, index) => (
-                <div key={skill} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={skill}
-                    onChange={(e) => {
-                      const newSkills = [...resumeData.skills];
-                      newSkills[index] = e.target.value;
-                      setResumeData((prev) => ({ ...prev, skills: newSkills }));
-                    }}
-                    className="border rounded-md p-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newSkills = resumeData.skills.filter(
-                        (_, i) => i !== index,
-                      );
-                      setResumeData((prev) => ({ ...prev, skills: newSkills }));
-                    }}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  setResumeData((prev) => ({
-                    ...prev,
-                    skills: [...prev.skills, ''],
-                  }))
-                }
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Add Skill
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {resumeData.skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="inline-flex items-center px-3 py-1 rounded-full 
+          <div className="flex flex-wrap gap-2">
+            {user.skills?.expertRecommended?.map((skill) => (
+              <span
+                key={skill}
+                className="inline-flex items-center px-3 py-1 rounded-full 
                     text-sm font-medium bg-blue-50 text-blue-700"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          )}
+              >
+                {skill}
+              </span>
+            ))}
+            {user.skills?.other?.map((skill) => (
+              <span
+                key={skill}
+                className="inline-flex items-center px-3 py-1 rounded-full 
+                    text-sm font-medium bg-blue-50 text-blue-700"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
