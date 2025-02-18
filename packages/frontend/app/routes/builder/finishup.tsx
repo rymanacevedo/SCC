@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
-import { getUser, User } from '../../utils/user';
+import { getUser, type User } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -22,45 +22,9 @@ export function clientLoader() {
   const user = getUser();
   return user;
 }
+
 export default function Finish() {
-  const [editingSection, setEditingSection] = useState<string | null>(null);
   const user = useLoaderData<User>();
-  // This would be replaced with your actual data from previous steps
-  const [resumeData, setResumeData] = useState({
-    personal: {
-      firstName: 'John',
-      lastName: 'Doe',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      phone: '(555) 555-5555',
-      email: 'john.doe@example.com',
-    },
-    summary: `Results-driven software developer with 5 years of experience building web applications. 
-      Proficient in JavaScript, React, and Node.js. Strong problem-solving abilities and experience 
-      working in agile environments.`,
-    education: {
-      schoolName: 'University of Example',
-      degree: "Bachelor's Degree",
-      fieldOfStudy: 'Computer Science',
-      location: 'Boston, MA',
-      graduationDate: '2022-05',
-    },
-    skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python'],
-  });
-
-  const handleSectionEdit = (section: string) => {
-    setEditingSection(section);
-  };
-
-  const handleSectionSave = (section: string, newData: unknown) => {
-    setResumeData((prev) => ({
-      ...prev,
-      [section]: newData,
-    }));
-    setEditingSection(null);
-  };
-
   return (
     <main className="max-w-4xl mx-auto">
       <div className="mb-8">
@@ -90,7 +54,10 @@ export default function Finish() {
               classNames="font-semibold"
             />
             <NavLink
-              to="/info"
+              to={{
+                pathname: '/info',
+                search: `?returnUrl=${encodeURIComponent('finish-up')}`,
+              }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               Edit
