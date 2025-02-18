@@ -1,5 +1,12 @@
 // app/routes/builder.personal.tsx
-import { Form, redirect, useActionData, data } from 'react-router';
+import {
+  Form,
+  redirect,
+  useActionData,
+  data,
+  useLoaderData,
+  type ClientLoaderFunctionArgs,
+} from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
@@ -29,12 +36,15 @@ export type ActionData = {
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
 
+  const redirectUrl = returnUrl ? returnUrl : '/experience';
   try {
     const validatedData = PersonalInfoSchema.parse(entries);
 
     updateUser('info', validatedData);
-    return redirect('/experience');
+    return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return data(
@@ -48,9 +58,18 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     );
   }
 }
+export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
+
+  return {
+    returnUrl,
+  };
+}
 
 export default function PersonalInfo() {
   const actionData = useActionData<ActionData>();
+  const { returnUrl } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
 
   return (
@@ -96,7 +115,7 @@ export default function PersonalInfo() {
         </div>
 
         <div className="flex justify-end">
-          <Button action="submit" text="Next Step" />
+          <Button action="submit" text={returnUrl ? 'Resubmit' : 'Next'} />
         </div>
       </Form>
     </main>
