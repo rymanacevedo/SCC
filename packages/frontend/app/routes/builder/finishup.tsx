@@ -133,7 +133,10 @@ export default function Finish() {
               classNames="font-semibold"
             />
             <NavLink
-              to="/education"
+              to={{
+                pathname: '/education',
+                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
+              }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               Edit

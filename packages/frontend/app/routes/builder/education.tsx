@@ -1,5 +1,10 @@
 // app/routes/builder.education.tsx
-import { data, redirect, useLoaderData } from 'react-router';
+import {
+  type ClientLoaderFunctionArgs,
+  data,
+  redirect,
+  useLoaderData,
+} from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
@@ -42,7 +47,10 @@ const EducationSchema = BaseEducationSchema.refine(
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
 
+  const redirectUrl = returnUrl ? returnUrl : '/skills';
   const createdData = {
     ...entries,
     currentlyEnrolled: formData.get('currentlyEnrolled') === 'on',
@@ -52,7 +60,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const validatedData = EducationSchema.parse(createdData);
 
     updateUser('education', validatedData);
-    return redirect('/skills');
+    return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return data(
@@ -67,22 +75,24 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-export async function clientLoader() {
+export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const user = getUser();
-  if (user?.education) {
-    return user.education;
-  }
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
 
-  return {};
+  return {
+    prevEducation: user?.education,
+    returnUrl,
+  };
 }
 
 export default function Education() {
   const actionData = useActionData<ActionData>();
-  const prevEducation = useLoaderData<typeof clientLoader>();
+  const { prevEducation, returnUrl } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
 
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(
-    prevEducation.currentlyEnrolled ?? false,
+    prevEducation?.currentlyEnrolled ?? false,
   );
 
   const handleCheckboxChange = useCallback(
@@ -117,7 +127,7 @@ export default function Education() {
           type="text"
           id="schoolName"
           error={errors}
-          defaultValue={prevEducation.schoolName}
+          defaultValue={prevEducation?.schoolName}
         />
 
         <Input
@@ -125,7 +135,7 @@ export default function Education() {
           type="text"
           id="degree"
           error={errors}
-          defaultValue={prevEducation.degree}
+          defaultValue={prevEducation?.degree}
         />
 
         <Input
@@ -133,7 +143,7 @@ export default function Education() {
           type="text"
           id="location"
           error={errors}
-          defaultValue={prevEducation.location}
+          defaultValue={prevEducation?.location}
         />
 
         <Input
@@ -145,7 +155,7 @@ export default function Education() {
           step={1}
           id="graduationDate"
           error={errors}
-          defaultValue={prevEducation.graduationDate?.getFullYear().toString()}
+          defaultValue={prevEducation?.graduationDate?.getFullYear().toString()}
         />
 
         {/* Current Student Checkbox */}
@@ -169,13 +179,19 @@ export default function Education() {
 
         {/* Navigation Buttons */}
         <div className="flex justify-between pt-4">
-          <Button
-            text="Previous"
-            type="secondary"
-            action="button"
-            callback={() => window.history.back()}
-          />
-          <Button action="submit" text="Next Step" />
+          {returnUrl ? (
+            <Button action="submit" text="Resubmit" />
+          ) : (
+            <>
+              <Button
+                text="Previous"
+                type="secondary"
+                action="button"
+                callback={() => window.history.back()}
+              />
+              <Button action="submit" text="Next Step" />
+            </>
+          )}
         </div>
       </Form>
     </div>
