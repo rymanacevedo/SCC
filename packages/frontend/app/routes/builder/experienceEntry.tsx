@@ -10,8 +10,8 @@ import {
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
-import { useCallback, useState } from 'react';
-import Input, { type FormErrors } from '../../components/Input';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormErrors } from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
@@ -19,7 +19,7 @@ import {
   getExperienceDetails,
   updateExperienceDetails,
 } from '../../utils/user';
-import type { ActionData } from './personalinfo';
+import useEffectOnce from '../../hooks/useEffectOnce';
 
 const ExperienceEntrySchema = z.object({
   jobId: z.string(),
@@ -78,6 +78,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   return {
     jobId,
     jobTitle: experience?.jobTitle,
+    employer: experience?.employer,
     details: experience?.details,
   };
 }
@@ -86,10 +87,21 @@ export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   const errors: any = fetcher.data?.data?.errors;
   const navigate = useNavigate();
-  const { details, jobTitle, jobId } = useLoaderData<typeof clientLoader>();
-  const [userExperience, setUserExperience] = useState<string[]>(
-    details || [],
-  );
+  const { details, jobTitle, jobId, employer } =
+    useLoaderData<typeof clientLoader>();
+  const [userExperience, setUserExperience] = useState<string[]>(details || []);
+
+  useEffectOnce(() => {
+    if (fetcher.state === 'idle' && !fetcher.data) {
+      const formData = new FormData();
+      formData.set('jobTitleSearch', jobTitle || '');
+      formData.set('employer', employer || '');
+      fetcher.submit(formData, {
+        method: 'POST',
+        action: '/api/experienceEntry',
+      });
+    }
+  })
 
   const handleAddExperience = useCallback(
     (experience: string) => {

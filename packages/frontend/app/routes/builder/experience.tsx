@@ -10,10 +10,7 @@ import { z } from 'zod';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import {
-  getExperienceDetails,
-  updateUser,
-} from '../../utils/user';
+import { getExperienceDetails, updateUser } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
@@ -51,7 +48,7 @@ const ExperienceSchema = BaseExperienceSchema.refine(
     return true;
   },
   {
-    message: 'End date is required if not currently employed',
+    message: 'End date is required if not currently employed.',
     path: ['endDate'],
   },
 ).refine(
@@ -62,7 +59,7 @@ const ExperienceSchema = BaseExperienceSchema.refine(
     return true;
   },
   {
-    message: 'End date cannot be before start date',
+    message: 'End date cannot be before start date.',
     path: ['endDate'],
   },
 );
@@ -104,6 +101,10 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   }
   return experience;
 }
+
+// Force the client loader to run during hydration
+clientLoader.hydrate = true as const;
+
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
   const prevExperience = useLoaderData<typeof clientLoader>();
@@ -148,7 +149,9 @@ export default function WorkExperience() {
             type="hidden"
             name="jobId"
             id="jobId"
-            value={prevExperience?.jobId ? prevExperience.jobId : crypto.randomUUID()}
+            value={
+              prevExperience?.jobId ? prevExperience.jobId : crypto.randomUUID()
+            }
           />
           <Input
             label="Job Title"
@@ -168,6 +171,7 @@ export default function WorkExperience() {
             label="Location"
             type="text"
             id="location"
+            placeholder="Denver, CO"
             error={errors}
             defaultValue={prevExperience?.location}
           />

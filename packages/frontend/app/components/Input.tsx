@@ -16,6 +16,7 @@ type BaseInputProps = {
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   classNames?: string;
   error?: FormErrors;
+  placeholder?: string;
   disabled?: boolean;
 };
 
@@ -29,9 +30,6 @@ type InputProps =
   | (BaseInputProps & { type: 'number' } & NumberRequiredProps)
   | (BaseInputProps & {
       type: Exclude<InputTypeKeys, 'number'>;
-      min?: string;
-      max?: string;
-      placeholder?: string;
     });
 
 function Input(props: InputProps) {
@@ -46,6 +44,7 @@ function Input(props: InputProps) {
     id,
     error,
     disabled,
+    placeholder,
   } = props;
 
   const isNumberInput = (
@@ -74,6 +73,7 @@ function Input(props: InputProps) {
         max={isNumberInput(props) ? props.max : undefined}
         step={isNumberInput(props) ? props.step : undefined}
         name={id}
+        placeholder={placeholder}
         defaultValue={defaultValue}
         className={`${inputStyles} ${classNames} ${
           disabled

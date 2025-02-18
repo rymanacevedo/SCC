@@ -102,7 +102,8 @@ export const clientAction: ClientActionFunction = async ({
   };
 
   if (result.jobTitleSearch) {
-    experience = await createExperience(result.jobTitleSearch);
+    experience = await createExperience(`Job Title: ${result.jobTitleSearch}
+      Employer: ${result.employer}`);
     const finalResult = JobTitleSchema.parse(experience);
     return Response.json(finalResult);
   }
