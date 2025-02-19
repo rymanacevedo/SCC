@@ -143,9 +143,13 @@ export default function Finish() {
               Edit
             </NavLink>
           </div>
-          <p className="dark:text-gray-400 text-gray-600">
-            {user.summary?.summary}
-          </p>
+          <ul className='p-4 list-disc'>
+            {user.experience?.map((e) => (
+              <li key={e.jobId} className="dark:text-gray-400 text-gray-600">
+                {e.details}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Education Section */}

@@ -1,4 +1,4 @@
-import { redirect, useFetcher, useLoaderData } from 'react-router';
+import { data, redirect, useFetcher, useLoaderData } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
@@ -6,7 +6,8 @@ import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
 import useEffectOnce from '../../hooks/useEffectOnce';
-import { getUser } from '../../utils/user';
+import { getUser, updateUser } from '../../utils/user';
+import type { FormErrors } from '../../components/Input';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -14,15 +15,27 @@ export const SummarySchema = z.object({
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const entries = Object.fromEntries(formData);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
+  const redirectUrl = returnUrl ? returnUrl : '/finish-up';
 
   try {
-    // const validatedData = SummarySchema.parse(data);
-    return redirect('/finish-up');
+    const validatedData = SummarySchema.parse(entries);
+    updateUser('summary', validatedData);
+
+    return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // return json({ success: false, errors: error.flatten().fieldErrors });
+      return data(
+        { errors: error.flatten().fieldErrors as FormErrors },
+        { status: 400 },
+      );
     }
+    return data(
+      { errors: { _form: ['An errored occured.'] } },
+      { status: 409 },
+    );
   }
 }
 
@@ -90,6 +103,7 @@ export default function Summary() {
                 id="summary"
                 name="summary"
                 rows={8}
+                defaultValue={prevSummary}
                 className="w-full border rounded-md shadow-sm p-3"
                 placeholder="Write a professional summary that highlights your key skills and experience..."
               />
@@ -119,13 +133,19 @@ export default function Summary() {
             </div>
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-4">
-              <Button
-                type="secondary"
-                text="Previous"
-                action="button"
-                callback={() => window.history.back()}
-              />
-              <Button action="submit" text="Next Step" />
+              {returnUrl ? (
+                <Button action="submit" text="Resubmit" />
+              ) : (
+                <>
+                  <Button
+                    text="Previous"
+                    type="secondary"
+                    action="button"
+                    callback={() => window.history.back()}
+                  />
+                  <Button action="submit" text="Next Step" />
+                </>
+              )}
             </div>
           </Form>
         </div>
