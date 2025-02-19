@@ -88,6 +88,7 @@ export default function Skills() {
   const { prevSkills, firstJobTitle, returnUrl } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<TSkills>();
+  const MAX_SKILLS = 6 as const;
   const actionData = useActionData<typeof clientAction>();
   const [userSkills, setUserSkills] = useState<TSkills>(
     prevSkills || {
@@ -96,18 +97,24 @@ export default function Skills() {
     },
   );
 
+  const totalSkills =
+    userSkills.expertRecommended.length + userSkills.other.length;
+  const remainingSkills = MAX_SKILLS - totalSkills;
+
   const handleAddSkill = useCallback(
     (skill: string, skillKey: keyof TSkills) => {
       const skillExists = userSkills[skillKey].includes(skill);
+      const totalSkills =
+        userSkills.expertRecommended.length + userSkills.other.length;
 
-      if (!skillExists) {
+      if (!skillExists && totalSkills < MAX_SKILLS) {
         setUserSkills((prev) => ({
           ...prev,
           [skillKey]: [...prev[skillKey], skill],
         }));
       }
     },
-    [userSkills],
+    [userSkills, MAX_SKILLS],
   );
 
   const handleRemoveSkill = useCallback((skillToRemove: string) => {
@@ -286,6 +293,10 @@ export default function Skills() {
             size="text-sm"
             classNames="mb-2"
           />
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            {remainingSkills} of {MAX_SKILLS} remaining
+          </p>
+
           <Form method="post" className="space-y-6">
             {/* User's Selected Skills */}
             <div className="min-h-[200px] border rounded-md p-4">
@@ -351,12 +362,6 @@ export default function Skills() {
                 }}
               />
             </div>
-
-            {/* Hidden inputs to submit all skills
-            {userSkills.map((skill) => (
-              <input key={skill} type="hidden" name="skills" value={skill} />
-            ))} */}
-
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-4">
               {returnUrl ? (
