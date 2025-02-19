@@ -1,9 +1,9 @@
 import {
   type ClientLoaderFunctionArgs,
-  type ShouldRevalidateFunctionArgs,
   data,
   redirect,
   useActionData,
+  useFetcher,
   useLoaderData,
 } from 'react-router';
 import { Form } from 'react-router';
@@ -12,10 +12,10 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { useCallback, useState } from 'react';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
-import { createSkills } from '../../utils/aiServices';
 import { getUser, updateUser } from '../../utils/user';
-import { containsInappropriateWords } from '../../utils/filter';
 import type { FormErrors } from '../../components/Input';
+import useEffectOnce from '../../hooks/useEffectOnce';
+import Loading from '../../components/Loading';
 
 export const SkillsSchema = z.object({
   expertRecommended: z.array(z.string()),
@@ -57,47 +57,26 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 // TODO: HOTFIX see github issue https://github.com/remix-run/react-router/issues/12607
 let cachedClientLoader: undefined | any;
 
-export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
-  const { actionResult } = args;
-  if (actionResult.init.status !== 302) {
-    cachedClientLoader = undefined;
-  }
-  return false;
-}
+// export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
+//   const { actionResult } = args;
+//   if (actionResult.init.status !== 302) {
+//     cachedClientLoader = undefined;
+//   }
+//   return false;
+// }
 
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   // if (cachedClientLoader) return cachedClientLoader;
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
-  let calculatedSkills: TSkills | undefined;
 
-  // TODO: get rid of null assertion
-  const badWord = containsInappropriateWords(user?.experience!);
+  const firstJobTitle = user?.experience[0].jobTitle!;
+  console.log(firstJobTitle);
 
-  if (badWord) {
-    return Response.json(
-      { error: `The term "${badWord}" is not allowed.` },
-      { status: 400 },
-    );
-  }
-
-  if (user?.experience) {
-    // TODO: batch job the jobs and give the model more "details"
-    const firstJob = user.experience[0].jobTitle;
-    // TODO: get rid of null assertion
-    calculatedSkills = await createSkills(firstJob!);
-    const finalResult = SkillsSchema.parse(calculatedSkills);
-    cachedClientLoader = {
-      prevSkills: user?.skills,
-      skills: finalResult,
-      returnUrl,
-    };
-    return Response.json(cachedClientLoader);
-  }
   cachedClientLoader = {
     prevSkills: user?.skills,
-    skills: calculatedSkills,
+    firstJobTitle,
     returnUrl,
   };
   return Response.json(cachedClientLoader);
@@ -107,8 +86,9 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 clientLoader.hydrate = true as const;
 
 export default function Skills() {
-  const { prevSkills, skills, returnUrl } =
+  const { prevSkills, firstJobTitle, returnUrl } =
     useLoaderData<typeof clientLoader>();
+  const fetcher = useFetcher<TSkills>();
   const actionData = useActionData<typeof clientAction>();
   const [userSkills, setUserSkills] = useState<TSkills>(
     prevSkills || {
@@ -139,6 +119,17 @@ export default function Skills() {
       other: prev.other.filter((skill) => skill !== skillToRemove),
     }));
   }, []);
+
+  useEffectOnce(() => {
+    if (fetcher.state === 'idle' && !fetcher.data) {
+      const formData = new FormData();
+      formData.set('jobSearch', firstJobTitle || '');
+      fetcher.submit(formData, {
+        method: 'POST',
+        action: '/api/skills',
+      });
+    }
+  });
 
   return (
     <main className="max-w-6xl mx-auto">
@@ -217,23 +208,24 @@ export default function Skills() {
                 size="text-sm"
                 classNames="mb-3"
               />
-              {(
-                skills.expertRecommended || [
-                  'Microsoft Office',
-                  'Collaboration',
-                  'Decision-making',
-                  'Organization skills',
-                  'Public Speaking',
-                ]
-              ).map((skill) => (
-                <Button
-                  key={skill}
-                  type="custom"
-                  callback={() => handleAddSkill(skill, 'expertRecommended')}
-                  text={`+ ${skill}`}
-                  textSize="text-sm"
-                  action="button"
-                  classNames="
+              <Loading fetcher={fetcher}>
+                {(
+                  fetcher.data?.expertRecommended || [
+                    'Microsoft Office',
+                    'Collaboration',
+                    'Decision-making',
+                    'Organization skills',
+                    'Public Speaking',
+                  ]
+                ).map((skill) => (
+                  <Button
+                    key={skill}
+                    type="custom"
+                    callback={() => handleAddSkill(skill, 'expertRecommended')}
+                    text={`+ ${skill}`}
+                    textSize="text-sm"
+                    action="button"
+                    classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
                   py-2 px-4
@@ -243,31 +235,34 @@ export default function Skills() {
                   rounded-md border
                   transition-colors
                   "
-                />
-              ))}
+                  />
+                ))}
+              </Loading>
+
               <Heading
                 level="h4"
                 text="Other Skills"
                 size="text-sm"
                 classNames="mb-3"
               />
-              {(
-                skills.other || [
-                  'Time Management',
-                  'Communication',
-                  'Problem Solving',
-                  'Leadership',
-                  'Active Listening',
-                ]
-              ).map((skill) => (
-                <Button
-                  key={skill}
-                  type="custom"
-                  callback={() => handleAddSkill(skill, 'other')}
-                  text={`+ ${skill}`}
-                  textSize="text-sm"
-                  action="button"
-                  classNames="
+              <Loading fetcher={fetcher}>
+                {(
+                  fetcher.data?.other || [
+                    'Time Management',
+                    'Communication',
+                    'Problem Solving',
+                    'Leadership',
+                    'Active Listening',
+                  ]
+                ).map((skill) => (
+                  <Button
+                    key={skill}
+                    type="custom"
+                    callback={() => handleAddSkill(skill, 'other')}
+                    text={`+ ${skill}`}
+                    textSize="text-sm"
+                    action="button"
+                    classNames="
                   w-full text-left
                   dark:hover:bg-gray-800
                   py-2 px-4
@@ -277,8 +272,9 @@ export default function Skills() {
                   rounded-md border
                   transition-colors
                   "
-                />
-              ))}
+                  />
+                ))}
+              </Loading>
             </div>
           </div>
         </div>

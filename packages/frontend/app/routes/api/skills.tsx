@@ -12,10 +12,13 @@ const formSchema = z.object({
   jobSearch: z.string(),
 });
 
+type FormSubmission = z.infer<typeof formSchema>;
 export const SkillsSchema = z.object({
   expertRecommended: z.array(z.string()),
   other: z.array(z.string()),
 });
+
+type Skills = z.infer<typeof SkillsSchema>;
 
 const containsInappropriateWords = (input: string): string | null => {
   if (filter.isProfane(input)) {
@@ -30,7 +33,7 @@ export const clientAction: ClientActionFunction = async ({
   const cloneData = request.clone();
   const formData = await cloneData.formData();
   const fields = Object.fromEntries(formData.entries());
-  let result: any;
+  let result: FormSubmission;
 
   try {
     result = formSchema.parse(fields);
@@ -55,31 +58,14 @@ export const clientAction: ClientActionFunction = async ({
     );
   }
 
-  let skills = {
-    skills: {
-      expertRecommended: [
-        'Programming Languages (e.g., Java, Python, C++)',
-        'Problem-Solving',
-        'Software Development Lifecycle',
-        'Algorithms and Data Structures',
-        'Debugging',
-      ],
-      other: [
-        'Database Management',
-        'Version Control Systems',
-        'Agile Methodologies',
-        'Communication Skills',
-        'Teamwork',
-      ],
-    },
-  };
+
   if (result.jobSearch) {
-    skills = await createSkills(result.jobSearch);
+    const skills = await createSkills(result.jobSearch);
     const finalResult = SkillsSchema.parse(skills);
 
     return Response.json(finalResult);
   }
-  return Response.json(skills);
+  return Response.json({});
 };
 
 // example of how to do a clientLoader
