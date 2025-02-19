@@ -12,7 +12,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import { updateUser } from '../../utils/user';
+import { getUser, updateUser } from '../../utils/user';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -59,17 +59,19 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+  const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
 
   return {
+    prevInfo: user?.info,
     returnUrl,
   };
 }
 
 export default function PersonalInfo() {
   const actionData = useActionData<ActionData>();
-  const { returnUrl } = useLoaderData<typeof clientLoader>();
+  const { returnUrl, prevInfo } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
 
   return (
@@ -93,25 +95,67 @@ export default function PersonalInfo() {
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* First Name */}
-          <Input label="First Name" type="text" id="firstName" error={errors} />
+          <Input
+            label="First Name"
+            type="text"
+            id="firstName"
+            error={errors}
+            defaultValue={prevInfo?.firstName}
+          />
 
           {/* Last Name */}
-          <Input label="Last Name" type="text" id="lastName" error={errors} />
+          <Input
+            label="Last Name"
+            type="text"
+            id="lastName"
+            error={errors}
+            defaultValue={prevInfo?.lastName}
+          />
 
           {/* City */}
-          <Input label="City" type="text" id="city" error={errors} />
+          <Input
+            label="City"
+            type="text"
+            id="city"
+            error={errors}
+            defaultValue={prevInfo?.city}
+          />
 
           {/* State */}
-          <Input label="State" type="text" id="state" error={errors} />
+          <Input
+            label="State"
+            type="text"
+            id="state"
+            error={errors}
+            defaultValue={prevInfo?.state}
+          />
 
           {/* ZIP Code */}
-          <Input label="Zip Code" type="text" id="zipCode" error={errors} />
+          <Input
+            label="Zip Code"
+            type="text"
+            id="zipCode"
+            error={errors}
+            defaultValue={prevInfo?.zipCode}
+          />
 
           {/* Phone */}
-          <Input label="Phone" type="text" id="phone" error={errors} />
+          <Input
+            label="Phone"
+            type="text"
+            id="phone"
+            error={errors}
+            defaultValue={prevInfo?.phone}
+          />
 
           {/* Email */}
-          <Input label="Email" type="email" id="email" error={errors} />
+          <Input
+            label="Email"
+            type="email"
+            id="email"
+            error={errors}
+            defaultValue={prevInfo?.email}
+          />
         </div>
 
         <div className="flex justify-end">

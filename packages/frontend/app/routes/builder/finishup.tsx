@@ -55,7 +55,7 @@ export default function Finish() {
             <NavLink
               to={{
                 pathname: '/info',
-                search: `?returnUrl=${encodeURIComponent('finish-up')}`,
+                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
               }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
