@@ -155,7 +155,7 @@ export default function Education() {
           step={1}
           id="graduationDate"
           error={errors}
-          defaultValue={prevEducation?.graduationDate?.getFullYear().toString()}
+          defaultValue={prevEducation?.graduationDate?.getUTCFullYear().toString()}
         />
 
         {/* Current Student Checkbox */}
