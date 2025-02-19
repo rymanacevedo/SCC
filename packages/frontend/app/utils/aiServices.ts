@@ -39,6 +39,53 @@ const ExperienceSchema = z.object({
   ),
 });
 
+const SummarySchema = z.object({
+  title: z.string().describe('The job description title.'),
+  text: z
+    .string()
+    .describe(
+      'A summary of the profession. This is roughly 3-4 sentences. No more then 5 sentences.',
+    ),
+}).array();
+
+export const createSummary = async (prompt: string) => {
+  const result = await generateObject({
+    model: GeminiModel,
+    schema: SummarySchema,
+    schemaName: 'Summary',
+    prompt,
+    system: `
+      <example1>
+      <title>Software Developer</title>
+      <text>Results-driven software developer with 5 years of experience building web applications. Proficient in JavaScript, React, and Node.js. Strong problem-solving abilities and experience working in agile environments.
+      </text>
+      </example1>
+      <example2>
+      <title>Project Manager</title>
+      <text>
+      Certified project manager with proven track record of delivering complex projects on time and within budget. Skilled in stakeholder management and agile methodologies.
+      </text>
+      </example2>
+      <example3>
+      <title>Marketing Specialist</title>
+      <text>
+      Creative marketing professional with expertise in digital marketing campaigns and social media strategy. Track record of increasing engagement and driving conversion rates.
+      </text>
+      </example3>
+
+      You are helping me write professional summaries for a specific job.
+
+      When I give you the title, return the summaries as an array.
+
+      Be as specific as possible
+      ${Blacklist}
+      Use your best judgement if given a term that doesn't look like a job, just send back general professional summary.
+    `,
+  });
+
+  return result.object;
+};
+
 export const createSkills = async (prompt: string) => {
   const result = await generateObject({
     model: GeminiModel,

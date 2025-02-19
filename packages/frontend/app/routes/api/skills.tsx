@@ -18,8 +18,6 @@ export const SkillsSchema = z.object({
   other: z.array(z.string()),
 });
 
-type Skills = z.infer<typeof SkillsSchema>;
-
 const containsInappropriateWords = (input: string): string | null => {
   if (filter.isProfane(input)) {
     return input.split(' ').find((word) => filter.isProfane(word)) || null;

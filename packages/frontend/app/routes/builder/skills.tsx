@@ -72,7 +72,6 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const returnUrl = url.searchParams.get('returnUrl');
 
   const firstJobTitle = user?.experience[0].jobTitle!;
-  console.log(firstJobTitle);
 
   cachedClientLoader = {
     prevSkills: user?.skills,

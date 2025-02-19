@@ -1,9 +1,12 @@
-import { redirect } from 'react-router';
+import { redirect, useFetcher, useLoaderData } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import Loading from '../../components/Loading';
+import useEffectOnce from '../../hooks/useEffectOnce';
+import { getUser } from '../../utils/user';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -23,24 +26,35 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+  const user = getUser();
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
+  const firstJobTitle = user?.experience[0].jobTitle!;
+
+  return Response.json({
+    firstJobTitle,
+    prevSummary: user?.summary?.summary,
+    returnUrl,
+  });
+}
+
 export default function Summary() {
   const actionData = useActionData<typeof clientAction>();
+  const { firstJobTitle, prevSummary, returnUrl } =
+    useLoaderData<typeof clientLoader>();
+  const fetcher = useFetcher<{ text: string; title: string }[]>();
 
-  // Example summaries based on different professions
-  const exampleSummaries = [
-    {
-      title: 'Software Developer',
-      text: 'Results-driven software developer with 5 years of experience building web applications. Proficient in JavaScript, React, and Node.js. Strong problem-solving abilities and experience working in agile environments.',
-    },
-    {
-      title: 'Project Manager',
-      text: 'Certified project manager with proven track record of delivering complex projects on time and within budget. Skilled in stakeholder management and agile methodologies.',
-    },
-    {
-      title: 'Marketing Specialist',
-      text: 'Creative marketing professional with expertise in digital marketing campaigns and social media strategy. Track record of increasing engagement and driving conversion rates.',
-    },
-  ];
+  useEffectOnce(() => {
+    if (fetcher.state === 'idle' && !fetcher.data) {
+      const formData = new FormData();
+      formData.set('jobSearch', firstJobTitle || '');
+      fetcher.submit(formData, {
+        method: 'POST',
+        action: '/api/summary',
+      });
+    }
+  });
 
   return (
     <main className="max-w-4xl mx-auto">
@@ -125,32 +139,34 @@ export default function Summary() {
             classNames="mb-4"
           />
           <div className="space-y-4">
-            {exampleSummaries.map((example) => (
-              <button
-                type="button"
-                key={example.text}
-                className="text-left border p-4 rounded-md cursor-pointer 
+            <Loading fetcher={fetcher}>
+              {fetcher.data?.map((example) => (
+                <button
+                  type="button"
+                  key={example.text}
+                  className="text-left border p-4 rounded-md cursor-pointer 
             hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                onClick={() => {
-                  const textarea = document.getElementById(
-                    'summary',
-                  ) as HTMLTextAreaElement;
-                  if (textarea) {
-                    textarea.value = example.text;
-                  }
-                }}
-              >
-                <Heading
-                  text={example.title}
-                  level="h3"
-                  size="text-base"
-                  classNames="mb-2"
-                />
-                <p className="text-sm dark:text-gray-400 text-gray-600">
-                  {example.text}
-                </p>
-              </button>
-            ))}
+                  onClick={() => {
+                    const textarea = document.getElementById(
+                      'summary',
+                    ) as HTMLTextAreaElement;
+                    if (textarea) {
+                      textarea.value = example.text;
+                    }
+                  }}
+                >
+                  <Heading
+                    text={example.title}
+                    level="h3"
+                    size="text-base"
+                    classNames="mb-2"
+                  />
+                  <p className="text-sm dark:text-gray-400 text-gray-600">
+                    {example.text}
+                  </p>
+                </button>
+              ))}
+            </Loading>
           </div>
         </div>
       </div>
