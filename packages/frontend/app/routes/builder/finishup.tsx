@@ -143,13 +143,35 @@ export default function Finish() {
               Edit
             </NavLink>
           </div>
-          <ul className='p-4 list-disc'>
-            {user.experience?.map((e) => (
-              <li key={e.jobId} className="dark:text-gray-400 text-gray-600">
-                {e.details}
-              </li>
-            ))}
-          </ul>
+          <div className="p-1">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {user.experience?.map((job) => (
+                <div key={job.jobId} className="py-4">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {job.jobTitle}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {job.startDate?.toLocaleDateString()} -{' '}
+                      {job.currentlyEmployed
+                        ? 'Present'
+                        : job.endDate?.toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    {job.employer} • {job.location}
+                  </div>
+                  {job.details && (
+                    <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside">
+                      {job.details.map((detail, index) => (
+                        <li key={index}>{detail}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Education Section */}
