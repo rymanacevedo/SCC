@@ -1,8 +1,8 @@
 import {
-  ClientLoaderFunctionArgs,
+  type ClientLoaderFunctionArgs,
+  type ShouldRevalidateFunctionArgs,
   data,
   redirect,
-  type ShouldRevalidateFunctionArgs,
   useActionData,
   useLoaderData,
 } from 'react-router';
@@ -66,11 +66,11 @@ export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
 }
 
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
-  if (cachedClientLoader) return cachedClientLoader;
+  // if (cachedClientLoader) return cachedClientLoader;
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
-  let skills: TSkills | undefined;
+  let calculatedSkills: TSkills | undefined;
 
   // TODO: get rid of null assertion
   const badWord = containsInappropriateWords(user?.experience!);
@@ -86,8 +86,8 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
     // TODO: batch job the jobs and give the model more "details"
     const firstJob = user.experience[0].jobTitle;
     // TODO: get rid of null assertion
-    skills = await createSkills(firstJob!);
-    const finalResult = SkillsSchema.parse(skills);
+    calculatedSkills = await createSkills(firstJob!);
+    const finalResult = SkillsSchema.parse(calculatedSkills);
     cachedClientLoader = {
       prevSkills: user?.skills,
       skills: finalResult,
@@ -97,7 +97,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   }
   cachedClientLoader = {
     prevSkills: user?.skills,
-    skills,
+    skills: calculatedSkills,
     returnUrl,
   };
   return Response.json(cachedClientLoader);
@@ -111,7 +111,7 @@ export default function Skills() {
     useLoaderData<typeof clientLoader>();
   const actionData = useActionData<typeof clientAction>();
   const [userSkills, setUserSkills] = useState<TSkills>(
-    prevSkills ?? {
+    prevSkills || {
       expertRecommended: [],
       other: [],
     },
