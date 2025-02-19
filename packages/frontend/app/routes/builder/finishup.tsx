@@ -111,7 +111,33 @@ export default function Finish() {
               classNames="font-semibold"
             />
             <NavLink
-              to="/summary"
+              to={{
+                pathname: '/summary',
+                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Edit
+            </NavLink>
+          </div>
+          <p className="dark:text-gray-400 text-gray-600">
+            {user.summary?.summary}
+          </p>
+        </div>
+
+        <div className="p-6 border-b">
+          <div className="flex justify-between items-center mb-4">
+            <Heading
+              text="Job Experience"
+              level="h2"
+              size="text-lg"
+              classNames="font-semibold"
+            />
+            <NavLink
+              to={{
+                pathname: '/experience-summary',
+                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
+              }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               Edit
