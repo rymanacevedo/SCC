@@ -1,7 +1,6 @@
 // app/routes/builder.finish.tsx
 import { NavLink, redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
-import { useState } from 'react';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
@@ -185,7 +184,10 @@ export default function Finish() {
               classNames="font-semibold"
             />
             <NavLink
-              to="/skills"
+              to={{
+                pathname: '/skills',
+                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
+              }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               Edit
