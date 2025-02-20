@@ -12,7 +12,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import { getUser, updateUser } from '../../utils/user';
+import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -60,6 +60,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const user = getUser();
+  clearQueuedExperience();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
 

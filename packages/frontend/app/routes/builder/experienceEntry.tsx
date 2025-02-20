@@ -10,14 +10,16 @@ import {
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FormErrors } from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import {
   getExperienceDetails,
-  updateExperienceDetails,
+  getQueuedExperience,
+  setQueuedExperience,
+  updateUser,
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
 
@@ -49,8 +51,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const formattedData = transformExperienceDetails(entries);
   try {
     const validatedData = ExperienceEntrySchema.parse(formattedData);
-    updateExperienceDetails(validatedData.jobId, validatedData.jobDetails);
-    return redirect('/experience-summary');
+    const exp = getQueuedExperience();
+    if (exp) {
+      exp.details = [...validatedData.jobDetails];
+      updateUser('experience', exp);
+      return redirect('/experience-summary');
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       if (error instanceof z.ZodError) {
@@ -70,17 +76,17 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
+  let exp = getQueuedExperience();
   let experience;
   if (jobId) {
     experience = getExperienceDetails(jobId);
   }
 
-  return {
-    jobId,
-    jobTitle: experience?.jobTitle,
-    employer: experience?.employer,
-    details: experience?.details,
-  };
+  if (!exp) {
+    setQueuedExperience(experience);
+  }
+
+  return data(getQueuedExperience());
 }
 
 export default function ExperienceEntry() {

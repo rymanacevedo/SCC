@@ -21,6 +21,7 @@ export const UserSchema = z.object({
 });
 
 export type User = z.infer<typeof UserSchema>;
+export type Experience = z.infer<typeof BaseExperienceSchema>;
 
 export function getUser(): User | null {
   const value = window.sessionStorage.getItem('user');
@@ -38,8 +39,29 @@ export function getUser(): User | null {
   }
 }
 
+export function getQueuedExperience(): Experience | null {
+  const value = window.sessionStorage.getItem('queuedExperience');
+  try {
+    if (value) {
+      const exp = JSON.parse(value);
+      const parsedExp = BaseExperienceSchema.parse(exp);
+      return parsedExp;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('No experience in the queue.');
+    console.error(error);
+    return null;
+  }
+}
+
 export function setUser(user: User) {
   return window.sessionStorage.setItem('user', JSON.stringify(user));
+}
+
+export function setQueuedExperience(exp: Experience) {
+  return window.sessionStorage.setItem('queuedExperience', JSON.stringify(exp));
 }
 
 export function updateUser<K extends Exclude<keyof User, 'userId'>>(
@@ -161,10 +183,20 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
     : Required<NonNullable<User[K]>>;
 }
 
+export function clearQueuedExperience() {
+  const exp = getQueuedExperience();
+  if (!exp) {
+    console.warn('No experience in the queued.');
+    return;
+  }
+
+  sessionStorage.removeItem('queuedExperience');
+}
+
 export function getExperienceDetails(jobId: string) {
   const currentUser = getUser();
   if (!currentUser?.experience) {
-    console.warn('No user or experience found in sessionStorage.');
+    console.warn('No user or experience found.');
     return;
   }
 
