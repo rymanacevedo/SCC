@@ -110,6 +110,7 @@ function Input(props: InputProps) {
         defaultValue={defaultValue}
         onChange={handleChange}
         onBlur={handleBlur}
+        disabled={disabled}
         className={`${inputStyles} ${classNames} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
