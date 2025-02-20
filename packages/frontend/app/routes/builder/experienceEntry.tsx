@@ -16,6 +16,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import {
+  type Experience,
   getExperienceDetails,
   getQueuedExperience,
   setQueuedExperience,
