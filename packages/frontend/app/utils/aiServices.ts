@@ -39,14 +39,16 @@ const ExperienceSchema = z.object({
   ),
 });
 
-const SummarySchema = z.object({
-  title: z.string().describe('The job description title.'),
-  text: z
-    .string()
-    .describe(
-      'A summary of the profession. This is roughly 3-4 sentences. No more then 5 sentences.',
-    ),
-}).array();
+const SummarySchema = z
+  .object({
+    title: z.string().describe('The job description title.'),
+    text: z
+      .string()
+      .describe(
+        'A summary of the profession. This is roughly 3-4 sentences. No more then 5 sentences.',
+      ),
+  })
+  .array();
 
 export const createSummary = async (prompt: string) => {
   const result = await generateObject({

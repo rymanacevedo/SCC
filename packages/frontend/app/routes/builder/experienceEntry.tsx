@@ -101,7 +101,7 @@ export default function ExperienceEntry() {
         action: '/api/experienceEntry',
       });
     }
-  })
+  });
 
   const handleAddExperience = useCallback(
     (experience: string) => {

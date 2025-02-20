@@ -1,5 +1,4 @@
-const defaultShape =
-  'mt-1 block w-full border shadow-sm [&:user-invalid]:border-red-500 [&:user-invalid]:text-red-500';
+const defaultShape = 'mt-1 block w-full border shadow-sm';
 
 export const inputTypes = {
   text: `${defaultShape}`,

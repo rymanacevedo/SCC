@@ -56,7 +56,6 @@ export const clientAction: ClientActionFunction = async ({
     );
   }
 
-
   if (result.jobSearch) {
     const skills = await createSkills(result.jobSearch);
     const finalResult = SkillsSchema.parse(skills);

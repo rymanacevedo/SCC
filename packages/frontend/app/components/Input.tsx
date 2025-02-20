@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { type InputTypeKeys, inputTypes } from '../utils/inputTypes';
 
 export type FormErrors = {
@@ -34,6 +34,9 @@ type InputProps =
     });
 
 function Input(props: InputProps) {
+  const [isDirty, setIsDirty] = useState(false);
+  const [wasInvalid, setWasInvalid] = useState(false);
+  const [showError, setShowError] = useState(false);
   const inputStyles = inputTypes[props.type];
   const {
     label,
@@ -46,7 +49,7 @@ function Input(props: InputProps) {
     error,
     disabled,
     placeholder,
-    pattern
+    pattern,
   } = props;
 
   const isNumberInput = (
@@ -56,6 +59,29 @@ function Input(props: InputProps) {
       typeof p === 'object' && p !== null && 'type' in p && p.type === 'number'
     );
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isDirty) setIsDirty(true);
+    if (wasInvalid) {
+      setShowError(!e.target.validity.valid);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (!isDirty) setIsDirty(true);
+
+    const isValid = e.target.validity.valid;
+    setShowError(!isValid);
+    setWasInvalid(!isValid);
+  };
+
+  useEffect(function handleFlow() {
+    if (error?.[id]) {
+      setIsDirty(true);
+      setShowError(true);
+      setWasInvalid(true);
+    }
+  }, [error, id]);
 
   return (
     <div>
@@ -78,14 +104,19 @@ function Input(props: InputProps) {
         pattern={pattern}
         placeholder={placeholder}
         defaultValue={defaultValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
         className={`${inputStyles} ${classNames} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
             : ''
-        }`}
-        disabled={disabled}
+        }
+        ${isDirty && showError ? 'border-red-500' : ''}
+        `}
       />
-      {error ? <p className="mt-1 text-sm text-red-600">{error[id]}</p> : null}
+      {isDirty && showError && error?.[id] && (
+        <p className="mt-1 text-sm text-red-600">{error[id]}</p>
+      )}
     </div>
   );
 }
