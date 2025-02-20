@@ -101,6 +101,7 @@ export default function PersonalInfo() {
             id="firstName"
             error={errors}
             defaultValue={prevInfo?.firstName}
+            required={true}
           />
 
           {/* Last Name */}
@@ -110,6 +111,7 @@ export default function PersonalInfo() {
             id="lastName"
             error={errors}
             defaultValue={prevInfo?.lastName}
+            required={true}
           />
 
           {/* City */}
@@ -119,6 +121,7 @@ export default function PersonalInfo() {
             id="city"
             error={errors}
             defaultValue={prevInfo?.city}
+            required={true}
           />
 
           {/* State */}
@@ -128,6 +131,7 @@ export default function PersonalInfo() {
             id="state"
             error={errors}
             defaultValue={prevInfo?.state}
+            required={true}
           />
 
           {/* ZIP Code */}
@@ -137,15 +141,18 @@ export default function PersonalInfo() {
             id="zipCode"
             error={errors}
             defaultValue={prevInfo?.zipCode}
+            required={true}
           />
 
           {/* Phone */}
           <Input
             label="Phone"
-            type="text"
+            type="tel"
             id="phone"
+            pattern="\d{10}"
             error={errors}
             defaultValue={prevInfo?.phone}
+            required={true}
           />
 
           {/* Email */}
@@ -155,6 +162,7 @@ export default function PersonalInfo() {
             id="email"
             error={errors}
             defaultValue={prevInfo?.email}
+            required={true}
           />
         </div>
 

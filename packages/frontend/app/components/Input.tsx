@@ -18,6 +18,7 @@ type BaseInputProps = {
   error?: FormErrors;
   placeholder?: string;
   disabled?: boolean;
+  pattern?: string;
 };
 
 type NumberRequiredProps = {
@@ -45,6 +46,7 @@ function Input(props: InputProps) {
     error,
     disabled,
     placeholder,
+    pattern
   } = props;
 
   const isNumberInput = (
@@ -73,6 +75,7 @@ function Input(props: InputProps) {
         max={isNumberInput(props) ? props.max : undefined}
         step={isNumberInput(props) ? props.step : undefined}
         name={id}
+        pattern={pattern}
         placeholder={placeholder}
         defaultValue={defaultValue}
         className={`${inputStyles} ${classNames} ${
