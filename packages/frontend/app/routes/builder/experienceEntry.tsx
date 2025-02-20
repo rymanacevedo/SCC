@@ -10,14 +10,17 @@ import {
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FormErrors } from '../../components/Input';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import {
+  type Experience,
   getExperienceDetails,
-  updateExperienceDetails,
+  getQueuedExperience,
+  setQueuedExperience,
+  updateUser,
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
 
@@ -42,6 +45,8 @@ function transformExperienceDetails(obj: {
   };
 }
 
+let cachedExp: any = {};
+
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
@@ -49,7 +54,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const formattedData = transformExperienceDetails(entries);
   try {
     const validatedData = ExperienceEntrySchema.parse(formattedData);
-    updateExperienceDetails(validatedData.jobId, validatedData.jobDetails);
+    cachedExp.details = [...validatedData.jobDetails];
+    cachedExp = updateUser('experience', cachedExp);
     return redirect('/experience-summary');
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -70,17 +76,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
+  const exp = getQueuedExperience();
   let experience;
   if (jobId) {
     experience = getExperienceDetails(jobId);
   }
 
-  return {
-    jobId,
-    jobTitle: experience?.jobTitle,
-    employer: experience?.employer,
-    details: experience?.details,
-  };
+  cachedExp = exp ||
+    experience || {
+      jobId: '',
+      jobTitle: '',
+      employer: '',
+      location: '',
+      startDate: new Date(),
+      currentlyEmployed: false,
+    };
+
+  return data(cachedExp);
 }
 
 export default function ExperienceEntry() {

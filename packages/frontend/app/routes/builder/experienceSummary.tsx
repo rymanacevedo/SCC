@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import Heading from '../../components/Heading';
-import { getRequiredUserTrait } from '../../utils/user';
+import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 import { Form, NavLink, redirect, useLoaderData } from 'react-router';
 import Button from '../../components/Button';
 
@@ -9,6 +9,7 @@ export async function clientAction() {
 }
 
 export async function clientLoader() {
+  clearQueuedExperience();
   const experiences = getRequiredUserTrait('experience');
   return experiences;
 }

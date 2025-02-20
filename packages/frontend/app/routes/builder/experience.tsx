@@ -4,13 +4,21 @@ import {
   redirect,
   useActionData,
   useLoaderData,
+  useNavigate,
 } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
-import { getExperienceDetails, updateUser } from '../../utils/user';
+import {
+  Experience,
+  getExperienceDetails,
+  getQueuedExperience,
+  getQueuedExperince,
+  setQueuedExperience,
+  updateUser,
+} from '../../utils/user';
 import type { ActionData } from './personalinfo';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
@@ -75,7 +83,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   try {
     const validatedData = ExperienceSchema.parse(createdData);
-    updateUser('experience', validatedData);
+    setQueuedExperience(validatedData);
 
     return redirect(`/experience-entry?jobId=${validatedData.jobId}`);
   } catch (error) {
@@ -95,11 +103,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
-  let experience;
+  const exp = getQueuedExperience();
+  let experience: Experience;
   if (jobId) {
     experience = getExperienceDetails(jobId);
   }
-  return experience;
+  return data({ prevExperience: exp ? exp : experience });
 }
 
 // Force the client loader to run during hydration
@@ -107,8 +116,9 @@ clientLoader.hydrate = true as const;
 
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
-  const prevExperience = useLoaderData<typeof clientLoader>();
+  const { prevExperience } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
+  const navigate = useNavigate();
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(
     prevExperience?.currentlyEmployed ?? false,
   );
@@ -218,7 +228,8 @@ export default function WorkExperience() {
             text="Previous"
             type="secondary"
             action="button"
-            callback={() => window.history.back()}
+            // TODO: clear any queued experience
+            callback={() => navigate('/info')}
           />
 
           <Button action="submit" text="Next Step" />
