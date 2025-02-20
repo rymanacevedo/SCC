@@ -75,13 +75,16 @@ function Input(props: InputProps) {
     setWasInvalid(!isValid);
   };
 
-  useEffect(function handleFlow() {
-    if (error?.[id]) {
-      setIsDirty(true);
-      setShowError(true);
-      setWasInvalid(true);
-    }
-  }, [error, id]);
+  useEffect(
+    function handleFlow() {
+      if (error?.[id]) {
+        setIsDirty(true);
+        setShowError(true);
+        setWasInvalid(true);
+      }
+    },
+    [error, id],
+  );
 
   return (
     <div>
@@ -97,6 +100,7 @@ function Input(props: InputProps) {
         required={required}
         type={type}
         id={id}
+        autoComplete="off"
         min={isNumberInput(props) ? props.min : undefined}
         max={isNumberInput(props) ? props.max : undefined}
         step={isNumberInput(props) ? props.step : undefined}
