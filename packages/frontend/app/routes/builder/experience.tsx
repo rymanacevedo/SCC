@@ -12,12 +12,10 @@ import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import {
-  Experience,
+  type Experience,
   getExperienceDetails,
   getQueuedExperience,
-  getQueuedExperince,
   setQueuedExperience,
-  updateUser,
 } from '../../utils/user';
 import type { ActionData } from './personalinfo';
 import { type ChangeEvent, useCallback, useState } from 'react';

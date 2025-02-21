@@ -122,6 +122,7 @@ export default function PersonalInfo() {
             defaultValue={prevInfo?.city}
           />
 
+          {/* TODO: selectbox for future release */}
           {/* State */}
           <Input
             label="State"

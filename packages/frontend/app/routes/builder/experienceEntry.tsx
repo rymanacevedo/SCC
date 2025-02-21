@@ -115,6 +115,11 @@ export default function ExperienceEntry() {
 
   const handleAddExperience = useCallback(
     (experience: string) => {
+      if (userExperience.length >= 6) {
+        // You could show a toast or alert here
+        alert('Maximum of 6 examples allowed.');
+        return;
+      }
       if (!userExperience.includes(experience)) {
         setUserExperience([...userExperience, experience]);
       }
@@ -375,21 +380,27 @@ export default function ExperienceEntry() {
               </p>
               {/* Manual Experience Input */}
               <div className="mt-4">
-                <input
-                  type="text"
-                  className="w-full border shadow-sm pl-2 py-2 rounded-md"
-                  placeholder="Type your experience and press Enter"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.target as HTMLInputElement;
-                      if (input.value.trim()) {
-                        handleAddExperience(input.value.trim());
-                        input.value = '';
+                {userExperience.length >= 6 ? (
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    Maximum number of experiences reached (6)
+                  </p>
+                ) : (
+                  <input
+                    type="text"
+                    className="w-full border shadow-sm pl-2 py-2 rounded-md"
+                    placeholder="Type your experience and press Enter"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const input = e.target as HTMLInputElement;
+                        if (input.value.trim()) {
+                          handleAddExperience(input.value.trim());
+                          input.value = '';
+                        }
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                )}
               </div>
               <div className="flex justify-between mt-3">
                 <input type="hidden" name="jobId" id="jobId" value={jobId} />
