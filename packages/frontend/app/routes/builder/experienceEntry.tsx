@@ -3,6 +3,7 @@ import {
   data,
   Form,
   redirect,
+  useActionData,
   useFetcher,
   useLoaderData,
   useNavigate,
@@ -16,7 +17,6 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import type { TExperience } from '../api/experienceEntry';
 import {
-  type Experience,
   getExperienceDetails,
   getQueuedExperience,
   setQueuedExperience,
@@ -26,7 +26,9 @@ import useEffectOnce from '../../hooks/useEffectOnce';
 
 const ExperienceEntrySchema = z.object({
   jobId: z.string(),
-  jobDetails: z.array(z.string()),
+  jobDetails: z
+    .array(z.string())
+    .min(2, 'Please add at least 2 examples of experience.'),
 });
 
 function transformExperienceDetails(obj: {
@@ -93,6 +95,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   const errors: any = fetcher.data?.data?.errors;
+  const action = useActionData<typeof clientAction>();
   const navigate = useNavigate();
   const { details, jobTitle, jobId, employer } =
     useLoaderData<typeof clientLoader>();
@@ -351,7 +354,6 @@ export default function ExperienceEntry() {
                         action="button"
                         callback={() => handleRemoveExperience(experience)}
                       />
-
                       <textarea
                         className="w-full border-0 field-sizing-content"
                         wrap="soft"
@@ -368,6 +370,9 @@ export default function ExperienceEntry() {
                   ))
                 )}
               </div>
+              <p className="mt-1 text-sm text-red-600">
+                {action?.data?.errors.jobDetails[0]}
+              </p>
               {/* Manual Experience Input */}
               <div className="mt-4">
                 <input
