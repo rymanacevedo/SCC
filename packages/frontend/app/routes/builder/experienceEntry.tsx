@@ -76,20 +76,16 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
-  let exp = getQueuedExperience();
-  let experience;
+  const exp = getQueuedExperience();
   if (jobId) {
-    experience = getExperienceDetails(jobId);
+    const experience = getExperienceDetails(jobId);
+    return data(experience);
   }
 
-  if (!exp) {
-    setQueuedExperience(experience);
-  }
-
-  return data(getQueuedExperience());
+  return data(exp);
 }
 
 export default function ExperienceEntry() {
@@ -99,6 +95,7 @@ export default function ExperienceEntry() {
   const navigate = useNavigate();
   const { details, jobTitle, jobId, employer } =
     useLoaderData<typeof clientLoader>();
+  const job = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>(details || []);
 
   useEffectOnce(() => {

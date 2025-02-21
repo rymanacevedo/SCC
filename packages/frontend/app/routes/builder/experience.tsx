@@ -73,7 +73,11 @@ const ExperienceSchema = BaseExperienceSchema.refine(
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
-
+  const url = new URL(request.url);
+  const jobId = url.searchParams.get('jobId');
+  const redirectUrl = jobId
+    ? `/experience-entry?jobId=${encodeURIComponent(jobId)}`
+    : '/experience-entry';
   const createdData = {
     ...entries,
     currentlyEmployed: formData.get('currentlyEmployed') === 'on',
@@ -83,7 +87,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const validatedData = ExperienceSchema.parse(createdData);
     setQueuedExperience(validatedData);
 
-    return redirect(`/experience-entry?jobId=${validatedData.jobId}`);
+    return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return data(
@@ -102,11 +106,11 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
   const exp = getQueuedExperience();
-  let experience: Experience;
   if (jobId) {
-    experience = getExperienceDetails(jobId);
+    const experience = getExperienceDetails(jobId);
+    return data({ prevExperience: experience, jobId });
   }
-  return data({ prevExperience: exp ? exp : experience });
+  return data({ prevExperience: exp, jobId });
 }
 
 // Force the client loader to run during hydration
@@ -114,7 +118,7 @@ clientLoader.hydrate = true as const;
 
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
-  const { prevExperience } = useLoaderData<typeof clientLoader>();
+  const { prevExperience, jobId } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
   const navigate = useNavigate();
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(
@@ -222,13 +226,14 @@ export default function WorkExperience() {
         </div>
 
         <div className="flex justify-between">
-          <Button
-            text="Previous"
-            type="secondary"
-            action="button"
-            // TODO: clear any queued experience
-            callback={() => navigate('/info')}
-          />
+          {!jobId ? (
+            <Button
+              text="Previous"
+              type="secondary"
+              action="button"
+              callback={() => navigate('/info')}
+            />
+          ) : null}
 
           <Button action="submit" text="Next Step" />
         </div>

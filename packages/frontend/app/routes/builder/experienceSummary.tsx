@@ -25,12 +25,16 @@ function ExperienceSummary() {
       />
       <div>
         {ex.map((e, index) => (
-          <div
-            className="border mb-4 pr-10 pl-14 pt-3 pb-3 rounded-md cursor-pointer 
-          hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+          <NavLink
+            to={{
+              pathname: '/experience',
+              search: `?jobId=${encodeURIComponent(e.jobId)}`,
+            }}
             key={e.jobId}
           >
-            <div className="">
+            <div className='border mb-4 pr-10 pl-14 pt-3 pb-3 rounded-md cursor-pointer 
+          hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative'>
+            <div>
               <span className="absolute left-0 top-0 border border-l-0 border-t-0 pt-2 pb-2 pr-4 pl-4 rounded">
                 {index + 1}
               </span>
@@ -39,16 +43,18 @@ function ExperienceSummary() {
             <em>{e.location}</em>
             <span> | </span>
             <em>
-              {e.startDate.getFullYear()}
+              {e.startDate.getUTCFullYear()
+            .toString()}
               <span> - </span>
-              {e.endDate ? e.endDate.getFullYear() : 'Present'}
+              {e.endDate ? e.endDate.getUTCFullYear() : 'Present'}
             </em>
             <ul className="p-4 list-disc">
               {e.details?.map((d, index) => (
                 <li key={`${e.jobId}-detail-${index}`}>{d}</li>
               ))}
             </ul>
-          </div>
+            </div>
+          </NavLink>
         ))}
       </div>
 
