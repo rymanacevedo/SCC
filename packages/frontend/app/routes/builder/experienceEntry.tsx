@@ -19,7 +19,6 @@ import type { TExperience } from '../api/experienceEntry';
 import {
   getExperienceDetails,
   getQueuedExperience,
-  setQueuedExperience,
   updateUser,
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
@@ -80,12 +79,24 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
   const exp = getQueuedExperience();
+
+  // we prefer the experience in the queue first over the jobId
+  if (exp) {
+    if (jobId) {
+      const storedExperience = getExperienceDetails(jobId);
+      return data({
+        ...exp,
+        details: storedExperience.details || [],
+      });
+    }
+    return data(exp);
+  }
+
+  // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
     return data(experience);
   }
-
-  return data(exp);
 }
 
 export default function ExperienceEntry() {
@@ -113,7 +124,6 @@ export default function ExperienceEntry() {
   const handleAddExperience = useCallback(
     (experience: string) => {
       if (userExperience.length >= 6) {
-        // You could show a toast or alert here
         alert('Maximum of 6 examples allowed.');
         return;
       }

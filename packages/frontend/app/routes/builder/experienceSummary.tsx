@@ -2,6 +2,7 @@ import { memo } from 'react';
 import Heading from '../../components/Heading';
 import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 import {
+  data,
   Form,
   NavLink,
   redirect,
@@ -9,18 +10,29 @@ import {
   useNavigate,
 } from 'react-router';
 import Button from '../../components/Button';
+import type { Route } from '../../+types/root';
 
-export async function clientAction() {
-  return redirect('/education-level');
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
+
+  const redirectUrl = returnUrl ? returnUrl : '/education-level';
+  return redirect(redirectUrl);
 }
 
-export async function clientLoader() {
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   clearQueuedExperience();
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
   const experiences = getRequiredUserTrait('experience');
-  return experiences;
+
+  return data({
+    experiences,
+    returnUrl,
+  });
 }
 function ExperienceSummary() {
-  const ex = useLoaderData<typeof clientLoader>();
+  const { experiences, returnUrl } = useLoaderData<typeof clientLoader>();
   const navigate = useNavigate();
   return (
     <main className="max-w-6xl mx-auto">
@@ -31,7 +43,7 @@ function ExperienceSummary() {
         classNames="mb-2"
       />
       <div>
-        {ex.map((e, index) => (
+        {experiences.map((e, index) => (
           <NavLink
             to={{
               pathname: '/experience',
@@ -74,18 +86,23 @@ function ExperienceSummary() {
         + Add another position
       </NavLink>
       <Form method="post" className="flex justify-end space-x-5">
-        <Button
-          text="Previous"
-          type="secondary"
-          action="button"
-          callback={() =>
-            navigate(
-              `/experience-entry?jobId=${encodeURIComponent(ex[ex.length - 1]?.jobId)}`,
-            )
-          }
-        />
-
-        <Button action="submit" text="Next Step" />
+        {returnUrl ? (
+          <Button action="submit" text="Rebumit" />
+        ) : (
+          <>
+            <Button
+              text="Previous"
+              type="secondary"
+              action="button"
+              callback={() =>
+                navigate(
+                  `/experience-entry?jobId=${encodeURIComponent(experiences[experiences.length - 1]?.jobId)}`,
+                )
+              }
+            />
+            <Button action="submit" text="Next Step" />
+          </>
+        )}
       </Form>
     </main>
   );

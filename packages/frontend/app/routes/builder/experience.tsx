@@ -12,7 +12,6 @@ import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import {
-  type Experience,
   getExperienceDetails,
   getQueuedExperience,
   setQueuedExperience,
@@ -112,9 +111,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   }
   return data({ prevExperience: exp, jobId });
 }
-
-// Force the client loader to run during hydration
-clientLoader.hydrate = true as const;
 
 export default function WorkExperience() {
   const actionData = useActionData<ActionData>();
