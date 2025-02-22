@@ -17,7 +17,7 @@ import {
   setQueuedExperience,
 } from '../../utils/user';
 import type { ActionData } from './personalinfo';
-import { addQueryParams } '../../utils/navigation';
+import { addQueryParams } from '../../utils/navigation';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
 export const BaseExperienceSchema = z.object({
@@ -75,10 +75,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const entries = Object.fromEntries(formData);
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
-  const returnUrl = url.searchParams.get('returnUrl');  
+  const returnUrl = url.searchParams.get('returnUrl');
   const redirectUrl = addQueryParams('/experience-entry', {
     jobId,
-    returnUrl
+    returnUrl,
   });
   const createdData = {
     ...entries,

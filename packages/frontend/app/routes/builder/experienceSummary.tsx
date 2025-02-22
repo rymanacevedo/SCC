@@ -47,7 +47,7 @@ function ExperienceSummary() {
           <NavLink
             to={{
               pathname: '/experience',
-              search: `?jobId=${encodeURIComponent(e.jobId)}`,
+              search: `?jobId=${encodeURIComponent(e.jobId)}${returnUrl ? `&returnUrl=${returnUrl}` : undefined}`,
             }}
             key={e.jobId}
           >
