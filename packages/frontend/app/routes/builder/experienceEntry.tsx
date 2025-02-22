@@ -22,6 +22,7 @@ import {
   updateUser,
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
+import { addQueryParams } from '../../utils/navigation';
 
 const ExperienceEntrySchema = z.object({
   jobId: z.string(),
@@ -49,7 +50,12 @@ function transformExperienceDetails(obj: {
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
 
+  const redirectUrl = addQueryParams('/experience-summary', {
+    returnUrl,
+  });
   const formattedData = transformExperienceDetails(entries);
   try {
     const validatedData = ExperienceEntrySchema.parse(formattedData);
@@ -57,7 +63,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     if (exp) {
       exp.details = [...validatedData.jobDetails];
       updateUser('experience', exp);
-      return redirect('/experience-summary');
+      return redirect(redirectUrl);
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

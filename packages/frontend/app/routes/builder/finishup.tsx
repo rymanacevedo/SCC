@@ -4,6 +4,7 @@ import { Form } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import EditLink from '../../components/EditLink';
 import { getUser, type User } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -52,15 +53,7 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <NavLink
-              to={{
-                pathname: '/info',
-                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </NavLink>
+            <EditLink to="/info" returnUrl="/finish-up" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -110,15 +103,7 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <NavLink
-              to={{
-                pathname: '/summary',
-                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </NavLink>
+            <EditLink to="/summary" returnUrl="/finish-up" />
           </div>
           <p className="dark:text-gray-400 text-gray-600">
             {user.summary?.summary}
@@ -133,15 +118,8 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <NavLink
-              to={{
-                pathname: '/experience-summary',
-                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </NavLink>
+
+            <EditLink to="/experience-summary" returnUrl="/finish-up" />
           </div>
           <div className="p-1">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -183,15 +161,7 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <NavLink
-              to={{
-                pathname: '/education',
-                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </NavLink>
+            <EditLink to="/education" returnUrl="/finish-up" />
           </div>
           <div className="space-y-3">
             <div>
@@ -235,15 +205,7 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <NavLink
-              to={{
-                pathname: '/skills',
-                search: `?returnUrl=${encodeURIComponent('/finish-up')}`,
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </NavLink>
+            <EditLink to="/skills" returnUrl="/finish-up" />
           </div>
           <div className="flex flex-wrap gap-2">
             {user.skills?.expertRecommended?.map((skill) => (
