@@ -101,8 +101,14 @@ export const createSkills = async (prompt: string) => {
     schemaName: 'Skills',
     prompt,
     system: `
-        You are helping gather soft skills for a specific job.
-        When I give you the title, return the skills as a json object.
+        You are helping gather soft skills for a user who submitted their job title, employer, and job details.
+        I've give you a string that formatted like such:
+        <job>
+          <jobTitle></jobTitle>
+          <employer></employer>
+          <details></details>
+        </job>
+        When I give you the jobs, return the skills as a json object.
         Be as specific as possible.
         ${Blacklist}
         Use your best judgement if given a term that doesn't look like a job, just send back general skills.

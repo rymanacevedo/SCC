@@ -72,22 +72,42 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
-
-  const firstJobTitle = user?.experience[0].jobTitle!;
-
+  if (user?.experience) {
+    const experienceString = user.experience
+      .map(
+        (job) =>
+          `<job>
+                <jobTitle>${job.jobTitle}</jobTitle> <employer>${job.employer}</employer>
+                <details>
+                ${job.details
+                  ?.map(
+                    (detail, index) => `
+                      <detail${index + 1}>${detail}</detail${index + 1}>`,
+                  )
+                  .join('')}
+                </details>
+              </job>`,
+      )
+      .join('');
+    return data({
+      prevSkills: user?.skills,
+      experienceString,
+      returnUrl,
+    });
+  }
   cachedClientLoader = {
     prevSkills: user?.skills,
-    firstJobTitle,
+    experienceString: '',
     returnUrl,
   };
-  return Response.json(cachedClientLoader);
+  return data(cachedClientLoader);
 }
 
 // Force the client loader to run during hydration
 clientLoader.hydrate = true as const;
 
 export default function Skills() {
-  const { prevSkills, firstJobTitle, returnUrl } =
+  const { prevSkills, experienceString, returnUrl } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<TSkills>();
   const MAX_SKILLS = 6 as const;
@@ -131,11 +151,13 @@ export default function Skills() {
   useEffectOnce(() => {
     if (fetcher.state === 'idle' && !fetcher.data) {
       const formData = new FormData();
-      formData.set('jobSearch', firstJobTitle || '');
-      fetcher.submit(formData, {
-        method: 'POST',
-        action: '/api/skills',
-      });
+      if (experienceString) {
+        formData.set('jobSearch', experienceString);
+        fetcher.submit(formData, {
+          method: 'POST',
+          action: '/api/skills',
+        });
+      }
     }
   });
 
