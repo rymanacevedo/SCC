@@ -111,6 +111,11 @@ export default function Summary() {
                 className="w-full border rounded-md shadow-sm p-3"
                 placeholder="Write a professional summary that highlights your key skills and experience..."
               />
+              {errors?.summary ? (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.summary[0]}
+                </p>
+              ) : null}
               <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
                 Aim for 3-5 sentences that capture your strongest
                 qualifications.
