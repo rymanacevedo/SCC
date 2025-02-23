@@ -7,7 +7,9 @@ import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import type { FormErrors } from '../../components/Input';
+import type { ActionData } from '../../models/Actions';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -43,17 +45,27 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
-  const firstJobTitle = user?.experience[0].jobTitle!;
 
-  return Response.json({
-    firstJobTitle,
+  if (user?.experience) {
+    const firstJobTitle = user?.experience[0].jobTitle;
+
+    return data({
+      firstJobTitle,
+      prevSummary: user?.summary?.summary,
+      returnUrl,
+    });
+  }
+
+  return data({
+    firstJobTitle: null,
     prevSummary: user?.summary?.summary,
     returnUrl,
   });
 }
 
 export default function Summary() {
-  const actionData = useActionData<typeof clientAction>();
+  const actionData = useActionData<ActionData>();
+  const errors = actionData?.data.errors;
   const { firstJobTitle, prevSummary, returnUrl } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<{ text: string; title: string }[]>();
@@ -61,32 +73,23 @@ export default function Summary() {
   useEffectOnce(() => {
     if (fetcher.state === 'idle' && !fetcher.data) {
       const formData = new FormData();
-      formData.set('jobSearch', firstJobTitle || '');
-      fetcher.submit(formData, {
-        method: 'POST',
-        action: '/api/summary',
-      });
+      if (firstJobTitle) {
+        formData.set('jobSearch', firstJobTitle);
+        fetcher.submit(formData, {
+          method: 'POST',
+          action: '/api/summary',
+        });
+      }
     }
   });
 
   return (
     <main className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Create Your Professional Summary"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Write a compelling summary that highlights your key achievements and
+      <HeadingWithSubHeading
+        firstHeading="Create Your Professional Summary"
+        secondHeading="Write a compelling summary that highlights your key achievements and
           career goals. This is often the first thing employers read."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* Left Column - Writing Area */}
