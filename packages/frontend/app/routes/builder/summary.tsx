@@ -5,6 +5,7 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
+import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
@@ -84,7 +85,7 @@ export default function Summary() {
   });
 
   return (
-    <main className="max-w-4xl mx-auto">
+    <Main>
       <HeadingWithSubHeading
         firstHeading="Create Your Professional Summary"
         secondHeading="Write a compelling summary that highlights your key achievements and
@@ -193,6 +194,6 @@ export default function Summary() {
           </div>
         </div>
       </div>
-    </main>
+    </Main>
   );
 }

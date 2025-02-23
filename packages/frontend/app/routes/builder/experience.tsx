@@ -16,9 +16,11 @@ import {
   getQueuedExperience,
   setQueuedExperience,
 } from '../../utils/user';
-import type { ActionData } from './info';
+import type { ActionData } from '../../models/Actions';
 import { addQueryParams } from '../../utils/navigation';
 import { type ChangeEvent, useCallback, useState } from 'react';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const BaseExperienceSchema = z.object({
   jobId: z.string().min(1),
@@ -137,22 +139,11 @@ export default function WorkExperience() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Tell us about your most recent job"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="We'll start there and work backwards."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Tell us about your most recent job"
+        secondHeading="We'll start there and work backwards."
+      />
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -237,6 +228,6 @@ export default function WorkExperience() {
           <Button action="submit" text="Next Step" />
         </div>
       </Form>
-    </main>
+    </Main>
   );
 }
