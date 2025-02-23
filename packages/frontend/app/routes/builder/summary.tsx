@@ -48,34 +48,49 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const returnUrl = url.searchParams.get('returnUrl');
 
   if (user?.experience) {
-    const firstJobTitle = user?.experience[0].jobTitle;
+    const experienceString = user.experience
+      .map(
+        (job) =>
+          `<job>
+            <jobTitle>${job.jobTitle}</jobTitle> <employer>${job.employer}</employer>
+            <details>
+            ${job.details
+              ?.map(
+                (detail, index) => `
+                  <detail${index + 1}>${detail}</detail${index + 1}>`,
+              )
+              .join('')}
+            </details>
+          </job>`,
+      )
+      .join('');
 
     return data({
-      firstJobTitle,
       prevSummary: user?.summary?.summary,
+      experienceString,
       returnUrl,
     });
   }
 
   return data({
-    firstJobTitle: null,
     prevSummary: user?.summary?.summary,
     returnUrl,
+    experienceString: undefined,
   });
 }
 
 export default function Summary() {
   const actionData = useActionData<ActionData>();
   const errors = actionData?.data.errors;
-  const { firstJobTitle, prevSummary, returnUrl } =
+  const { prevSummary, returnUrl, experienceString } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<{ text: string; title: string }[]>();
 
   useEffectOnce(() => {
     if (fetcher.state === 'idle' && !fetcher.data) {
       const formData = new FormData();
-      if (firstJobTitle) {
-        formData.set('jobSearch', firstJobTitle);
+      if (experienceString) {
+        formData.set('jobSearch', experienceString);
         fetcher.submit(formData, {
           method: 'POST',
           action: '/api/summary',
@@ -112,9 +127,7 @@ export default function Summary() {
                 placeholder="Write a professional summary that highlights your key skills and experience..."
               />
               {errors?.summary ? (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.summary[0]}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.summary[0]}</p>
               ) : null}
               <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
                 Aim for 3-5 sentences that capture your strongest

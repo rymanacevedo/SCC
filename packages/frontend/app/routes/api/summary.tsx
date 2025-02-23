@@ -6,7 +6,7 @@ import {
 import { containsInappropriateWords } from '../../utils/filter';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
-import { createSummary } from '../../utils/aiServices';
+import { createSummaries } from '../../utils/aiServices';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -46,8 +46,7 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const summaries = await createSummary(result.jobSearch);
-    //   const finalResult = SkillsSchema.parse(skills);
+    const summaries = await createSummaries(result.jobSearch);
     return Response.json(summaries);
   }
   return Response.json({});

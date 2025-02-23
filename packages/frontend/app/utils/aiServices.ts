@@ -50,11 +50,11 @@ const SummarySchema = z
   })
   .array();
 
-export const createSummary = async (prompt: string) => {
+export const createSummaries = async (prompt: string) => {
   const result = await generateObject({
     model: GeminiModel,
     schema: SummarySchema,
-    schemaName: 'Summary',
+    schemaName: 'Summaries',
     prompt,
     system: `
       <example1>
@@ -75,11 +75,17 @@ export const createSummary = async (prompt: string) => {
       </text>
       </example3>
 
-      You are helping me write professional summaries for a specific job.
+      You are helping me write professional summaries for a user who submitted their job title, employer, and job details.
 
-      When I give you the title, return the summaries as an array.
+      I've give you a string that formatted like such:
+      <job>
+        <jobTitle></jobTitle>
+        <employer></employer>
+        <details></details>
+      </job>
 
-      Be as specific as possible
+      When I give you the jobs, return the summaries as an array.
+      Be as specific as possible.
       ${Blacklist}
       Use your best judgement if given a term that doesn't look like a job, just send back general professional summary.
     `,
