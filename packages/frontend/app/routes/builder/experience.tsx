@@ -16,7 +16,7 @@ import {
   getQueuedExperience,
   setQueuedExperience,
 } from '../../utils/user';
-import type { ActionData } from './personalinfo';
+import type { ActionData } from './info';
 import { addQueryParams } from '../../utils/navigation';
 import { type ChangeEvent, useCallback, useState } from 'react';
 

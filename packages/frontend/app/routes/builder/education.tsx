@@ -12,7 +12,7 @@ import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { getUser, updateUser } from '../../utils/user';
-import type { ActionData } from './personalinfo';
+import type { ActionData } from './info';
 import { EducationLevelSchema } from './educationLevel';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
