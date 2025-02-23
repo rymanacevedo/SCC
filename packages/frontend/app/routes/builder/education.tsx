@@ -17,10 +17,10 @@ import { EducationLevelSchema } from './educationLevel';
 import { type ChangeEvent, useCallback, useState } from 'react';
 
 export const BaseEducationSchema = z.object({
-  schoolName: z.string().min(1, 'School name is required.'),
+  schoolName: z.string().min(1, 'School name is required.').optional(),
   educationLevel: EducationLevelSchema.optional(),
-  degree: z.string().min(1, 'Degree is required.'),
-  location: z.string().min(1, 'Location is required.'),
+  degree: z.string().min(1, 'Degree is required.').optional(),
+  location: z.string().min(1, 'Location is required.').optional(),
   graduationDate: z
     .string()
     .transform((date) => (date ? new Date(date) : undefined))
