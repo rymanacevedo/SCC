@@ -10,7 +10,6 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
-import Heading from '../../components/Heading';
 import {
   getExperienceDetails,
   getQueuedExperience,
@@ -110,11 +109,18 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
   const exp = getQueuedExperience();
+  // we prefer the experience in the queue first over the jobId
+  if (exp) {
+    return data({ prevExperience: exp, jobId });
+  }
+
+  // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
     return data({ prevExperience: experience, jobId });
   }
-  return data({ prevExperience: exp, jobId });
+
+  return data({ prevExperience: undefined, jobId: undefined });
 }
 
 export default function WorkExperience() {

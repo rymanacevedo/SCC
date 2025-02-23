@@ -13,6 +13,9 @@ import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
+import type { ActionData } from '../../models/Actions';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -23,15 +26,6 @@ export const PersonalInfoSchema = z.object({
   phone: z.string().regex(/^\d{10}$/, 'Phone number must be 10 digits'),
   email: z.string().email('Invalid email address'),
 });
-
-export type ActionData = {
-  data: {
-    success?: boolean;
-    errors: FormErrors;
-  };
-  type: 'DataWithResponseInit';
-  init: Record<string, unknown>;
-};
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -72,26 +66,15 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 
 export default function PersonalInfo() {
   const actionData = useActionData<ActionData>();
-  const { returnUrl, prevInfo } = useLoaderData<typeof clientLoader>();
   const errors = actionData?.data.errors;
+  const { returnUrl, prevInfo } = useLoaderData<typeof clientLoader>();
 
   return (
-    <main className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Tell us a bit about yourself"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Let's start with your basic information"
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Tell us a bit about yourself"
+        secondHeading="Let's start with your basic information."
+      />
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -165,6 +148,6 @@ export default function PersonalInfo() {
           <Button action="submit" text={returnUrl ? 'Resubmit' : 'Next'} />
         </div>
       </Form>
-    </main>
+    </Main>
   );
 }

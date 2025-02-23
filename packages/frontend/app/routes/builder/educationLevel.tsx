@@ -10,6 +10,8 @@ import {
 } from 'react-router';
 import { z } from 'zod';
 import { updateUser } from '../../utils/user';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const EducationLevelSchema = z.string().min(1);
 
@@ -30,22 +32,12 @@ export async function clientAction({ request }: ClientActionFunctionArgs) {
 function EducationLevel() {
   const navigate = useNavigate();
   return (
-    <main className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="What best describes your level of education?"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Select the best option and we'll help you structure your education section."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="What best describes your level of education?"
+        secondHeading="Select the best option and we'll help you structure your education section."
+      />
+
       <Form
         method="post"
         className="flex flex-col md:flex-row md:flex-wrap justify-center gap-4 max-w-xs md:max-w-4xl mx-auto"
@@ -75,7 +67,7 @@ function EducationLevel() {
         action="button"
         callback={() => navigate(-1)}
       />
-    </main>
+    </Main>
   );
 }
 
