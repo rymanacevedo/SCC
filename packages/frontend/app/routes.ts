@@ -17,4 +17,5 @@ export default [
   route('skills', 'routes/builder/skills.tsx'),
   route('summary', 'routes/builder/summary.tsx'),
   route('finish-up', 'routes/builder/finishup.tsx'),
+  route('resume', 'routes/builder/resume.tsx'),
 ] satisfies RouteConfig;
