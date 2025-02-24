@@ -10,7 +10,7 @@ interface EditLinkProps {
 function EditLink({ to, returnUrl, jobId }: EditLinkProps) {
   const addReturnUrl = (baseUrl: string, returnUrl: string) => {
     const url = new URL(baseUrl, window.location.origin);
-    url.searchParams.append('returnUrl', encodeURIComponent(returnUrl));
+    url.searchParams.append('returnUrl', returnUrl);
     return url.pathname + url.search;
   };
 
