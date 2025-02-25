@@ -12,9 +12,11 @@ import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
 import Heading from '../../components/Heading';
 import { getUser, updateUser } from '../../utils/user';
-import type { ActionData } from './personalinfo';
+import type { ActionData } from '../../models/Actions';
 import { EducationLevelSchema } from './educationLevel';
 import { type ChangeEvent, useCallback, useState } from 'react';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const BaseEducationSchema = z.object({
   schoolName: z.string().min(1, 'School name is required.').optional(),
@@ -103,23 +105,12 @@ export default function Education() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Tell us about your education"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Enter your education experience so far, even if you are a current
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Tell us about your education"
+        secondHeading="Enter your education experience so far, even if you are a current
           student or did not graduate."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+      />
 
       <Form method="post" className="space-y-6">
         <Input
@@ -196,6 +187,6 @@ export default function Education() {
           )}
         </div>
       </Form>
-    </div>
+    </Main>
   );
 }

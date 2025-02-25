@@ -10,15 +10,16 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
-import Heading from '../../components/Heading';
 import {
   getExperienceDetails,
   getQueuedExperience,
   setQueuedExperience,
 } from '../../utils/user';
-import type { ActionData } from './personalinfo';
+import type { ActionData } from '../../models/Actions';
 import { addQueryParams } from '../../utils/navigation';
 import { type ChangeEvent, useCallback, useState } from 'react';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const BaseExperienceSchema = z.object({
   jobId: z.string().min(1),
@@ -108,11 +109,18 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
   const exp = getQueuedExperience();
+  // we prefer the experience in the queue first over the jobId
+  if (exp) {
+    return data({ prevExperience: exp, jobId });
+  }
+
+  // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
     return data({ prevExperience: experience, jobId });
   }
-  return data({ prevExperience: exp, jobId });
+
+  return data({ prevExperience: undefined, jobId: undefined });
 }
 
 export default function WorkExperience() {
@@ -137,22 +145,11 @@ export default function WorkExperience() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Tell us about your most recent job"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="We'll start there and work backwards."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Tell us about your most recent job"
+        secondHeading="We'll start there and work backwards."
+      />
 
       <Form method="post" className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -237,6 +234,6 @@ export default function WorkExperience() {
           <Button action="submit" text="Next Step" />
         </div>
       </Form>
-    </main>
+    </Main>
   );
 }

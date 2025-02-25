@@ -11,6 +11,7 @@ import {
 } from 'react-router';
 import Button from '../../components/Button';
 import type { Route } from '../../+types/root';
+import Main from '../../components/Main';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const url = new URL(request.url);
@@ -24,18 +25,21 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   clearQueuedExperience();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
+  const jobId = url.searchParams.get('jobId');
   const experiences = getRequiredUserTrait('experience');
 
   return data({
     experiences,
     returnUrl,
+    jobId,
   });
 }
 function ExperienceSummary() {
-  const { experiences, returnUrl } = useLoaderData<typeof clientLoader>();
+  const { experiences, returnUrl, jobId } =
+    useLoaderData<typeof clientLoader>();
   const navigate = useNavigate();
   return (
-    <main className="max-w-6xl mx-auto">
+    <Main>
       <Heading
         text="Work history summary"
         level="h1"
@@ -47,7 +51,7 @@ function ExperienceSummary() {
           <NavLink
             to={{
               pathname: '/experience',
-              search: `?jobId=${encodeURIComponent(e.jobId)}${returnUrl ? `&returnUrl=${returnUrl}` : undefined}`,
+              search: `?jobId=${encodeURIComponent(e.jobId)}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''}`,
             }}
             key={e.jobId}
           >
@@ -95,8 +99,9 @@ function ExperienceSummary() {
               type="secondary"
               action="button"
               callback={() =>
+                // return the jobId or get the last item in the list
                 navigate(
-                  `/experience-entry?jobId=${encodeURIComponent(experiences[experiences.length - 1]?.jobId)}`,
+                  `/experience-entry?jobId=${encodeURIComponent(jobId ? jobId : experiences[experiences.length - 1]?.jobId)}`,
                 )
               }
             />
@@ -104,7 +109,7 @@ function ExperienceSummary() {
           </>
         )}
       </Form>
-    </main>
+    </Main>
   );
 }
 

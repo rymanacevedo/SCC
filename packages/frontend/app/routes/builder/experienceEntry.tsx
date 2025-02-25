@@ -1,5 +1,4 @@
 import {
-  type ClientLoaderFunctionArgs,
   data,
   Form,
   redirect,
@@ -23,6 +22,9 @@ import {
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { addQueryParams } from '../../utils/navigation';
+import type { ActionData } from '../../models/Actions';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 const ExperienceEntrySchema = z.object({
   jobId: z.string(),
@@ -54,6 +56,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const returnUrl = url.searchParams.get('returnUrl');
 
   const redirectUrl = addQueryParams('/experience-summary', {
+    jobId: entries.jobId as string,
     returnUrl,
   });
   const formattedData = transformExperienceDetails(entries);
@@ -92,7 +95,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
       const storedExperience = getExperienceDetails(jobId);
       return data({
         ...exp,
-        details: storedExperience.details || [],
+        details: storedExperience?.details || [],
       });
     }
     return data(exp);
@@ -107,12 +110,12 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
-  const errors: any = fetcher.data?.data?.errors;
-  const action = useActionData<typeof clientAction>();
+  // const errors: any = fetcher.data?.data?.errors;
+  const action = useActionData<ActionData>();
+  const errors = action?.data.errors;
   const navigate = useNavigate();
   const { details, jobTitle, jobId, employer } =
     useLoaderData<typeof clientLoader>();
-  const job = useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>(details || []);
 
   useEffectOnce(() => {
@@ -158,26 +161,15 @@ export default function ExperienceEntry() {
   };
 
   return (
-    <main className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text={
-            startsWithVowel(jobTitle)
-              ? `What did you do as an ${jobTitle}?`
-              : `What did you do as a ${jobTitle}?`
-          }
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Choose from our pre-written examples below or write your own."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading={
+          startsWithVowel(jobTitle)
+            ? `What did you do as an ${jobTitle}?`
+            : `What did you do as a ${jobTitle}?`
+        }
+        secondHeading="Choose from our pre-written examples below or write your own."
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column - Writing Area */}
         <div>
@@ -388,9 +380,11 @@ export default function ExperienceEntry() {
                   ))
                 )}
               </div>
-              <p className="mt-1 text-sm text-red-600">
-                {action?.data?.errors.jobDetails[0]}
-              </p>
+              {errors?.jobDetails ? (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.jobDetails[0]}
+                </p>
+              ) : null}
               {/* Manual Experience Input */}
               <div className="mt-4">
                 {userExperience.length >= 6 ? (
@@ -421,7 +415,9 @@ export default function ExperienceEntry() {
                   type="secondary"
                   text="Previous"
                   action="button"
-                  callback={() => navigate(`/experience?jobId=${jobId}`)}
+                  callback={() =>
+                    navigate(`/experience?jobId=${encodeURIComponent(jobId)}`)
+                  }
                 />
                 <Button action="submit" text="Next Step" />
               </div>
@@ -433,6 +429,6 @@ export default function ExperienceEntry() {
           </div>
         </div>
       </div>
-    </main>
+    </Main>
   );
 }

@@ -5,9 +5,12 @@ import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Loading from '../../components/Loading';
+import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import type { FormErrors } from '../../components/Input';
+import type { ActionData } from '../../models/Actions';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -43,50 +46,66 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
-  const firstJobTitle = user?.experience[0].jobTitle!;
 
-  return Response.json({
-    firstJobTitle,
+  if (user?.experience) {
+    const experienceString = user.experience
+      .map(
+        (job) =>
+          `<job>
+            <jobTitle>${job.jobTitle}</jobTitle> <employer>${job.employer}</employer>
+            <details>
+            ${job.details
+              ?.map(
+                (detail, index) => `
+                  <detail${index + 1}>${detail}</detail${index + 1}>`,
+              )
+              .join('')}
+            </details>
+          </job>`,
+      )
+      .join('');
+
+    return data({
+      prevSummary: user?.summary?.summary,
+      experienceString,
+      returnUrl,
+    });
+  }
+
+  return data({
     prevSummary: user?.summary?.summary,
     returnUrl,
+    experienceString: undefined,
   });
 }
 
 export default function Summary() {
-  const actionData = useActionData<typeof clientAction>();
-  const { firstJobTitle, prevSummary, returnUrl } =
+  const actionData = useActionData<ActionData>();
+  const errors = actionData?.data.errors;
+  const { prevSummary, returnUrl, experienceString } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<{ text: string; title: string }[]>();
 
   useEffectOnce(() => {
     if (fetcher.state === 'idle' && !fetcher.data) {
       const formData = new FormData();
-      formData.set('jobSearch', firstJobTitle || '');
-      fetcher.submit(formData, {
-        method: 'POST',
-        action: '/api/summary',
-      });
+      if (experienceString) {
+        formData.set('jobSearch', experienceString);
+        fetcher.submit(formData, {
+          method: 'POST',
+          action: '/api/summary',
+        });
+      }
     }
   });
 
   return (
-    <main className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Create Your Professional Summary"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Write a compelling summary that highlights your key achievements and
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Create Your Professional Summary"
+        secondHeading="Write a compelling summary that highlights your key achievements and
           career goals. This is often the first thing employers read."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* Left Column - Writing Area */}
@@ -107,6 +126,9 @@ export default function Summary() {
                 className="w-full border rounded-md shadow-sm p-3"
                 placeholder="Write a professional summary that highlights your key skills and experience..."
               />
+              {errors?.summary ? (
+                <p className="mt-1 text-sm text-red-600">{errors.summary[0]}</p>
+              ) : null}
               <p className="mt-2 text-sm dark:text-gray-400 text-gray-600">
                 Aim for 3-5 sentences that capture your strongest
                 qualifications.
@@ -190,6 +212,6 @@ export default function Summary() {
           </div>
         </div>
       </div>
-    </main>
+    </Main>
   );
 }

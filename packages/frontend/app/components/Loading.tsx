@@ -2,7 +2,7 @@ import type { FetcherWithComponents } from 'react-router';
 import { memo, type ReactNode } from 'react';
 
 interface LoadingProps {
-  fetcher: FetcherWithComponents<any>;
+  fetcher: FetcherWithComponents<unknown>;
   children: ReactNode;
 }
 

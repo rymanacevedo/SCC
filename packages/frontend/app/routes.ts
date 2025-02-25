@@ -8,7 +8,7 @@ export default [
   route('/api/experienceEntry', 'routes/api/experienceEntry.tsx'),
   route('/api/summary', 'routes/api/summary.tsx'),
   // possible layout route here
-  route('info', 'routes/builder/personalinfo.tsx'),
+  route('info', 'routes/builder/info.tsx'),
   route('experience', 'routes/builder/experience.tsx'),
   route('experience-entry', 'routes/builder/experienceEntry.tsx'),
   route('experience-summary', 'routes/builder/experienceSummary.tsx'),

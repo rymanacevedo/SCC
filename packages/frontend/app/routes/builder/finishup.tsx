@@ -6,6 +6,8 @@ import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import EditLink from '../../components/EditLink';
 import { getUser, type User } from '../../utils/user';
+import Main from '../../components/Main';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -26,22 +28,11 @@ export function clientLoader() {
 export default function Finish() {
   const user = useLoaderData<User>();
   return (
-    <main className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <Heading
-          level="h1"
-          size="text-2xl"
-          text="Review Your Resume"
-          bold={true}
-          classNames="mb-2"
-        />
-        <Heading
-          level="h2"
-          size="text-sm"
-          text="Review and edit your information before finalizing your resume."
-          color="dark:text-gray-400 text-gray-600"
-        />
-      </div>
+    <Main>
+      <HeadingWithSubHeading
+        firstHeading="Review Your Resume"
+        secondHeading="Review and edit your information before finalizing your resume."
+      />
 
       <div className="shadow rounded-lg overflow-hidden">
         {/* Personal Information Section */}
@@ -243,6 +234,6 @@ export default function Finish() {
           <Button text="Generate Resume" action="button" />
         </Form>
       </div>
-    </main>
+    </Main>
   );
 }

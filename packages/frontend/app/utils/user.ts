@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { BaseExperienceSchema } from '../routes/builder/experience';
 import { BaseEducationSchema } from '../routes/builder/education';
-import { PersonalInfoSchema } from '../routes/builder/personalinfo';
+import { PersonalInfoSchema } from '../routes/builder/info';
 import { SkillsSchema } from '../routes/builder/skills';
 import { SummarySchema } from '../routes/builder/summary';
 
