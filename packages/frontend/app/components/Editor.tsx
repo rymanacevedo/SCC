@@ -1,11 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import {
-  $getRoot,
-  $getSelection,
-  $createParagraphNode,
-  $createTextNode,
-} from 'lexical';
-import { $generateHtmlFromNodes } from '@lexical/html';
+import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -17,7 +11,6 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import type { User } from '../utils/user';
 import Button from './Button';
 
-// Import docx.js
 import {
   Document,
   Packer,
@@ -38,9 +31,7 @@ function onError(error: unknown) {
 }
 
 // Plugin to store editor reference
-function EditorRefPlugin({
-  editorRef,
-}: { editorRef: React.MutableRefObject<any> }) {
+function EditorRefPlugin({ editorRef }: { editorRef: React.RefObject<any> }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -74,12 +65,9 @@ function UserDataPlugin({ user }: { user: User }) {
   return null;
 }
 
-// Helper function to populate the editor with user data
 function populateEditorWithUserData(root: any, userData: User) {
-  // Clear any existing content
   root.clear();
 
-  // Add user info
   if (userData.info) {
     const nameNode = $createParagraphNode();
     nameNode.append(
@@ -96,7 +84,6 @@ function populateEditorWithUserData(root: any, userData: User) {
     root.append(contactNode);
   }
 
-  // Add summary
   if (userData?.summary?.summary) {
     const summaryTitleNode = $createParagraphNode();
     summaryTitleNode.append($createTextNode('SUMMARY'));
@@ -107,7 +94,6 @@ function populateEditorWithUserData(root: any, userData: User) {
     root.append(summaryNode);
   }
 
-  // Add experience
   if (userData.experience && userData.experience.length > 0) {
     const experienceTitleNode = $createParagraphNode();
     experienceTitleNode.append($createTextNode('EXPERIENCE'));
@@ -121,13 +107,13 @@ function populateEditorWithUserData(root: any, userData: User) {
       root.append(jobTitleNode);
 
       const dateNode = $createParagraphNode();
-      const startDate = new Date(job.startDate).toLocaleDateString('en-US', {
+      const startDate = job.startDate?.toLocaleDateString('en-US', {
         month: 'long',
         year: 'numeric',
       });
       const endDate = job.currentlyEmployed
         ? 'Present'
-        : new Date(job.endDate).toLocaleDateString('en-US', {
+        : job.endDate?.toLocaleDateString('en-US', {
             month: 'long',
             year: 'numeric',
           });
@@ -147,7 +133,6 @@ function populateEditorWithUserData(root: any, userData: User) {
     }
   }
 
-  // Add education
   if (userData.education) {
     const educationTitleNode = $createParagraphNode();
     educationTitleNode.append($createTextNode('EDUCATION'));
@@ -164,18 +149,14 @@ function populateEditorWithUserData(root: any, userData: User) {
     const gradDateNode = $createParagraphNode();
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : new Date(userData.education.graduationDate).toLocaleDateString(
-          'en-US',
-          {
-            month: 'long',
-            year: 'numeric',
-          },
-        );
+      : userData.education.graduationDate?.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
     gradDateNode.append($createTextNode(`Graduation: ${gradDate}`));
     root.append(gradDateNode);
   }
 
-  // Add skills
   if (userData.skills) {
     const skillsTitleNode = $createParagraphNode();
     skillsTitleNode.append($createTextNode('SKILLS'));
@@ -194,8 +175,7 @@ function populateEditorWithUserData(root: any, userData: User) {
   }
 }
 
-// Function to directly convert Lexical content to Word document
-function exportToWord(editor: any, userData: User) {
+async function exportToWord(editor: any, userData: User) {
   // Create document sections directly from user data
   const doc = new Document({
     sections: [
@@ -293,13 +273,13 @@ function generateDocxElements(userData: User) {
         }),
       );
 
-      const startDate = new Date(job.startDate).toLocaleDateString('en-US', {
+      const startDate = job.startDate?.toLocaleDateString('en-US', {
         month: 'long',
         year: 'numeric',
       });
       const endDate = job.currentlyEmployed
         ? 'Present'
-        : new Date(job.endDate).toLocaleDateString('en-US', {
+        : job.endDate?.toLocaleDateString('en-US', {
             month: 'long',
             year: 'numeric',
           });
@@ -347,13 +327,10 @@ function generateDocxElements(userData: User) {
 
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : new Date(userData.education.graduationDate).toLocaleDateString(
-          'en-US',
-          {
-            month: 'long',
-            year: 'numeric',
-          },
-        );
+      : userData.education.graduationDate?.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
 
     elements.push(
       new Paragraph({
@@ -437,4 +414,4 @@ function Editor({ user }: EditorProps) {
   );
 }
 
-export default Editor;
+export default memo(Editor);
