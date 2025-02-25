@@ -1,10 +1,11 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import {
   $getRoot,
   $getSelection,
   $createParagraphNode,
   $createTextNode,
 } from 'lexical';
+import { $generateHtmlFromNodes } from '@lexical/html';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -14,12 +15,39 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import type { User } from '../utils/user';
-import useEffectOnce from '../hooks/useEffectOnce';
+import Button from './Button';
+
+// Import docx.js
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  AlignmentType,
+} from 'docx';
+
+// Fix the file-saver import
+import fileSaver from 'file-saver';
+const { saveAs } = fileSaver;
 
 const theme = {};
 
 function onError(error: unknown) {
   console.error(error);
+}
+
+// Plugin to store editor reference
+function EditorRefPlugin({
+  editorRef,
+}: { editorRef: React.MutableRefObject<any> }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor, editorRef]);
+
+  return null;
 }
 
 function UserDataPlugin({ user }: { user: User }) {
@@ -166,32 +194,246 @@ function populateEditorWithUserData(root: any, userData: User) {
   }
 }
 
+// Function to directly convert Lexical content to Word document
+function exportToWord(editor: any, userData: User) {
+  // Create document sections directly from user data
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1000,
+              right: 1000,
+              bottom: 1000,
+              left: 1000,
+            },
+          },
+        },
+        children: generateDocxElements(userData),
+      },
+    ],
+  });
+
+  // Generate and save the document
+  Packer.toBlob(doc).then((blob) => {
+    saveAs(
+      blob,
+      `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''}_resume.docx`,
+    );
+  });
+}
+
+// Generate docx elements directly from user data
+function generateDocxElements(userData: User) {
+  const elements = [];
+
+  // Header with name
+  if (userData.info) {
+    elements.push(
+      new Paragraph({
+        text: `${userData.info.firstName} ${userData.info.lastName}`,
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+      }),
+    );
+
+    // Contact information
+    elements.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun(`${userData.info.email} | ${userData.info.phone}`),
+          new TextRun({ text: '\n', break: 1 }),
+          new TextRun(
+            `${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
+          ),
+        ],
+      }),
+    );
+
+    // Separator
+    elements.push(new Paragraph({ text: '' }));
+  }
+
+  // Summary section
+  if (userData?.summary?.summary) {
+    elements.push(
+      new Paragraph({
+        text: 'SUMMARY',
+        heading: HeadingLevel.HEADING_2,
+        thematicBreak: true,
+      }),
+    );
+
+    elements.push(
+      new Paragraph({
+        text: userData.summary.summary,
+      }),
+    );
+
+    elements.push(new Paragraph({ text: '' }));
+  }
+
+  // Experience section
+  if (userData.experience && userData.experience.length > 0) {
+    elements.push(
+      new Paragraph({
+        text: 'EXPERIENCE',
+        heading: HeadingLevel.HEADING_2,
+        thematicBreak: true,
+      }),
+    );
+
+    for (const job of userData.experience) {
+      elements.push(
+        new Paragraph({
+          text: `${job.jobTitle} | ${job.employer} | ${job.location}`,
+          heading: HeadingLevel.HEADING_3,
+        }),
+      );
+
+      const startDate = new Date(job.startDate).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
+      const endDate = job.currentlyEmployed
+        ? 'Present'
+        : new Date(job.endDate).toLocaleDateString('en-US', {
+            month: 'long',
+            year: 'numeric',
+          });
+
+      elements.push(
+        new Paragraph({
+          text: `${startDate} - ${endDate}`,
+          italics: true,
+        }),
+      );
+
+      if (job.details && job.details.length > 0) {
+        for (const detail of job.details) {
+          elements.push(
+            new Paragraph({
+              text: `• ${detail}`,
+              bullet: {
+                level: 0,
+              },
+            }),
+          );
+        }
+      }
+
+      elements.push(new Paragraph({ text: '' }));
+    }
+  }
+
+  // Education section
+  if (userData.education) {
+    elements.push(
+      new Paragraph({
+        text: 'EDUCATION',
+        heading: HeadingLevel.HEADING_2,
+        thematicBreak: true,
+      }),
+    );
+
+    elements.push(
+      new Paragraph({
+        text: `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
+        heading: HeadingLevel.HEADING_3,
+      }),
+    );
+
+    const gradDate = userData.education.currentlyEnrolled
+      ? 'Currently Enrolled'
+      : new Date(userData.education.graduationDate).toLocaleDateString(
+          'en-US',
+          {
+            month: 'long',
+            year: 'numeric',
+          },
+        );
+
+    elements.push(
+      new Paragraph({
+        text: `Graduation: ${gradDate}`,
+        italics: true,
+      }),
+    );
+
+    elements.push(new Paragraph({ text: '' }));
+  }
+
+  // Skills section
+  if (userData.skills) {
+    elements.push(
+      new Paragraph({
+        text: 'SKILLS',
+        heading: HeadingLevel.HEADING_2,
+        thematicBreak: true,
+      }),
+    );
+
+    const allSkills = [
+      ...(userData.skills.expertRecommended || []),
+      ...(userData.skills.other || []),
+    ];
+
+    if (allSkills.length > 0) {
+      elements.push(
+        new Paragraph({
+          text: allSkills.join(', '),
+        }),
+      );
+    }
+  }
+
+  return elements;
+}
+
 interface EditorProps {
   user: User;
 }
 
 function Editor({ user }: EditorProps) {
+  const editorRef = useRef<any>(null);
   const initialConfig = {
     namespace: 'MyEditor',
     theme,
     onError,
   };
 
+  const handleExportClick = () => {
+    if (editorRef.current) {
+      exportToWord(editorRef.current, user);
+    }
+  };
+
   return (
-    <LexicalComposer initialConfig={initialConfig}>
-      <RichTextPlugin
-        contentEditable={
-          <ContentEditable
-            aria-placeholder={'Enter some text...'}
-            placeholder={<div>Enter some text...</div>}
-          />
-        }
-        ErrorBoundary={LexicalErrorBoundary}
+    <>
+      <LexicalComposer initialConfig={initialConfig}>
+        <RichTextPlugin
+          contentEditable={
+            <ContentEditable
+              aria-placeholder={'Enter some text...'}
+              placeholder={<div>Enter some text...</div>}
+            />
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <HistoryPlugin />
+        <AutoFocusPlugin />
+        <UserDataPlugin user={user} />
+        <EditorRefPlugin editorRef={editorRef} />
+      </LexicalComposer>
+      <Button
+        type="primary"
+        action="button"
+        text="Generate Resume"
+        callback={handleExportClick}
       />
-      <HistoryPlugin />
-      <AutoFocusPlugin />
-      <UserDataPlugin user={user} />
-    </LexicalComposer>
+    </>
   );
 }
 
