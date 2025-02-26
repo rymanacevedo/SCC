@@ -1,5 +1,5 @@
 // app/routes/builder.finish.tsx
-import { NavLink, redirect, useLoaderData } from 'react-router';
+import { redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
