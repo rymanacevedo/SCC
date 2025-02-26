@@ -1,12 +1,21 @@
-import { Packer, Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
+import {
+  Packer,
+  Paragraph,
+  HeadingLevel,
+  AlignmentType,
+  TextRun,
+  Document,
+} from 'docx';
 import jsPDF from 'jspdf';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { $createHeadingNode } from '@lexical/rich-text';
 import type { User } from '../user';
 
 import fileSaver from 'file-saver';
+import { $createCustomParagraphNode } from './custom/CustomParagraphNode';
 const { saveAs } = fileSaver;
 
+// For building the editor
 export function populateEditorWithUserData(root: any, userData: User) {
   root.clear();
 
@@ -17,7 +26,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
     );
     root.append(nameNode);
 
-    const contactNode = $createParagraphNode();
+    const contactNode = $createCustomParagraphNode('text-center');
     contactNode.append(
       $createTextNode(
         `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
@@ -27,7 +36,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
   }
 
   if (userData?.summary?.summary) {
-    const summaryTitleNode = $createParagraphNode();
+    const summaryTitleNode = $createHeadingNode('h2');
     summaryTitleNode.append($createTextNode('SUMMARY'));
     root.append(summaryTitleNode);
 
@@ -37,12 +46,12 @@ export function populateEditorWithUserData(root: any, userData: User) {
   }
 
   if (userData.experience && userData.experience.length > 0) {
-    const experienceTitleNode = $createParagraphNode();
+    const experienceTitleNode = $createHeadingNode('h2');
     experienceTitleNode.append($createTextNode('EXPERIENCE'));
     root.append(experienceTitleNode);
 
     for (const job of userData.experience) {
-      const jobTitleNode = $createParagraphNode();
+      const jobTitleNode = $createHeadingNode('h3');
       jobTitleNode.append(
         $createTextNode(`${job.jobTitle} | ${job.employer} | ${job.location}`),
       );
@@ -76,7 +85,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
   }
 
   if (userData.education) {
-    const educationTitleNode = $createParagraphNode();
+    const educationTitleNode = $createHeadingNode('h2');
     educationTitleNode.append($createTextNode('EDUCATION'));
     root.append(educationTitleNode);
 
@@ -100,7 +109,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
   }
 
   if (userData.skills) {
-    const skillsTitleNode = $createParagraphNode();
+    const skillsTitleNode = $createHeadingNode('h2');
     skillsTitleNode.append($createTextNode('SKILLS'));
     root.append(skillsTitleNode);
 

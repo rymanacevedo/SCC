@@ -14,6 +14,7 @@
     "@lexical/html": "^0.25.0",
     "@lexical/react": "^0.25.0",
     "@lexical/rich-text": "^0.25.0",
+    "@lexical/utils": "^0.25.0",
     "@react-router/node": "^7.2.0",
     "@react-router/serve": "^7.2.0",
     "ai": "^4.1.41",

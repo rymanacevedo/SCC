@@ -17,6 +17,7 @@ import {
   populateEditorWithUserData,
 } from '../utils/editor/functions';
 import { HeadingNode } from '@lexical/rich-text';
+import { CustomParagraphNode } from '../utils/editor/custom/CustomParagraphNode';
 
 function onError(error: unknown) {
   console.error(error);
@@ -32,7 +33,7 @@ function Editor({ user }: EditorProps) {
     namespace: 'MyEditor',
     theme,
     onError,
-    nodes: [HeadingNode],
+    nodes: [HeadingNode, CustomParagraphNode],
   };
 
   // Plugin to store editor reference
@@ -92,7 +93,7 @@ function Editor({ user }: EditorProps) {
         <Button
           type="primary"
           action="button"
-          text="Generate Resume"
+          text="Generate Word Resume"
           callback={handleExportWordClick}
         />
         <Button
