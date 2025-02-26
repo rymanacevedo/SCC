@@ -418,10 +418,8 @@ function generateDocxElements(userData: User) {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun(`${userData.info.email} | ${userData.info.phone}`),
-          new TextRun({ text: '\n', break: 1 }),
           new TextRun(
-            `${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
+            `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
           ),
         ],
       }),
@@ -604,18 +602,20 @@ function Editor({ user }: EditorProps) {
         <UserDataPlugin user={user} />
         <EditorRefPlugin editorRef={editorRef} />
       </LexicalComposer>
-      <Button
-        type="primary"
-        action="button"
-        text="Generate Resume"
-        callback={handleExportWordClick}
-      />
-      <Button
-        type="primary"
-        action="button"
-        text="Generate PDF Resume"
-        callback={handleExportClick}
-      />
+      <div className="flex justify-around">
+        <Button
+          type="primary"
+          action="button"
+          text="Generate Resume"
+          callback={handleExportWordClick}
+        />
+        <Button
+          type="primary"
+          action="button"
+          text="Generate PDF Resume"
+          callback={handleExportClick}
+        />
+      </div>
     </>
   );
 }

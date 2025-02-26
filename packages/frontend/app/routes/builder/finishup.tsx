@@ -14,7 +14,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    return redirect('/builder/download');
+    return redirect('/resume');
   } catch (error) {
     // Handle errors
   }
@@ -231,7 +231,7 @@ export default function Finish() {
         />
 
         <Form method="post">
-          <Button text="Generate Resume" action="button" />
+          <Button text="Preview Resume" action="submit" />
         </Form>
       </div>
     </Main>
