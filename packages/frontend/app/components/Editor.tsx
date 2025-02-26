@@ -206,17 +206,19 @@ async function exportToWord(editor: any, userData: User) {
   });
 }
 
-function exportToPDF(editor: any, userData: User) {
-  // Create a new PDF document
+function exportToPDF(
+  editor: any,
+  userData: User,
+  defaultFontSize = 12,
+  defaultFont = 'helvetica',
+) {
   const doc = new jsPDF();
-
   // Set font size and type
   doc.setFontSize(22);
-
   // Add user info
   if (userData.info) {
     // Name as header
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(defaultFont, 'bold');
     const name = `${userData.info.firstName} ${userData.info.lastName}`;
     const nameWidth =
       (doc.getStringUnitWidth(name) * doc.getFontSize()) /
@@ -225,8 +227,8 @@ function exportToPDF(editor: any, userData: User) {
     doc.text(name, nameX, 20);
 
     // Contact info
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(defaultFontSize);
+    doc.setFont(defaultFont, 'normal');
     const contactInfo = `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`;
     const contactWidth =
       (doc.getStringUnitWidth(contactInfo) * doc.getFontSize()) /
@@ -240,7 +242,7 @@ function exportToPDF(editor: any, userData: User) {
   // Add summary
   if (userData?.summary?.summary) {
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(defaultFont, 'bold');
     doc.text('SUMMARY', 14, yPosition);
     yPosition += 7;
 
@@ -248,8 +250,8 @@ function exportToPDF(editor: any, userData: User) {
     // doc.setDrawColor(0);
     // doc.line(14, yPosition - 2, 196, yPosition - 2);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(defaultFontSize);
+    doc.setFont(defaultFont, 'normal');
 
     // Handle text wrapping for summary
     const splitSummary = doc.splitTextToSize(userData.summary.summary, 180);
@@ -260,12 +262,12 @@ function exportToPDF(editor: any, userData: User) {
   // Add experience
   if (userData.experience && userData.experience.length > 0) {
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(defaultFont, 'bold');
     doc.text('EXPERIENCE', 14, yPosition);
     yPosition += 7;
 
     // Add line under section header
-    doc.setDrawColor(0);
+    // doc.setDrawColor(0);
     // doc.line(14, yPosition - 2, 196, yPosition - 2);
 
     for (const job of userData.experience) {
@@ -276,7 +278,7 @@ function exportToPDF(editor: any, userData: User) {
       }
 
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(defaultFont, 'bold');
       doc.text(
         `${job.jobTitle} | ${job.employer} | ${job.location}`,
         14,
@@ -284,8 +286,8 @@ function exportToPDF(editor: any, userData: User) {
       );
       yPosition += 6;
 
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(defaultFontSize);
+      doc.setFont(defaultFont, 'italic');
       const startDate = job.startDate?.toLocaleDateString('en-US', {
         month: 'long',
         year: 'numeric',
@@ -300,8 +302,7 @@ function exportToPDF(editor: any, userData: User) {
       yPosition += 6;
 
       if (job.details && job.details.length > 0) {
-        doc.setFont('helvetica', 'normal');
-
+        doc.setFont(defaultFont, 'normal');
         for (const detail of job.details) {
           // Check if we need a new page
           if (yPosition > 270) {
@@ -310,10 +311,9 @@ function exportToPDF(editor: any, userData: User) {
           }
 
           // Add bullet point
-          doc.text('•', 14, yPosition);
-
+          doc.text('\u2022', 14, yPosition);
           // Handle text wrapping for details
-          const splitDetail = doc.splitTextToSize(detail, 175);
+          const splitDetail = doc.splitTextToSize(detail, 180);
           doc.text(splitDetail, 20, yPosition);
           yPosition += splitDetail.length * 5 + 2;
         }
@@ -332,7 +332,7 @@ function exportToPDF(editor: any, userData: User) {
     }
 
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(defaultFont, 'bold');
     doc.text('EDUCATION', 14, yPosition);
     yPosition += 7;
 
@@ -340,7 +340,7 @@ function exportToPDF(editor: any, userData: User) {
     // doc.setDrawColor(0);
     // doc.line(14, yPosition - 2, 196, yPosition - 2);
 
-    doc.setFontSize(12);
+    doc.setFontSize(defaultFontSize);
     doc.text(
       `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
       14,
@@ -348,8 +348,8 @@ function exportToPDF(editor: any, userData: User) {
     );
     yPosition += 6;
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(defaultFontSize);
+    doc.setFont(defaultFont, 'italic');
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
       : userData.education.graduationDate?.toLocaleDateString('en-US', {
@@ -369,13 +369,13 @@ function exportToPDF(editor: any, userData: User) {
     }
 
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(defaultFont, 'bold');
     doc.text('SKILLS', 14, yPosition);
     yPosition += 7;
 
     // Add line under section header
-    doc.setDrawColor(0);
-    doc.line(14, yPosition - 2, 196, yPosition - 2);
+    // doc.setDrawColor(0);
+    // doc.line(14, yPosition - 2, 196, yPosition - 2);
 
     const allSkills = [
       ...(userData.skills.expertRecommended || []),
@@ -383,8 +383,8 @@ function exportToPDF(editor: any, userData: User) {
     ];
 
     if (allSkills.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(defaultFontSize);
+      doc.setFont(defaultFont, 'normal');
 
       // Handle text wrapping for skills
       const skillsText = allSkills.join(', ');
@@ -490,7 +490,7 @@ function generateDocxElements(userData: User) {
         for (const detail of job.details) {
           elements.push(
             new Paragraph({
-              text: `• ${detail}`,
+              text: `${detail}`,
               bullet: {
                 level: 0,
               },
@@ -580,12 +580,12 @@ function Editor({ user }: EditorProps) {
     if (editorRef.current) {
       exportToWord(editorRef.current, user);
     }
-  };const handleExportClick = () => {
+  };
+  const handleExportClick = () => {
     if (editorRef.current) {
       exportToPDF(editorRef.current, user);
     }
   };
-
 
   return (
     <>
@@ -609,7 +609,8 @@ function Editor({ user }: EditorProps) {
         action="button"
         text="Generate Resume"
         callback={handleExportWordClick}
-      /><Button
+      />
+      <Button
         type="primary"
         action="button"
         text="Generate PDF Resume"
