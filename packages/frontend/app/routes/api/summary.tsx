@@ -51,7 +51,7 @@ export const clientAction: ClientActionFunction = async ({
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt: result.jobSearch }),
     });
 
     if (!res.ok) {

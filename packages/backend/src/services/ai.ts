@@ -1,8 +1,9 @@
+import {
+  createGoogleGenerativeAI,
+  type GoogleGenerativeAIProvider,
+} from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-
-const GeminiModel = google('gemini-2.0-flash-exp');
 
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
@@ -36,7 +37,11 @@ const SummarySchema = z
   })
   .array();
 
-export const createSummaries = async (prompt: string) => {
+export const createSummaries = async (prompt: string, apiKey: string) => {
+  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
+    apiKey,
+  });
+  const GeminiModel = gemini('gemini-2.0-flash-exp');
   const result = await generateObject({
     model: GeminiModel,
     schema: SummarySchema,
