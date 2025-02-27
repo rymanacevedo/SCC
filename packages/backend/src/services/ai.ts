@@ -85,7 +85,11 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   return result.object;
 };
 
-export const createSkills = async (prompt: string) => {
+export const createSkills = async (prompt: string, apiKey: string) => {
+  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
+    apiKey,
+  });
+  const GeminiModel = gemini('gemini-2.0-flash-exp');
   const result = await generateObject({
     model: GeminiModel,
     schema: SkillsSchema,
@@ -109,7 +113,11 @@ export const createSkills = async (prompt: string) => {
   return result.object;
 };
 
-export const createExperience = async (prompt: string) => {
+export const createExperience = async (prompt: string, apiKey: string) => {
+  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
+    apiKey,
+  });
+  const GeminiModel = gemini('gemini-2.0-flash-exp');
   const result = await generateObject({
     model: GeminiModel,
     schema: ExperienceSchema,
