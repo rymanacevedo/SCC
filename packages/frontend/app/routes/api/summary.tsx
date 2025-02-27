@@ -6,7 +6,6 @@ import {
 import { containsInappropriateWords } from '../../utils/filter';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
-import { createSummaries } from '../../utils/aiServices';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -46,7 +45,19 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const summaries = await createSummaries(result.jobSearch);
+    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/summaries`;
+    const res = await fetch(bckEndUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: result.jobSearch }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status ${res.status}`);
+    }
+    const summaries = await res.json();
     return Response.json(summaries);
   }
   return Response.json({});

@@ -1,0 +1,20 @@
+{
+  "name": "@scc/backend",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy --minify"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.1.17",
+    "@hono/zod-validator": "^0.4.3",
+    "ai": "^4.1.46",
+    "hono": "^4.7.2",
+    "zod": "^3.24.2",
+    "@scc/frontend": "1.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "@types/node": "^22.13.5",
+    "wrangler": "^3.109.2"
+  }
+}
