@@ -1,22 +1,27 @@
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { createExperience, createSkills, createSummaries } from './services/ai';
 
+type Bindings = {
+  ALLOWED_ORIGIN: string;
+  GEMINI_API_KEY: string;
+};
+
 const app = new Hono<{
-  Bindings: {
-    ALLOWED_ORIGIN: string;
-    GEMINI_API_KEY: string;
-  };
+  Bindings: Bindings;
 }>();
 
-app.use(
-  '/api/*',
-  cors({
-    origin: 'https://5173-rymanacevedo-scc-p0xqk7np102.ws-us118.gitpod.io',
-  }),
-);
+export const CorsConfig = async (c: Context, next: () => any) => {
+  const corsConfig = cors({
+    origin: [c.env.ALLOWED_ORIGIN],
+    allowMethods: ['POST', 'OPTIONS'],
+  });
+  return corsConfig(c, next);
+};
+
+app.use('/api/*', CorsConfig);
 
 const schema = z.object({
   prompt: z.string().min(1),
