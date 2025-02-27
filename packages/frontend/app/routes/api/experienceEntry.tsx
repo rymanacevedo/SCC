@@ -102,10 +102,19 @@ export const clientAction: ClientActionFunction = async ({
   };
 
   if (result.jobTitleSearch) {
-    experience = await createExperience(`Job Title: ${result.jobTitleSearch}
-      Employer: ${result.employer}`);
-    const finalResult = JobTitleSchema.parse(experience);
-    return Response.json(finalResult);
+    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/experience`;
+    const res = await fetch(bckEndUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: result.jobTitleSearch }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP error! status ${res.status}`);
+    }
+    const experience = await res.json();
+    return Response.json(experience);
   }
 
   return Response.json(experience);

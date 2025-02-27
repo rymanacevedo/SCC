@@ -57,7 +57,18 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const skills = await createSkills(result.jobSearch);
+    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/skills`;
+    const res = await fetch(bckEndUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: result.jobSearch }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP error! status ${res.status}`);
+    }
+    const skills = await res.json();
     return Response.json(skills);
   }
   return Response.json({});
