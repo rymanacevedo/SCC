@@ -68,7 +68,7 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   
         You are helping me write professional summaries for a user who submitted their job title, employer, and job details.
   
-        I've give you a string that formatted like such:
+        I've give you a string that formatted like such for each job:
         <job>
           <jobTitle></jobTitle>
           <employer></employer>

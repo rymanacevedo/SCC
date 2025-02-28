@@ -120,13 +120,18 @@ export default function Education() {
           defaultValue={prevEducation?.schoolName}
         />
 
-        <Input
-          label="Degree"
-          type="text"
-          id="degree"
-          error={errors}
-          defaultValue={prevEducation?.degree}
-        />
+        {prevEducation?.educationLevel === 'High School or GED' ||
+        prevEducation?.educationLevel === 'Some College' ? (
+          <input type="hidden" id="degree" name="degree" value="Diploma" />
+        ) : (
+          <Input
+            label="Degree or Certificate"
+            type="text"
+            id="degree"
+            error={errors}
+            defaultValue={prevEducation?.degree}
+          />
+        )}
 
         <Input
           label="Location"
