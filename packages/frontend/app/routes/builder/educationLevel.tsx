@@ -1,5 +1,4 @@
 import { memo } from 'react';
-import Heading from '../../components/Heading';
 import Button from '../../components/Button';
 import {
   type ClientActionFunctionArgs,
@@ -13,7 +12,19 @@ import { updateUser } from '../../utils/user';
 import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
-export const EducationLevelSchema = z.string().min(1);
+export const EducationLevelSchema = z.union([
+  z.literal('High School or GED'),
+  z.literal('Associates'),
+  z.literal('Bachelors'),
+  z.literal('Masters'),
+  z.literal('PhD'),
+  z.literal('Some College'),
+  z.literal('Vocational'),
+]);
+
+const educationLevels = EducationLevelSchema.options.map(
+  (option) => option.value,
+);
 
 export async function clientAction({ request }: ClientActionFunctionArgs) {
   const formData = await request.formData();
@@ -42,15 +53,7 @@ function EducationLevel() {
         method="post"
         className="flex flex-col md:flex-row md:flex-wrap justify-center gap-4 max-w-xs md:max-w-4xl mx-auto"
       >
-        {[
-          'High School or GED',
-          'Associates',
-          'Bachelors',
-          'Masters',
-          'PhD',
-          'Some College',
-          'Vocational',
-        ].map((e) => (
+        {educationLevels.map((e) => (
           <Button
             name="educationLevel"
             key={e}
