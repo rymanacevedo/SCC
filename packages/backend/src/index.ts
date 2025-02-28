@@ -13,7 +13,7 @@ const app = new Hono<{
   Bindings: Bindings;
 }>();
 
-export const CorsConfig = async (c: Context, next: () => any) => {
+export const CorsConfig = async (c: Context, next: () => Promise<void>) => {
   const corsConfig = cors({
     origin: [c.env.ALLOWED_ORIGIN],
     allowMethods: ['POST', 'OPTIONS'],
