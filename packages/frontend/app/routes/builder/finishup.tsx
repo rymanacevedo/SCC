@@ -1,5 +1,5 @@
 // app/routes/builder.finish.tsx
-import { NavLink, redirect, useLoaderData } from 'react-router';
+import { redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
@@ -14,7 +14,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = Object.fromEntries(formData);
 
   try {
-    return redirect('/builder/download');
+    return redirect('/resume');
   } catch (error) {
     // Handle errors
   }
@@ -231,7 +231,7 @@ export default function Finish() {
         />
 
         <Form method="post">
-          <Button text="Generate Resume" action="button" />
+          <Button text="Preview Resume" action="submit" />
         </Form>
       </div>
     </Main>

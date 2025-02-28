@@ -1,5 +1,11 @@
 {
-  "include": [".react-router/types/**/*"],
+  "include": [
+    ".react-router/types/**/*",
+    "declarations.d.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "rootDirs": [".", "./.react-router/types"],
   "compilerOptions": {
     "types": ["@react-router/node", "vite/client"],
     "rootDirs": [".", "./.react-router/types"],
@@ -10,6 +16,7 @@
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   }
 }
