@@ -65,6 +65,12 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
         Creative marketing professional with expertise in digital marketing campaigns and social media strategy. Track record of increasing engagement and driving conversion rates.
         </text>
         </example3>
+        <example4>
+        <title>Strategic Account Manager</title>
+        <text>
+        Exceeded annual account growth quota by 457% (#1 in my department), responsible for 80% of department-wide upselling in Q4 of 2014
+        </text>
+        </example4>
   
         You are helping me write professional summaries for a user who submitted their job title, employer, and job details.
   
@@ -97,7 +103,7 @@ export const createSkills = async (prompt: string, apiKey: string) => {
     prompt,
     system: `
           You are helping gather soft skills for a user who submitted their job title, employer, and job details.
-          I've give you a string that formatted like such:
+          I've give you a string that formatted jobs like such:
           <job>
             <jobTitle></jobTitle>
             <employer></employer>
