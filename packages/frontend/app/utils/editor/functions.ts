@@ -6,7 +6,6 @@ import {
   TextRun,
   Document,
 } from 'docx';
-import jsPDF from 'jspdf';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { $createHeadingNode } from '@lexical/rich-text';
 import type { User } from '../user';
@@ -15,6 +14,15 @@ import fileSaver from 'file-saver';
 import { $createCustomParagraphNode } from './custom/CustomParagraphNode';
 const { saveAs } = fileSaver;
 import DOMPurify from 'dompurify';
+import jsPDF from 'jspdf';
+import {
+  addUserInfo,
+  addSummary,
+  addSkills,
+  addExperience,
+  addEducation,
+} from './pdf/addParts';
+import { generateDocxElements } from './word/addParts';
 
 /**
  * Use DOMPurify to sanitize the input text.
@@ -23,7 +31,6 @@ import DOMPurify from 'dompurify';
 function sanitizeText(text: string): string {
   return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
 }
-
 
 /**
  * Populates the Lexical editor with user data using sanitized text.
@@ -35,8 +42,8 @@ export function populateEditorWithUserData(root: any, userData: User) {
     const nameNode = $createHeadingNode('h1');
     nameNode.append(
       $createTextNode(
-        sanitizeText(`${userData.info.firstName} ${userData.info.lastName}`)
-      )
+        sanitizeText(`${userData.info.firstName} ${userData.info.lastName}`),
+      ),
     );
     root.append(nameNode);
 
@@ -44,9 +51,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
     contactNode.append(
       $createTextNode(
         sanitizeText(
-          `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`
-        )
-      )
+          `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
+        ),
+      ),
     );
     root.append(contactNode);
   }
@@ -87,8 +94,8 @@ export function populateEditorWithUserData(root: any, userData: User) {
       const jobTitleNode = $createHeadingNode('h3');
       jobTitleNode.append(
         $createTextNode(
-          sanitizeText(`${job.jobTitle} | ${job.employer} | ${job.location}`)
-        )
+          sanitizeText(`${job.jobTitle} | ${job.employer} | ${job.location}`),
+        ),
       );
       root.append(jobTitleNode);
 
@@ -104,7 +111,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
             year: 'numeric',
           });
       dateNode.append(
-        $createTextNode(sanitizeText(`${startDate} - ${endDate}`))
+        $createTextNode(sanitizeText(`${startDate} - ${endDate}`)),
       );
       root.append(dateNode);
 
@@ -132,9 +139,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
       $createTextNode(
         sanitizeText(
           `${userData.education.degree}, ${userData.education.educationLevel} | ` +
-            `${userData.education.schoolName} | ${userData.education.location}`
-        )
-      )
+            `${userData.education.schoolName} | ${userData.education.location}`,
+        ),
+      ),
     );
     root.append(educationNode);
 
@@ -146,206 +153,48 @@ export function populateEditorWithUserData(root: any, userData: User) {
           year: 'numeric',
         });
     gradDateNode.append(
-      $createTextNode(sanitizeText(`Graduation: ${gradDate}`))
+      $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
     );
     root.append(gradDateNode);
   }
 }
 
-// Generate docx elements directly from user data
-function generateDocxElements(userData: User) {
-  const elements = [];
-
-  // Header with name
-  if (userData.info) {
-    elements.push(
-      new Paragraph({
-        text: `${userData.info.firstName} ${userData.info.lastName}`,
-        heading: HeadingLevel.HEADING_1,
-        alignment: AlignmentType.CENTER,
-      }),
-    );
-
-    // Contact information
-    elements.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun(
-            `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
-          ),
-        ],
-      }),
-    );
-
-    // Separator
-    elements.push(new Paragraph({ text: '' }));
-  }
-
-  // Summary section
-  if (userData?.summary?.summary) {
-    elements.push(
-      new Paragraph({
-        text: 'SUMMARY',
-        heading: HeadingLevel.HEADING_2,
-        thematicBreak: true,
-      }),
-    );
-
-    elements.push(
-      new Paragraph({
-        text: userData.summary.summary,
-      }),
-    );
-
-    elements.push(new Paragraph({ text: '' }));
-  }
-
-  // Skills section
-  if (userData.skills) {
-    elements.push(
-      new Paragraph({
-        text: 'SKILLS',
-        heading: HeadingLevel.HEADING_2,
-        thematicBreak: true,
-      }),
-    );
-
-    const allSkills = [
-      ...(userData.skills.expertRecommended || []),
-      ...(userData.skills.other || []),
-    ];
-
-    if (allSkills.length > 0) {
-      elements.push(
-        new Paragraph({
-          text: allSkills.join(', '),
-        }),
-      );
-    }
-    // Separator
-    elements.push(new Paragraph({ text: '' }));
-  }
-
-  // Experience section
-  if (userData.experience && userData.experience.length > 0) {
-    elements.push(
-      new Paragraph({
-        text: 'EXPERIENCE',
-        heading: HeadingLevel.HEADING_2,
-        thematicBreak: true,
-      }),
-    );
-
-    for (const job of userData.experience) {
-      elements.push(
-        new Paragraph({
-          text: `${job.jobTitle} | ${job.employer} | ${job.location}`,
-          heading: HeadingLevel.HEADING_3,
-        }),
-      );
-
-      const startDate = job.startDate?.toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
-      const endDate = job.currentlyEmployed
-        ? 'Present'
-        : job.endDate?.toLocaleDateString('en-US', {
-            month: 'long',
-            year: 'numeric',
-          });
-
-      elements.push(
-        new Paragraph({
-          text: `${startDate} - ${endDate}`,
-          italics: true,
-        }),
-      );
-
-      if (job.details && job.details.length > 0) {
-        for (const detail of job.details) {
-          elements.push(
-            new Paragraph({
-              text: `${detail}`,
-              bullet: {
-                level: 0,
+  /**
+   * Creates and exports the Word document using the generated docx elements.
+   */
+  export async function exportToWord(editor: any, userData: User) {
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: {
+                top: 1000,
+                right: 1000,
+                bottom: 1000,
+                left: 1000,
               },
-            }),
-          );
-        }
-      }
-
-      elements.push(new Paragraph({ text: '' }));
-    }
-  }
-
-  // Education section
-  if (userData.education) {
-    elements.push(
-      new Paragraph({
-        text: 'EDUCATION',
-        heading: HeadingLevel.HEADING_2,
-        thematicBreak: true,
-      }),
-    );
-
-    elements.push(
-      new Paragraph({
-        text: `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
-        heading: HeadingLevel.HEADING_3,
-      }),
-    );
-
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-
-    elements.push(
-      new Paragraph({
-        text: `Graduation: ${gradDate}`,
-        italics: true,
-      }),
-    );
-
-    elements.push(new Paragraph({ text: '' }));
-  }
-
-  return elements;
-}
-
-export async function exportToWord(editor: any, userData: User) {
-  // Create document sections directly from user data
-  const doc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: 1000,
-              right: 1000,
-              bottom: 1000,
-              left: 1000,
             },
           },
+          children: generateDocxElements(userData),
         },
-        children: generateDocxElements(userData),
-      },
-    ],
-  });
+      ],
+    });
+  
+    Packer.toBlob(doc).then((blob) => {
+      saveAs(
+        blob,
+        `${userData.info?.firstName || 'resume'}_${
+          userData.info?.lastName || ''
+        }_resume.docx`
+      );
+    });
+  }
 
-  // Generate and save the document
-  Packer.toBlob(doc).then((blob) => {
-    saveAs(
-      blob,
-      `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''}_resume.docx`,
-    );
-  });
-}
-
+/**
+ * The main function that generates the PDF by orchestrating the individual
+ * sections defined above.
+ */
 export function exportToPDF(
   editor: any,
   userData: User,
@@ -354,177 +203,33 @@ export function exportToPDF(
 ) {
   const doc = new jsPDF();
 
-  // Set font size and type
+  // Set the main header font size
   doc.setFontSize(22);
 
-  // Add user info
-  if (userData.info) {
-    // Name as header
-    doc.setFont(defaultFont, 'bold');
-    const name = `${userData.info.firstName} ${userData.info.lastName}`;
-    const nameWidth =
-      (doc.getStringUnitWidth(name) * doc.getFontSize()) /
-      doc.internal.scaleFactor;
-    const nameX = (doc.internal.pageSize.width - nameWidth) / 2;
-    doc.text(name, nameX, 20);
-
-    // Contact info
-    doc.setFontSize(defaultFontSize);
-    doc.setFont(defaultFont, 'normal');
-    const contactInfo = `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`;
-    const contactWidth =
-      (doc.getStringUnitWidth(contactInfo) * doc.getFontSize()) /
-      doc.internal.scaleFactor;
-    const contactX = (doc.internal.pageSize.width - contactWidth) / 2;
-    doc.text(contactInfo, contactX, 28);
-  }
-
-  let yPosition = 40;
-
-  // Add summary
-  if (userData?.summary?.summary) {
-    doc.setFontSize(14);
-    doc.setFont(defaultFont, 'bold');
-    doc.text('SUMMARY', 14, yPosition);
-    yPosition += 7;
-
-    doc.setFontSize(defaultFontSize);
-    doc.setFont(defaultFont, 'normal');
-
-    // Handle text wrapping for summary
-    const splitSummary = doc.splitTextToSize(userData.summary.summary, 180);
-    doc.text(splitSummary, 14, yPosition);
-    yPosition += splitSummary.length * 5 + 10;
-  }
-
-  // Add skills
-  if (userData.skills) {
-    if (yPosition > 270) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFontSize(14);
-    doc.setFont(defaultFont, 'bold');
-    doc.text('SKILLS', 14, yPosition);
-    yPosition += 7;
-
-    const allSkills = [
-      ...(userData.skills.expertRecommended || []),
-      ...(userData.skills.other || []),
-    ];
-
-    if (allSkills.length > 0) {
-      doc.setFontSize(defaultFontSize);
-      doc.setFont(defaultFont, 'normal');
-
-      // Handle text wrapping for skills
-      const skillsText = allSkills.join(', ');
-      const splitSkills = doc.splitTextToSize(skillsText, 180);
-      doc.text(splitSkills, 14, yPosition);
-      yPosition += splitSkills.length * 5 + 10;
-    }
-  }
-
-  // Continue with EXPERIENCE section
-  if (userData.experience && userData.experience.length > 0) {
-    if (yPosition > 270) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFontSize(14);
-    doc.setFont(defaultFont, 'bold');
-    doc.text('EXPERIENCE', 14, yPosition);
-    yPosition += 7;
-
-    // Add line under section header
-    // doc.setDrawColor(0);
-    // doc.line(14, yPosition - 2, 196, yPosition - 2);
-
-    for (const job of userData.experience) {
-      // Check if we need a new page
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      doc.setFontSize(12);
-      doc.setFont(defaultFont, 'bold');
-      doc.text(
-        `${job.jobTitle} | ${job.employer} | ${job.location}`,
-        14,
-        yPosition,
-      );
-      yPosition += 6;
-
-      doc.setFontSize(defaultFontSize);
-      doc.setFont(defaultFont, 'italic');
-      const startDate = job.startDate?.toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
-      const endDate = job.currentlyEmployed
-        ? 'Present'
-        : job.endDate?.toLocaleDateString('en-US', {
-            month: 'long',
-            year: 'numeric',
-          });
-      doc.text(`${startDate} - ${endDate}`, 14, yPosition);
-      yPosition += 6;
-
-      if (job.details && job.details.length > 0) {
-        doc.setFont(defaultFont, 'normal');
-        for (const detail of job.details) {
-          // Check if we need a new page
-          if (yPosition > 270) {
-            doc.addPage();
-            yPosition = 20;
-          }
-
-          // Add bullet point
-          doc.text('\u2022', 14, yPosition);
-          // Handle text wrapping for details
-          const splitDetail = doc.splitTextToSize(detail, 180);
-          doc.text(splitDetail, 20, yPosition);
-          yPosition += splitDetail.length * 5 + 2;
-        }
-      }
-      yPosition += 8;
-    }
-  }
-
-  // Add EDUCATION
-  if (userData.education) {
-    if (yPosition > 270) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFontSize(14);
-    doc.setFont(defaultFont, 'bold');
-    doc.text('EDUCATION', 14, yPosition);
-    yPosition += 7;
-
-    doc.setFontSize(defaultFontSize);
-    doc.text(
-      `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
-      14,
-      yPosition,
-    );
-    yPosition += 6;
-
-    // doc.setFontSize(defaultFontSize);
-    // doc.setFont(defaultFont, 'italic');
-    // const gradDate = userData.education.currentlyEnrolled
-    //   ? 'Currently Enrolled'
-    //   : userData.education.graduationDate?.toLocaleDateString('en-US', {
-    //       month: 'long',
-    //       year: 'numeric',
-    //     });
-    // doc.text(`Graduation: ${gradDate}`, 14, yPosition);
-    // yPosition += 10;
-  }
+  // Build the PDF sections and track the vertical position (yPosition)
+  let yPosition = addUserInfo(doc, userData, defaultFont, defaultFontSize);
+  yPosition = addSummary(
+    doc,
+    userData,
+    yPosition,
+    defaultFont,
+    defaultFontSize,
+  );
+  yPosition = addSkills(doc, userData, yPosition, defaultFont, defaultFontSize);
+  yPosition = addExperience(
+    doc,
+    userData,
+    yPosition,
+    defaultFont,
+    defaultFontSize,
+  );
+  yPosition = addEducation(
+    doc,
+    userData,
+    yPosition,
+    defaultFont,
+    defaultFontSize,
+  );
 
   // Save the PDF with a filename based on the user's name
   doc.save(
