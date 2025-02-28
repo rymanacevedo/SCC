@@ -18,6 +18,7 @@ import type { TExperience } from '../api/experienceEntry';
 import {
   getExperienceDetails,
   getQueuedExperience,
+  setQueuedExperience,
   updateUser,
 } from '../../utils/user';
 import useEffectOnce from '../../hooks/useEffectOnce';
@@ -93,6 +94,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   if (exp) {
     if (jobId) {
       const storedExperience = getExperienceDetails(jobId);
+      setQueuedExperience(storedExperience);
       return data({
         ...exp,
         details: storedExperience?.details || [],
@@ -104,6 +106,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
+    setQueuedExperience(experience);
     return data(experience);
   }
 }
