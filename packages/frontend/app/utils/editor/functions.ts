@@ -45,6 +45,23 @@ export function populateEditorWithUserData(root: any, userData: User) {
     root.append(summaryNode);
   }
 
+  if (userData.skills) {
+    const skillsTitleNode = $createHeadingNode('h2');
+    skillsTitleNode.append($createTextNode('SKILLS'));
+    root.append(skillsTitleNode);
+
+    const allSkills = [
+      ...(userData.skills.expertRecommended || []),
+      ...(userData.skills.other || []),
+    ];
+
+    if (allSkills.length > 0) {
+      const skillsNode = $createParagraphNode();
+      skillsNode.append($createTextNode(allSkills.join(', ')));
+      root.append(skillsNode);
+    }
+  }
+
   if (userData.experience && userData.experience.length > 0) {
     const experienceTitleNode = $createHeadingNode('h2');
     experienceTitleNode.append($createTextNode('EXPERIENCE'));
@@ -107,23 +124,6 @@ export function populateEditorWithUserData(root: any, userData: User) {
     gradDateNode.append($createTextNode(`Graduation: ${gradDate}`));
     root.append(gradDateNode);
   }
-
-  if (userData.skills) {
-    const skillsTitleNode = $createHeadingNode('h2');
-    skillsTitleNode.append($createTextNode('SKILLS'));
-    root.append(skillsTitleNode);
-
-    const allSkills = [
-      ...(userData.skills.expertRecommended || []),
-      ...(userData.skills.other || []),
-    ];
-
-    if (allSkills.length > 0) {
-      const skillsNode = $createParagraphNode();
-      skillsNode.append($createTextNode(allSkills.join(', ')));
-      root.append(skillsNode);
-    }
-  }
 }
 
 // Generate docx elements directly from user data
@@ -172,6 +172,32 @@ function generateDocxElements(userData: User) {
       }),
     );
 
+    elements.push(new Paragraph({ text: '' }));
+  }
+
+  // Skills section
+  if (userData.skills) {
+    elements.push(
+      new Paragraph({
+        text: 'SKILLS',
+        heading: HeadingLevel.HEADING_2,
+        thematicBreak: true,
+      }),
+    );
+
+    const allSkills = [
+      ...(userData.skills.expertRecommended || []),
+      ...(userData.skills.other || []),
+    ];
+
+    if (allSkills.length > 0) {
+      elements.push(
+        new Paragraph({
+          text: allSkills.join(', '),
+        }),
+      );
+    }
+    // Separator
     elements.push(new Paragraph({ text: '' }));
   }
 
@@ -262,30 +288,6 @@ function generateDocxElements(userData: User) {
     elements.push(new Paragraph({ text: '' }));
   }
 
-  // Skills section
-  if (userData.skills) {
-    elements.push(
-      new Paragraph({
-        text: 'SKILLS',
-        heading: HeadingLevel.HEADING_2,
-        thematicBreak: true,
-      }),
-    );
-
-    const allSkills = [
-      ...(userData.skills.expertRecommended || []),
-      ...(userData.skills.other || []),
-    ];
-
-    if (allSkills.length > 0) {
-      elements.push(
-        new Paragraph({
-          text: allSkills.join(', '),
-        }),
-      );
-    }
-  }
-
   return elements;
 }
 
@@ -325,8 +327,10 @@ export function exportToPDF(
   defaultFont = 'helvetica',
 ) {
   const doc = new jsPDF();
+
   // Set font size and type
   doc.setFontSize(22);
+
   // Add user info
   if (userData.info) {
     // Name as header
@@ -358,10 +362,6 @@ export function exportToPDF(
     doc.text('SUMMARY', 14, yPosition);
     yPosition += 7;
 
-    // Add line under section header
-    // doc.setDrawColor(0);
-    // doc.line(14, yPosition - 2, 196, yPosition - 2);
-
     doc.setFontSize(defaultFontSize);
     doc.setFont(defaultFont, 'normal');
 
@@ -371,8 +371,42 @@ export function exportToPDF(
     yPosition += splitSummary.length * 5 + 10;
   }
 
-  // Add experience
+  // Add skills
+  if (userData.skills) {
+    if (yPosition > 270) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont(defaultFont, 'bold');
+    doc.text('SKILLS', 14, yPosition);
+    yPosition += 7;
+
+    const allSkills = [
+      ...(userData.skills.expertRecommended || []),
+      ...(userData.skills.other || []),
+    ];
+
+    if (allSkills.length > 0) {
+      doc.setFontSize(defaultFontSize);
+      doc.setFont(defaultFont, 'normal');
+
+      // Handle text wrapping for skills
+      const skillsText = allSkills.join(', ');
+      const splitSkills = doc.splitTextToSize(skillsText, 180);
+      doc.text(splitSkills, 14, yPosition);
+      yPosition += splitSkills.length * 5 + 10;
+    }
+  }
+
+  // Continue with EXPERIENCE section
   if (userData.experience && userData.experience.length > 0) {
+    if (yPosition > 270) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
     doc.text('EXPERIENCE', 14, yPosition);
@@ -430,14 +464,12 @@ export function exportToPDF(
           yPosition += splitDetail.length * 5 + 2;
         }
       }
-
       yPosition += 8;
     }
   }
 
-  // Add education
+  // Add EDUCATION
   if (userData.education) {
-    // Check if we need a new page
     if (yPosition > 270) {
       doc.addPage();
       yPosition = 20;
@@ -448,10 +480,6 @@ export function exportToPDF(
     doc.text('EDUCATION', 14, yPosition);
     yPosition += 7;
 
-    // Add line under section header
-    // doc.setDrawColor(0);
-    // doc.line(14, yPosition - 2, 196, yPosition - 2);
-
     doc.setFontSize(defaultFontSize);
     doc.text(
       `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
@@ -460,53 +488,22 @@ export function exportToPDF(
     );
     yPosition += 6;
 
-    doc.setFontSize(defaultFontSize);
-    doc.setFont(defaultFont, 'italic');
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-    doc.text(`Graduation: ${gradDate}`, 14, yPosition);
-    yPosition += 10;
+    // doc.setFontSize(defaultFontSize);
+    // doc.setFont(defaultFont, 'italic');
+    // const gradDate = userData.education.currentlyEnrolled
+    //   ? 'Currently Enrolled'
+    //   : userData.education.graduationDate?.toLocaleDateString('en-US', {
+    //       month: 'long',
+    //       year: 'numeric',
+    //     });
+    // doc.text(`Graduation: ${gradDate}`, 14, yPosition);
+    // yPosition += 10;
   }
 
-  // Add skills
-  if (userData.skills) {
-    // Check if we need a new page
-    if (yPosition > 270) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFontSize(14);
-    doc.setFont(defaultFont, 'bold');
-    doc.text('SKILLS', 14, yPosition);
-    yPosition += 7;
-
-    // Add line under section header
-    // doc.setDrawColor(0);
-    // doc.line(14, yPosition - 2, 196, yPosition - 2);
-
-    const allSkills = [
-      ...(userData.skills.expertRecommended || []),
-      ...(userData.skills.other || []),
-    ];
-
-    if (allSkills.length > 0) {
-      doc.setFontSize(defaultFontSize);
-      doc.setFont(defaultFont, 'normal');
-
-      // Handle text wrapping for skills
-      const skillsText = allSkills.join(', ');
-      const splitSkills = doc.splitTextToSize(skillsText, 180);
-      doc.text(splitSkills, 14, yPosition);
-    }
-  }
-
-  // Save the PDF
+  // Save the PDF with a filename based on the user's name
   doc.save(
-    `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''}_resume.pdf`,
+    `${userData.info?.firstName || 'resume'}_${
+      userData.info?.lastName || ''
+    }_resume.pdf`,
   );
 }

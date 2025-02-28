@@ -1,5 +1,14 @@
 // CustomParagraphNode.ts
-import { type EditorConfig, ParagraphNode } from 'lexical';
+import {
+  type EditorConfig,
+  type SerializedParagraphNode,
+  ParagraphNode,
+} from 'lexical';
+
+// Extend the serialized type to include the custom className
+export type SerializedCustomParagraphNode = SerializedParagraphNode & {
+  className: string;
+};
 
 export class CustomParagraphNode extends ParagraphNode {
   __className: string;
@@ -15,6 +24,19 @@ export class CustomParagraphNode extends ParagraphNode {
 
   static clone(node: CustomParagraphNode): CustomParagraphNode {
     return new CustomParagraphNode(node.__className, node.__key);
+  }
+
+  // Import JSON to create a new instance of the node.
+  static importJSON(
+    serializedNode: SerializedCustomParagraphNode,
+  ): CustomParagraphNode {
+    // Create a new custom paragraph node with the className from the JSON.
+    const node = $createCustomParagraphNode(serializedNode.className || '');
+    // Import base properties.
+    node.setFormat(serializedNode.format);
+    node.setIndent(serializedNode.indent);
+    node.setDirection(serializedNode.direction);
+    return node;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
