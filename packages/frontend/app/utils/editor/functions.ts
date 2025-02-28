@@ -14,23 +14,39 @@ import type { User } from '../user';
 import fileSaver from 'file-saver';
 import { $createCustomParagraphNode } from './custom/CustomParagraphNode';
 const { saveAs } = fileSaver;
+import DOMPurify from 'dompurify';
 
-// For building the editor
+/**
+ * Use DOMPurify to sanitize the input text.
+ * We disallow all HTML elements by setting ALLOWED_TAGS to [].
+ */
+function sanitizeText(text: string): string {
+  return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] });
+}
+
+
+/**
+ * Populates the Lexical editor with user data using sanitized text.
+ */
 export function populateEditorWithUserData(root: any, userData: User) {
   root.clear();
 
   if (userData.info) {
     const nameNode = $createHeadingNode('h1');
     nameNode.append(
-      $createTextNode(`${userData.info.firstName} ${userData.info.lastName}`),
+      $createTextNode(
+        sanitizeText(`${userData.info.firstName} ${userData.info.lastName}`)
+      )
     );
     root.append(nameNode);
 
     const contactNode = $createCustomParagraphNode('text-center');
     contactNode.append(
       $createTextNode(
-        `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
-      ),
+        sanitizeText(
+          `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`
+        )
+      )
     );
     root.append(contactNode);
   }
@@ -41,7 +57,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
     root.append(summaryTitleNode);
 
     const summaryNode = $createParagraphNode();
-    summaryNode.append($createTextNode(userData.summary.summary));
+    summaryNode.append($createTextNode(sanitizeText(userData.summary.summary)));
     root.append(summaryNode);
   }
 
@@ -57,7 +73,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
 
     if (allSkills.length > 0) {
       const skillsNode = $createParagraphNode();
-      skillsNode.append($createTextNode(allSkills.join(', ')));
+      skillsNode.append($createTextNode(sanitizeText(allSkills.join(', '))));
       root.append(skillsNode);
     }
   }
@@ -70,7 +86,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
     for (const job of userData.experience) {
       const jobTitleNode = $createHeadingNode('h3');
       jobTitleNode.append(
-        $createTextNode(`${job.jobTitle} | ${job.employer} | ${job.location}`),
+        $createTextNode(
+          sanitizeText(`${job.jobTitle} | ${job.employer} | ${job.location}`)
+        )
       );
       root.append(jobTitleNode);
 
@@ -85,13 +103,16 @@ export function populateEditorWithUserData(root: any, userData: User) {
             month: 'long',
             year: 'numeric',
           });
-      dateNode.append($createTextNode(`${startDate} - ${endDate}`));
+      dateNode.append(
+        $createTextNode(sanitizeText(`${startDate} - ${endDate}`))
+      );
       root.append(dateNode);
 
       if (job.details && job.details.length > 0) {
         for (const detail of job.details) {
           const detailNode = $createParagraphNode();
-          detailNode.append($createTextNode(`• ${detail}`));
+          // Prefix with a bullet and then sanitize the detail content.
+          detailNode.append($createTextNode(sanitizeText(`• ${detail}`)));
           root.append(detailNode);
         }
       }
@@ -109,8 +130,11 @@ export function populateEditorWithUserData(root: any, userData: User) {
     const educationNode = $createParagraphNode();
     educationNode.append(
       $createTextNode(
-        `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
-      ),
+        sanitizeText(
+          `${userData.education.degree}, ${userData.education.educationLevel} | ` +
+            `${userData.education.schoolName} | ${userData.education.location}`
+        )
+      )
     );
     root.append(educationNode);
 
@@ -121,7 +145,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
           month: 'long',
           year: 'numeric',
         });
-    gradDateNode.append($createTextNode(`Graduation: ${gradDate}`));
+    gradDateNode.append(
+      $createTextNode(sanitizeText(`Graduation: ${gradDate}`))
+    );
     root.append(gradDateNode);
   }
 }
