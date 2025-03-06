@@ -88,7 +88,14 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   try {
     const validatedData = ExperienceSchema.parse(createdData);
-    setQueuedExperience(validatedData);
+    const exp = getQueuedExperience();
+    if (exp?.details) {
+      // hot fix to get details without storing in form
+      validatedData.details = exp.details;
+      setQueuedExperience(validatedData);
+    } else {
+      setQueuedExperience(validatedData);
+    }
 
     return redirect(redirectUrl);
   } catch (error) {
@@ -117,6 +124,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
+    setQueuedExperience(experience);
     return data({ prevExperience: experience, jobId });
   }
 

@@ -63,6 +63,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const formattedData = transformExperienceDetails(entries);
   try {
     const validatedData = ExperienceEntrySchema.parse(formattedData);
+    // hot fix to get details without storing in form
     const exp = getQueuedExperience();
     if (exp) {
       exp.details = [...validatedData.jobDetails];
@@ -92,23 +93,21 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
   // we prefer the experience in the queue first over the jobId
   if (exp) {
-    if (jobId) {
-      const storedExperience = getExperienceDetails(jobId);
-      setQueuedExperience(storedExperience);
-      return data({
-        ...exp,
-        details: storedExperience?.details || [],
-      });
-    }
     return data(exp);
   }
 
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
-    const experience = getExperienceDetails(jobId);
-    setQueuedExperience(experience);
-    return data(experience);
+    const storedExperience = getExperienceDetails(jobId);
+    setQueuedExperience(storedExperience);
+    return data(storedExperience);
   }
+  return data({
+    details: undefined,
+    jobTitle: undefined,
+    jobId: undefined,
+    employer: undefined,
+  });
 }
 
 export default function ExperienceEntry() {
@@ -157,7 +156,7 @@ export default function ExperienceEntry() {
     [userExperience],
   );
 
-  const startsWithVowel = (word: string) => {
+  const startsWithVowel = (word: string | undefined) => {
     if (!word || word.length === 0) return false;
     const vowels = ['a', 'e', 'i', 'o', 'u'];
     return vowels.includes(word[0].toLowerCase());
