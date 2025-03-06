@@ -102,12 +102,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     setQueuedExperience(storedExperience);
     return data(storedExperience);
   }
-  return data({
-    details: undefined,
-    jobTitle: undefined,
-    jobId: undefined,
-    employer: undefined,
-  });
+  return redirect('/experience');
 }
 
 export default function ExperienceEntry() {
