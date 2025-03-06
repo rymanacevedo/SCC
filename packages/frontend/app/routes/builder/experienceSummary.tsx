@@ -91,7 +91,7 @@ function ExperienceSummary() {
       </NavLink>
       <Form method="post" className="flex justify-end space-x-5">
         {returnUrl ? (
-          <Button action="submit" text="Rebumit" />
+          <Button action="submit" text="Resubmit" />
         ) : (
           <>
             <Button
