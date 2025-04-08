@@ -11,7 +11,6 @@ import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Input, { type FormErrors } from '../../components/Input';
-import Heading from '../../components/Heading';
 import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
 import type { ActionData } from '../../models/Actions';
 import Main from '../../components/Main';
@@ -23,7 +22,12 @@ export const PersonalInfoSchema = z.object({
   city: z.string().min(1, 'City is required'),
   state: z.string().min(2, 'State is required'),
   zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
-  phone: z.string().regex(/^\d{10}$/, 'Phone number must be 10 digits'),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{10}$/.test(val), {
+      message: 'Phone number must be 10 digits',
+    }),
   email: z.string().email('Invalid email address'),
 });
 
@@ -129,7 +133,6 @@ export default function PersonalInfo() {
             label="Phone"
             type="tel"
             id="phone"
-            pattern="\d{10}"
             error={errors}
             defaultValue={prevInfo?.phone}
           />
