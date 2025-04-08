@@ -6,6 +6,7 @@ import {
 import { containsInappropriateWords } from '../../utils/filter';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
+import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -45,7 +46,7 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/summaries`;
+    const bckEndUrl = `${VITE_HONO_BACKEND_URL}/api/summaries`;
     const res = await fetch(bckEndUrl, {
       method: 'POST',
       headers: {

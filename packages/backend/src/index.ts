@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { createExperience, createSkills, createSummaries } from './services/ai';
+import { validateEnvironment } from '../lib/environment';
 
 type Bindings = {
   ALLOWED_ORIGIN: string;
@@ -14,8 +15,9 @@ const app = new Hono<{
 }>();
 
 export const CorsConfig = async (c: Context, next: () => Promise<void>) => {
+  const { ALLOWED_ORIGIN } = validateEnvironment(c.env);
   const corsConfig = cors({
-    origin: [c.env.ALLOWED_ORIGIN],
+    origin: [ALLOWED_ORIGIN],
     allowMethods: ['POST', 'OPTIONS'],
   });
   return corsConfig(c, next);
@@ -29,7 +31,8 @@ const schema = z.object({
 
 app.post('/api/summaries', zValidator('json', schema), async (c) => {
   try {
-    const apiKey = c.env.GEMINI_API_KEY;
+    const { GEMINI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GEMINI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -44,7 +47,8 @@ app.post('/api/summaries', zValidator('json', schema), async (c) => {
 
 app.post('/api/skills', zValidator('json', schema), async (c) => {
   try {
-    const apiKey = c.env.GEMINI_API_KEY;
+    const { GEMINI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GEMINI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -59,7 +63,8 @@ app.post('/api/skills', zValidator('json', schema), async (c) => {
 
 app.post('/api/experience', zValidator('json', schema), async (c) => {
   try {
-    const apiKey = c.env.GEMINI_API_KEY;
+    const { GEMINI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GEMINI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }

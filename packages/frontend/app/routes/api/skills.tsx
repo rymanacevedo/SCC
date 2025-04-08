@@ -4,7 +4,6 @@ import {
   type ClientActionFunctionArgs,
 } from 'react-router';
 import { z } from 'zod';
-import { createSkills } from '../../utils/aiServices';
 import type { FormErrors } from '../../components/Input';
 import { filter } from '../../utils/filter';
 

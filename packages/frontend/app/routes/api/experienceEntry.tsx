@@ -4,9 +4,9 @@ import {
   type ClientActionFunctionArgs,
 } from 'react-router';
 import { z } from 'zod';
-import { createExperience } from '../../utils/aiServices';
 import { Filter } from 'bad-words';
 import type { FormErrors } from '../../components/Input';
+import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
 
 const formSchema = z.object({
   jobTitleSearch: z.string().min(3, 'Job Title is required to search.'),
@@ -86,7 +86,7 @@ export const clientAction: ClientActionFunction = async ({
     );
   }
 
-  let experience = {
+  const experience = {
     expertRecommended: [
       'Tracked test reports and failures determined by root cause data trends.',
       'Created comprehensive test plans, test scripts, and use cases to support testing objectives.',
@@ -102,7 +102,7 @@ export const clientAction: ClientActionFunction = async ({
   };
 
   if (result.jobTitleSearch) {
-    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/experience`;
+    const bckEndUrl = `${VITE_HONO_BACKEND_URL}/api/experience`;
     const res = await fetch(bckEndUrl, {
       method: 'POST',
       headers: {
