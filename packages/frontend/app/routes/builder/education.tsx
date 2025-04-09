@@ -20,22 +20,24 @@ import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 export const BaseEducationSchema = z.object({
   schoolName: z.string().optional(),
   educationLevel: EducationLevelSchema.optional(),
-  degree: z.string().min(1, 'Degree is required.').optional(),
-  location: z.string().min(1, 'Location is required.').optional(),
-  graduationDate: z.preprocess((val) => {
-    if(val === '') {
-      return undefined;
-    }
-    return val;
-  },
-  z.coerce
-    .number()
-    .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-    .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-    .transform((year) => {
-      return new Date(Date.UTC(year, 0, 1));
-    })
-    .optional()),
+  degree: z.string().min(1, 'Degree is required.'),
+  location: z.string().min(1, 'Location is required.'),
+  graduationDate: z.preprocess(
+    (val) => {
+      if (val === '') {
+        return undefined;
+      }
+      return val;
+    },
+    z.coerce
+      .number()
+      .min(1900, { message: 'Graduation Year must be 1900 or later.' })
+      .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
+      .transform((year) => {
+        return new Date(Date.UTC(year, 0, 1));
+      })
+      .optional(),
+  ),
   currentlyEnrolled: z.boolean().default(false),
 });
 

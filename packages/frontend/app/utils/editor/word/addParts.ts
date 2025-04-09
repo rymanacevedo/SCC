@@ -1,12 +1,8 @@
-import {
-  Paragraph,
-  HeadingLevel,
-  AlignmentType,
-  TextRun
-} from 'docx';
+import { Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
 import fileSaver from 'file-saver';
 import type { User } from '../../user';
-
+import { formatEducationString } from '../formatters/education';
+import { formatInfoString } from '../formatters/info';
 
 /**
  * Generates the header section with the user's name and contact information.
@@ -27,11 +23,7 @@ export function generateHeaderElements(userData: User) {
     elements.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun(
-            `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
-          ),
-        ],
+        children: [new TextRun(formatInfoString(userData.info))],
       }),
     );
 
@@ -173,7 +165,7 @@ export function generateEducationElements(userData: User) {
 
     elements.push(
       new Paragraph({
-        text: `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
+        text: formatEducationString(userData.education),
         heading: HeadingLevel.HEADING_3,
       }),
     );

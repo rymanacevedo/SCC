@@ -1,11 +1,4 @@
-import {
-  Packer,
-  Paragraph,
-  HeadingLevel,
-  AlignmentType,
-  TextRun,
-  Document,
-} from 'docx';
+import { Packer, Document } from 'docx';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { $createHeadingNode } from '@lexical/rich-text';
 import type { User } from '../user';
@@ -23,6 +16,8 @@ import {
   addEducation,
 } from './pdf/addParts';
 import { generateDocxElements } from './word/addParts';
+import { formatEducationString } from './formatters/education';
+import { formatInfoString } from './formatters/info';
 
 /**
  * Use DOMPurify to sanitize the input text.
@@ -49,11 +44,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
 
     const contactNode = $createCustomParagraphNode('text-center');
     contactNode.append(
-      $createTextNode(
-        sanitizeText(
-          `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`,
-        ),
-      ),
+      $createTextNode(sanitizeText(formatInfoString(userData.info))),
     );
     root.append(contactNode);
   }
@@ -136,12 +127,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
 
     const educationNode = $createParagraphNode();
     educationNode.append(
-      $createTextNode(
-        sanitizeText(
-          `${userData.education.degree}, ${userData.education.educationLevel} | ` +
-            `${userData.education.schoolName} | ${userData.education.location}`,
-        ),
-      ),
+      $createTextNode(sanitizeText(formatEducationString(userData.education))),
     );
     root.append(educationNode);
 

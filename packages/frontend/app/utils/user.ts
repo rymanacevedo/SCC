@@ -13,11 +13,11 @@ const PartialSummarySchema = SummarySchema.partial();
 
 export const UserSchema = z.object({
   userId: z.string(),
-  info: PartialPersonalInfo.optional(),
-  experience: z.array(PartialExperienceSchema).optional(),
-  education: PartialEducationSchema.optional(),
-  skills: PartialSkillsSchema.optional(),
-  summary: PartialSummarySchema.optional(),
+  info: PartialPersonalInfo,
+  experience: z.array(PartialExperienceSchema),
+  education: PartialEducationSchema,
+  skills: PartialSkillsSchema,
+  summary: PartialSummarySchema,
 });
 
 export type User = z.infer<typeof UserSchema>;

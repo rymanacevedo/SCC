@@ -1,5 +1,7 @@
 import type jsPDF from 'jspdf';
-import type { User } from '../user';
+import type { User } from '../../user';
+import { formatEducationString } from '../formatters/education';
+import { formatInfoString } from '../formatters/info';
 
 /**
  * Adds the user info (name and contact details) to the PDF.
@@ -25,7 +27,7 @@ export function addUserInfo(
     // Contact info
     doc.setFontSize(defaultFontSize);
     doc.setFont(defaultFont, 'normal');
-    const contactInfo = `${userData.info.email} | ${userData.info.phone} | ${userData.info.city}, ${userData.info.state} ${userData.info.zipCode}`;
+    const contactInfo = formatInfoString(userData.info);
     const contactWidth =
       (doc.getStringUnitWidth(contactInfo) * doc.getFontSize()) /
       doc.internal.scaleFactor;
@@ -199,11 +201,7 @@ export function addEducation(
     yPosition += 7;
 
     doc.setFontSize(defaultFontSize);
-    doc.text(
-      `${userData.education.degree}, ${userData.education.educationLevel} | ${userData.education.schoolName} | ${userData.education.location}`,
-      14,
-      yPosition,
-    );
+    doc.text(formatEducationString(userData.education), 14, yPosition);
     yPosition += 6;
 
     // Uncomment and adjust below lines if you want to print the graduation date:
