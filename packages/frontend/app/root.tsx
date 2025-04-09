@@ -32,6 +32,10 @@ export function HydrateFallback() {
   );
 }
 
+export function shouldRevalidate() {
+  return false;
+}
+
 export async function clientLoader() {
   const user = getUser();
 
