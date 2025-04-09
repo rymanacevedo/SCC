@@ -18,32 +18,26 @@ import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const BaseEducationSchema = z.object({
-  schoolName: z.string().min(1, 'School name is required.').optional(),
+  schoolName: z.string().optional(),
   educationLevel: EducationLevelSchema.optional(),
   degree: z.string().min(1, 'Degree is required.').optional(),
   location: z.string().min(1, 'Location is required.').optional(),
-  graduationDate: z
-    .string()
-    .transform((date) => (date ? new Date(date) : undefined))
-    .optional()
-    .refine((date) => !date || !Number.isNaN(date.getTime), {
-      message: 'Invalid end date format',
-    }),
+  graduationDate: z.preprocess((val) => {
+    if(val === '') {
+      return undefined;
+    }
+    return val;
+  },
+  z.coerce
+    .number()
+    .min(1900, { message: 'Graduation Year must be 1900 or later.' })
+    .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
+    .transform((year) => {
+      return new Date(Date.UTC(year, 0, 1));
+    })
+    .optional()),
   currentlyEnrolled: z.boolean().default(false),
 });
-
-const EducationSchema = BaseEducationSchema.refine(
-  (data) => {
-    if (!data.currentlyEnrolled) {
-      return !!data.graduationDate;
-    }
-    return true;
-  },
-  {
-    message: 'Graducation Date is required if not currently enrolled.',
-    path: ['graduationDate'],
-  },
-);
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -58,7 +52,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   };
 
   try {
-    const validatedData = EducationSchema.parse(createdData);
+    const validatedData = BaseEducationSchema.parse(createdData);
 
     updateUser('education', validatedData);
     return redirect(redirectUrl);
@@ -145,8 +139,6 @@ export default function Education() {
           disabled={isCurrentlyEnrolled}
           label="Graduation Year"
           type="number"
-          min={1900}
-          max={2099}
           step={1}
           id="graduationDate"
           error={errors}

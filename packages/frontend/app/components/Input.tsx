@@ -22,8 +22,6 @@ type BaseInputProps = {
 };
 
 type NumberRequiredProps = {
-  min: number | string;
-  max: number | string;
   step: number | string;
 };
 
@@ -101,8 +99,6 @@ function Input(props: InputProps) {
         type={type}
         id={id}
         autoComplete="off"
-        min={isNumberInput(props) ? props.min : undefined}
-        max={isNumberInput(props) ? props.max : undefined}
         step={isNumberInput(props) ? props.step : undefined}
         name={id}
         pattern={pattern}
