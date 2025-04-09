@@ -22,22 +22,22 @@ export const BaseEducationSchema = z.object({
   educationLevel: EducationLevelSchema.optional(),
   degree: z.string().min(1, 'Degree is required.'),
   location: z.string().min(1, 'Location is required.'),
-  graduationDate: z.preprocess(
-    (val) => {
-      if (val === '') {
-        return undefined;
-      }
-      return val;
-    },
-    z.coerce
-      .number()
-      .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-      .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-      .transform((year) => {
-        return new Date(Date.UTC(year, 0, 1));
-      })
-      .optional(),
-  ),
+  graduationDate: z
+    .string()
+    .transform((val) => {
+      if (!val) return undefined;
+      const year = Number.parseInt(val, 10);
+      if (Number.isNaN(year)) return undefined;
+      return year;
+    })
+    .pipe(
+      z
+        .number()
+        .min(1900, { message: 'Graduation Year must be 1900 or later.' })
+        .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
+        .transform((year) => year.toString()) // Transform back to string
+        .optional(),
+    ),
   currentlyEnrolled: z.boolean().default(false),
 });
 
@@ -144,9 +144,7 @@ export default function Education() {
           step={1}
           id="graduationDate"
           error={errors}
-          defaultValue={prevEducation?.graduationDate
-            ?.getUTCFullYear()
-            .toString()}
+          defaultValue={prevEducation?.graduationDate?.toString()}
         />
 
         {/* Current Student Checkbox */}

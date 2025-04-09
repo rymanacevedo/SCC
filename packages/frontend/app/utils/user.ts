@@ -5,19 +5,19 @@ import { PersonalInfoSchema } from '../routes/builder/info';
 import { SkillsSchema } from '../routes/builder/skills';
 import { SummarySchema } from '../routes/builder/summary';
 
-const PartialPersonalInfo = PersonalInfoSchema.partial();
-const PartialExperienceSchema = BaseExperienceSchema.partial();
+const PartialPersonalInfo = PersonalInfoSchema;
+const PartialExperienceSchema = BaseExperienceSchema;
 const PartialEducationSchema = BaseEducationSchema.partial();
-const PartialSkillsSchema = SkillsSchema.partial();
-const PartialSummarySchema = SummarySchema.partial();
+const PartialSkillsSchema = SkillsSchema;
+const PartialSummarySchema = SummarySchema;
 
 export const UserSchema = z.object({
   userId: z.string(),
-  info: PartialPersonalInfo,
-  experience: z.array(PartialExperienceSchema),
-  education: PartialEducationSchema,
-  skills: PartialSkillsSchema,
-  summary: PartialSummarySchema,
+  info: PartialPersonalInfo.optional(),
+  experience: z.array(PartialExperienceSchema).optional(),
+  education: PartialEducationSchema.optional(),
+  skills: PartialSkillsSchema.optional(),
+  summary: PartialSummarySchema.optional(),
 });
 
 export type User = z.infer<typeof UserSchema>;
