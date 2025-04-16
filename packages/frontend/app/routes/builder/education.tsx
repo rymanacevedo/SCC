@@ -33,9 +33,9 @@ export const BaseEducationSchema = z.object({
     .pipe(
       z
         .number()
-        .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-        .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-        .transform((year) => year.toString()) // Transform back to string
+        .min(1900, { error: 'Graduation Year must be 1900 or later.' })
+        .max(2099, { error: 'Graduation Year must be 2099 or earlier.' })
+        .transform((year) => year.toString())
         .optional(),
     ),
   currentlyEnrolled: z.boolean().default(false),
