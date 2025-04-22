@@ -125,57 +125,62 @@ export function populateEditorWithUserData(root: any, userData: User) {
     educationTitleNode.append($createTextNode('EDUCATION'));
     root.append(educationTitleNode);
 
-    const educationNode = $createParagraphNode();
-    educationNode.append(
-      $createTextNode(sanitizeText(formatEducationString(userData.education))),
+    const { degreeSection, location, graduationInfo } = formatEducationString(
+      userData.education,
     );
-    root.append(educationNode);
 
-    const gradDateNode = $createParagraphNode();
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-    gradDateNode.append(
-      $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
-    );
-    root.append(gradDateNode);
+    const educationNode = $createParagraphNode();
+    const mainLineNode = $createTextNode(sanitizeText(degreeSection));
+
+    educationNode.append(mainLineNode);
+
+    if (graduationInfo) {
+      // TODO: add spacing based off size
+      educationNode.append($createTextNode(' '));
+      const gradInfoNode = $createTextNode(sanitizeText(graduationInfo));
+      educationNode.append(gradInfoNode);
+    }
+
+    const educationLocationNode = $createParagraphNode();
+    const locationNode = $createTextNode(sanitizeText(location));
+    educationLocationNode.append(locationNode);
+
+    root.append(educationNode);
+    root.append(educationLocationNode);
   }
 }
 
-  /**
-   * Creates and exports the Word document using the generated docx elements.
-   */
-  export async function exportToWord(editor: any, userData: User) {
-    const doc = new Document({
-      sections: [
-        {
-          properties: {
-            page: {
-              margin: {
-                top: 1000,
-                right: 1000,
-                bottom: 1000,
-                left: 1000,
-              },
+/**
+ * Creates and exports the Word document using the generated docx elements.
+ */
+export async function exportToWord(editor: any, userData: User) {
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1000,
+              right: 1000,
+              bottom: 1000,
+              left: 1000,
             },
           },
-          children: generateDocxElements(userData),
         },
-      ],
-    });
-  
-    Packer.toBlob(doc).then((blob) => {
-      saveAs(
-        blob,
-        `${userData.info?.firstName || 'resume'}_${
-          userData.info?.lastName || ''
-        }_resume.docx`
-      );
-    });
-  }
+        children: generateDocxElements(userData),
+      },
+    ],
+  });
+
+  Packer.toBlob(doc).then((blob) => {
+    saveAs(
+      blob,
+      `${userData.info?.firstName || 'resume'}_${
+        userData.info?.lastName || ''
+      }_resume.docx`,
+    );
+  });
+}
 
 /**
  * The main function that generates the PDF by orchestrating the individual

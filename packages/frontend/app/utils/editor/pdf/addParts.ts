@@ -3,6 +3,9 @@ import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';
 import { formatInfoString } from '../formatters/info';
 
+const DEFAULT_LEFT_MARGIN = 14;
+const DEFAULT_RIGHT_MARGIN = 14;
+
 /**
  * Adds the user info (name and contact details) to the PDF.
  * Returns the updated vertical position.
@@ -197,25 +200,32 @@ export function addEducation(
 
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
-    doc.text('EDUCATION', 14, yPosition);
+    doc.text('EDUCATION', DEFAULT_LEFT_MARGIN, yPosition);
     yPosition += 7;
 
+    doc.setFont(defaultFont, 'normal');
     doc.setFontSize(defaultFontSize);
-    doc.text(formatEducationString(userData.education), 14, yPosition);
+    const { degreeSection, location, graduationInfo } = formatEducationString(
+      userData.education,
+    );
+
+    const rightTextWidth = doc.getTextWidth(graduationInfo);
+    doc.text(degreeSection, DEFAULT_LEFT_MARGIN, yPosition);
+
+    const rightTextX =
+      doc.internal.pageSize.getWidth() - DEFAULT_RIGHT_MARGIN - rightTextWidth;
+
+    doc.setFont(defaultFont, 'normal');
+    doc.text(graduationInfo, rightTextX, yPosition);
     yPosition += 6;
 
-    // Uncomment and adjust below lines if you want to print the graduation date:
-    /*
     doc.setFont(defaultFont, 'italic');
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-    doc.text(`Graduation: ${gradDate}`, 14, yPosition);
-    yPosition += 10;
-    */
+    doc.setFontSize(10);
+    doc.text(location, DEFAULT_LEFT_MARGIN, yPosition);
+    if (yPosition > 280) {
+      doc.addPage();
+      yPosition = 20;
+    }
   }
   return yPosition;
 }
