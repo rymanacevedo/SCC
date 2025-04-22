@@ -13,7 +13,8 @@ import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 const educationLevelValues = [
-  'High School or GED',
+  'High School',
+  'GED',
   'Associates',
   'Bachelors',
   'Masters',
