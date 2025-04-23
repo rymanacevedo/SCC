@@ -8,7 +8,9 @@ export const JobFormFieldsSchema = z.object({
   linkedin: z.string().optional(),
   phone: z
     .string()
-    .regex(/^[+]{1}(?:[0-9-()/. ]{6,15}[0-9]{1,15})$/, 'Invalid phone number'),
+    .regex(/^[+]{1}(?:[0-9-()/. ]{6,15}[0-9]{1,15})$/, {
+      error: 'Invalid phone number',
+    }),
   state: z.string().min(1, 'State is required'),
   city: z.string().min(1, 'City is required.'),
   jobInterest: z.enum(['solar', 'software', 'mechanic']),
