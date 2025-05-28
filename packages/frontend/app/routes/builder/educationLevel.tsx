@@ -12,18 +12,16 @@ import { updateUser } from '../../utils/user';
 import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
-const educationLevelValues = [
-  'High School',
-  'GED',
-  'Associates',
-  'Bachelors',
-  'Masters',
-  'PhD',
-  'Some College',
-  'Vocational',
-] as const;
-
-export const EducationLevelSchema = z.enum(educationLevelValues);
+export const EducationLevelSchema = z.union([
+  z.literal('GED'),
+  z.literal('High School'),
+  z.literal('Associates'),
+  z.literal('Bachelors'),
+  z.literal('Masters'),
+  z.literal('PhD'),
+  z.literal('Some College'),
+  z.literal('Vocational'),
+]);
 
 const educationLevels = EducationLevelSchema.options;
 

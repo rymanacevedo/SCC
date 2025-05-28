@@ -79,7 +79,7 @@ function Editor({ user }: EditorProps) {
           contentEditable={
             <ContentEditable
               aria-placeholder={'Enter some text...'}
-              placeholder={<div>Enter some text...</div>}
+              placeholder={<div></div>}
             />
           }
           ErrorBoundary={LexicalErrorBoundary}

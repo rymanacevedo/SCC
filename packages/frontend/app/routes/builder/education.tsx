@@ -121,7 +121,8 @@ export default function Education() {
           defaultValue={prevEducation?.schoolName}
         />
 
-        {prevEducation?.educationLevel === 'High School' || prevEducation?.educationLevel === 'GED' ||
+        {prevEducation?.educationLevel === 'High School' ||
+        prevEducation?.educationLevel === 'GED' ||
         prevEducation?.educationLevel === 'Some College' ? (
           <input type="hidden" id="degree" name="degree" value="Diploma" />
         ) : (
