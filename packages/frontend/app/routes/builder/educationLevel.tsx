@@ -21,7 +21,7 @@ const educationLevelsValues = [
   'PhD',
   'Some College',
   'Vocational',
-];
+] as const;
 
 export const EducationLevelSchema = z.enum(educationLevelsValues);
 
