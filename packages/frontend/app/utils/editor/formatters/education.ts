@@ -1,14 +1,28 @@
 import type { User } from './../../user';
 type Education = User['education'];
-export function formatEducationString(education: Education): string {
-  const components = [
-    education.degree,
-    education.educationLevel,
-    education.schoolName,
-    education.location,
-  ]
-    .filter(Boolean)
-    .join(' | ');
+type EducationFormat = {
+  degreeSection: string;
+  location: string;
+  graduationInfo: string;
+};
 
-  return components;
+export function formatEducationString(education: Education): EducationFormat {
+  const degreeSection = [education.degree, education.educationLevel]
+    .filter(Boolean)
+    .join(' - ');
+  const location = [education.schoolName, education.location]
+    .filter(Boolean)
+    .join(', ');
+
+  const gradDate = education.currentlyEnrolled
+    ? 'Currently Enrolled'
+    : education.graduationDate?.toString();
+
+  const graduationInfo = gradDate ? `Graduation: ${gradDate}` : '';
+
+  return {
+    degreeSection,
+    location,
+    graduationInfo,
+  };
 }

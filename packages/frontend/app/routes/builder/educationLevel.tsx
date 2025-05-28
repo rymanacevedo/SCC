@@ -12,20 +12,20 @@ import { updateUser } from '../../utils/user';
 import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
-export const EducationLevelSchema = z.union([
-  z.literal('GED'),
-  z.literal('High School'),
-  z.literal('Associates'),
-  z.literal('Bachelors'),
-  z.literal('Masters'),
-  z.literal('PhD'),
-  z.literal('Some College'),
-  z.literal('Vocational'),
-]);
+const educationLevelsValues = [
+  'High School',
+  'GED',
+  'Associates',
+  'Bachelors',
+  'Masters',
+  'PhD',
+  'Some College',
+  'Vocational',
+] as const;
 
-const educationLevels = EducationLevelSchema.options.map(
-  (option) => option.value,
-);
+export const EducationLevelSchema = z.enum(educationLevelsValues);
+
+const educationLevels = EducationLevelSchema.options;
 
 export async function clientAction({ request }: ClientActionFunctionArgs) {
   const formData = await request.formData();
