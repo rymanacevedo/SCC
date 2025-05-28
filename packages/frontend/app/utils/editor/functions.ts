@@ -134,10 +134,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
     const gradDateNode = $createParagraphNode();
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
+      : userData.education.graduationDate
     gradDateNode.append(
       $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
     );

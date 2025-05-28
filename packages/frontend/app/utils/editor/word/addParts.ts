@@ -172,10 +172,7 @@ export function generateEducationElements(userData: User) {
 
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
+      : userData.education.graduationDate
 
     elements.push(
       new Paragraph({
