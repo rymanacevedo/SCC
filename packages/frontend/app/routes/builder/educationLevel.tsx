@@ -13,7 +13,8 @@ import Main from '../../components/Main';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 
 export const EducationLevelSchema = z.union([
-  z.literal('High School or GED'),
+  z.literal('GED'),
+  z.literal('High School'),
   z.literal('Associates'),
   z.literal('Bachelors'),
   z.literal('Masters'),
