@@ -31,31 +31,10 @@ This command will leverage Bun's incredibly fast package installation to set up 
 To start the development server for the frontend, navigate into the `@scc/frontend` package and run the dev script:
 
 ```bash
-cd packages/frontend # or wherever your frontend package is located if not directly in 'packages'
+cd packages/frontend
 bun run dev
 ```
 
-This will typically start the frontend application on `http://localhost:5173` (or another available port), where you can interact with the resume builder.
-
-### 3. Build for Production
-
-To create a production-ready build of the frontend application:
-
-```bash
-cd packages/frontend
-bun run build
-```
-
-This command will compile and optimize the frontend assets, ready for deployment.
-
-### 4. Type Checking
-
-To perform a type check across the frontend codebase:
-
-```bash
-cd packages/frontend
-bun run typecheck
-```
 
 ## Why Bun?
 
@@ -68,7 +47,3 @@ We chose Bun for this monorepo for its exceptional performance and streamlined d
 ## Making an Impact
 
 The SCC project is more than just code; it's a mission to provide a crucial "second chance." By enabling quick resume generation, we empower individuals to overcome significant barriers to employment, contributing directly to their rehabilitation and a more inclusive society.
-
-## Contribution
-
-We welcome contributions from the community! If you're interested in contributing to this impactful project, please refer to our `CONTRIBUTING.md` (if available) or reach out to the project maintainers.
