@@ -7,10 +7,10 @@
   "dependencies": {
     "@ai-sdk/google": "^1.1.20",
     "@hono/zod-validator": "^0.4.3",
+    "@scc/frontend": "1.0.0",
     "ai": "^4.1.54",
     "hono": "^4.7.4",
-    "zod": "^3.24.2",
-    "@scc/frontend": "1.0.0"
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250303.0",

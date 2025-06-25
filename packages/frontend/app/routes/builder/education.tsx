@@ -24,20 +24,24 @@ export const BaseEducationSchema = z.object({
   location: z.string().min(1, 'Location is required.'),
   graduationDate: z
     .string()
-    .transform((val) => {
-      if (!val) return undefined;
+    .transform((val, ctx) => {
+      if (!val || val.trim() === '') {
+        return undefined;
+      }
+
       const year = Number.parseInt(val, 10);
-      if (Number.isNaN(year)) return undefined;
-      return year;
+
+      if (year <= 1900) {
+        ctx.addIssue('Graduation Year must be over 1900.');
+        return z.NEVER;
+      }
+      if (year >= 2099) {
+        ctx.addIssue('Graduation Year must be under 2099.');
+        return z.NEVER;
+      }
+      return year.toString();
     })
-    .pipe(
-      z
-        .number()
-        .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-        .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-        .transform((year) => year.toString()) // Transform back to string
-        .optional(),
-    ),
+    .optional(),
   currentlyEnrolled: z.boolean().default(false),
 });
 
@@ -60,6 +64,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log(error);
       return data(
         { errors: error.flatten().fieldErrors as FormErrors },
         { status: 400 },
@@ -106,7 +111,7 @@ export default function Education() {
         secondHeading="Enter your education experience so far, even if you are a current
           student or did not graduate."
       />
-
+      {errors?.[0]}
       <Form method="post" className="space-y-6">
         <Input
           label="School Name"
