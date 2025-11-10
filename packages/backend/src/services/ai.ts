@@ -41,7 +41,7 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash-exp');
+  const GeminiModel = gemini('gemini-2.0-flash');
   const result = await generateObject({
     model: GeminiModel,
     schema: SummarySchema,
@@ -95,7 +95,7 @@ export const createSkills = async (prompt: string, apiKey: string) => {
   const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash-exp');
+  const GeminiModel = gemini('gemini-2.0-flash');
   const result = await generateObject({
     model: GeminiModel,
     schema: SkillsSchema,
@@ -123,7 +123,7 @@ export const createExperience = async (prompt: string, apiKey: string) => {
   const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash-exp');
+  const GeminiModel = gemini('gemini-2.0-flash');
   const result = await generateObject({
     model: GeminiModel,
     schema: ExperienceSchema,
