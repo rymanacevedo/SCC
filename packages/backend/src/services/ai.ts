@@ -39,18 +39,13 @@ const SummarySchema = z
   .array();
 
 export const createSummaries = async (prompt: string, apiKey: string) => {
-  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
-    apiKey,
-  });
-
   const groq: GroqProvider = createGroq({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash');
+  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
   const result = await generateObject({
-    model: GeminiModel,
+    model: GroqModel,
     schema: SummarySchema,
-    schemaName: 'Summaries',
     prompt,
     system: `
         <example1>
@@ -97,14 +92,14 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
 };
 
 export const createSkills = async (prompt: string, apiKey: string) => {
-  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
+  const groq: GroqProvider = createGroq({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash');
+  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
+
   const result = await generateObject({
-    model: GeminiModel,
+    model: GroqModel,
     schema: SkillsSchema,
-    schemaName: 'Skills',
     prompt,
     system: `
           You are helping gather soft skills for a user who submitted their job title, employer, and job details.
@@ -125,18 +120,14 @@ export const createSkills = async (prompt: string, apiKey: string) => {
 };
 
 export const createExperience = async (prompt: string, apiKey: string) => {
-  const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
-    apiKey,
-  });
   const groq: GroqProvider = createGroq({
     apiKey,
   });
-  const GeminiModel = gemini('gemini-2.0-flash');
-  const GroqModel = groq('qwen-2.5-32b');
+  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
 
   const result = await generateObject({
-    model: GeminiModel,
-    s: ExperienceSchema,
+    model: GroqModel,
+    schema: ExperienceSchema,
     prompt,
     system: `
       <example1>

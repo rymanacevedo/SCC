@@ -10,7 +10,9 @@ type EnvSchema = z.infer<typeof schema>;
 
 let env: EnvSchema;
 
-export function validateEnvironment(envFromContext: any) {
+export function validateEnvironment(
+  envFromContext: Record<string, string>,
+): EnvSchema {
   try {
     env = schema.parse(envFromContext);
     return env;

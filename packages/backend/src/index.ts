@@ -48,8 +48,8 @@ app.post('/api/summaries', zValidator('json', schema), async (c) => {
 
 app.post('/api/skills', zValidator('json', schema), async (c) => {
   try {
-    const { GEMINI_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GEMINI_API_KEY;
+    const { GROQ_API_KEY, GEMINI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GROQ_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -64,7 +64,7 @@ app.post('/api/skills', zValidator('json', schema), async (c) => {
 
 app.post('/api/experience', zValidator('json', schema), async (c) => {
   try {
-    const { GROQ_API_KEY } = validateEnvironment(c.env);
+    const { GROQ_API_KEY, GEMINI_API_KEY } = validateEnvironment(c.env);
     const apiKey = GROQ_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
@@ -74,7 +74,7 @@ app.post('/api/experience', zValidator('json', schema), async (c) => {
     const response = await createExperience(prompt, apiKey);
     return c.json(response);
   } catch (error) {
-    return c.json({ error: 'Failed to generate content' }, 500);
+    return c.json({ error: `Failed to generate content: ${error}` }, 500);
   }
 });
 
