@@ -8,6 +8,7 @@ import { validateEnvironment } from '../lib/environment';
 type Bindings = {
   ALLOWED_ORIGIN: string;
   GEMINI_API_KEY: string;
+  GROQ_API_KEY: string;
 };
 
 const app = new Hono<{
@@ -31,8 +32,8 @@ const schema = z.object({
 
 app.post('/api/summaries', zValidator('json', schema), async (c) => {
   try {
-    const { GEMINI_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GEMINI_API_KEY;
+    const { GROQ_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GROQ_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -63,8 +64,8 @@ app.post('/api/skills', zValidator('json', schema), async (c) => {
 
 app.post('/api/experience', zValidator('json', schema), async (c) => {
   try {
-    const { GEMINI_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GEMINI_API_KEY;
+    const { GROQ_API_KEY } = validateEnvironment(c.env);
+    const apiKey = GROQ_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }

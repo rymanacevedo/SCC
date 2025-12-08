@@ -3,6 +3,7 @@ import { z } from 'zod';
 const schema = z.object({
   ALLOWED_ORIGIN: z.string().url().min(1),
   GEMINI_API_KEY: z.string().min(1),
+  GROQ_API_KEY: z.string().min(1),
 });
 
 type EnvSchema = z.infer<typeof schema>;

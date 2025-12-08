@@ -3,6 +3,7 @@ import {
   type GoogleGenerativeAIProvider,
 } from '@ai-sdk/google';
 import { generateObject } from 'ai';
+import { createGroq, type GroqProvider } from '@ai-sdk/groq';
 import { z } from 'zod';
 
 const Blacklist =
@@ -39,6 +40,10 @@ const SummarySchema = z
 
 export const createSummaries = async (prompt: string, apiKey: string) => {
   const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
+    apiKey,
+  });
+
+  const groq: GroqProvider = createGroq({
     apiKey,
   });
   const GeminiModel = gemini('gemini-2.0-flash');
@@ -123,10 +128,15 @@ export const createExperience = async (prompt: string, apiKey: string) => {
   const gemini: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
     apiKey,
   });
+  const groq: GroqProvider = createGroq({
+    apiKey,
+  });
   const GeminiModel = gemini('gemini-2.0-flash');
+  const GroqModel = groq('qwen-2.5-32b');
+
   const result = await generateObject({
     model: GeminiModel,
-    schema: ExperienceSchema,
+    s: ExperienceSchema,
     prompt,
     system: `
       <example1>
