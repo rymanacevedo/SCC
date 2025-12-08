@@ -1,16 +1,17 @@
 {
   "name": "@scc/backend",
   "scripts": {
-    "dev": "wrangler dev --local",
+    "dev": "wrangler dev --inspector-port=9229 --local",
     "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.1.20",
-    "@hono/zod-validator": "^0.4.3",
-    "ai": "^4.1.54",
+    "@ai-sdk/google": "^2.0.44",
+    "@ai-sdk/groq": "^2.0.32",
+    "@hono/zod-validator": "^0.7.5",
+    "@scc/frontend": "1.0.0",
+    "ai": "^5.0.108",
     "hono": "^4.7.4",
-    "zod": "^3.24.2",
-    "@scc/frontend": "1.0.0"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250303.0",
