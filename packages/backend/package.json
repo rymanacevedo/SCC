@@ -5,11 +5,10 @@
     "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
-    "@ai-sdk/google": "^2.0.44",
-    "@ai-sdk/groq": "^2.0.32",
+    "@ai-sdk/openai": "^3.0.1",
     "@hono/zod-validator": "^0.7.5",
     "@scc/frontend": "1.0.0",
-    "ai": "^5.0.108",
+    "ai": "^6.0.3",
     "hono": "^4.7.4",
     "zod": "^4.1.13"
   },

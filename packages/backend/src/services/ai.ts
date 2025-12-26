@@ -1,9 +1,5 @@
-import {
-  createGoogleGenerativeAI,
-  type GoogleGenerativeAIProvider,
-} from '@ai-sdk/google';
-import { generateObject } from 'ai';
-import { createGroq, type GroqProvider } from '@ai-sdk/groq';
+import { generateText, Output } from 'ai';
+import { createOpenAI, type OpenAIProvider } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 const Blacklist =
@@ -39,13 +35,15 @@ const SummarySchema = z
   .array();
 
 export const createSummaries = async (prompt: string, apiKey: string) => {
-  const groq: GroqProvider = createGroq({
+  const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
-  const result = await generateObject({
-    model: GroqModel,
-    schema: SummarySchema,
+  const OpenAIModel = openai('o4-mini');
+  const { output } = await generateText({
+    model: OpenAIModel,
+    output: Output.object({
+      schema: SummarySchema,
+    }),
     prompt,
     system: `
         <example1>
@@ -88,18 +86,20 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
       `,
   });
 
-  return result.object;
+  return output;
 };
 
 export const createSkills = async (prompt: string, apiKey: string) => {
-  const groq: GroqProvider = createGroq({
+  const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
+  const OpenAIModel = openai('o4-mini');
 
-  const result = await generateObject({
-    model: GroqModel,
-    schema: SkillsSchema,
+  const { output } = await generateText({
+    model: OpenAIModel,
+    output: Output.object({
+      schema: SkillsSchema,
+    }),
     prompt,
     system: `
           You are helping gather soft skills for a user who submitted their job title, employer, and job details.
@@ -116,41 +116,43 @@ export const createSkills = async (prompt: string, apiKey: string) => {
           `,
   });
 
-  return result.object;
+  return output;
 };
 
 export const createExperience = async (prompt: string, apiKey: string) => {
-  const groq: GroqProvider = createGroq({
+  const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const GroqModel = groq('moonshotai/kimi-k2-instruct-0905');
+  const OpenAIModel = openai('o4-mini');
 
-  const result = await generateObject({
-    model: GroqModel,
-    schema: ExperienceSchema,
+  const { output } = await generateText({
+    model: OpenAIModel,
+    output: Output.object({
+      schema: ExperienceSchema,
+    }),
     prompt,
     system: `
-      <example1>
-      Drove $15M of new partnership business in 12 months for marketing-focused SaaS software.
-      </example1> 
-      <example2> 
-      Spearheaded new training protocols to reduce new hire onboarding by 15%.
-      </example2>
-      <anatomy>
-      Hard and soft skills Target 35%
-      Action Words Target Target 15%
-      Measurable Results Target 15%
-      Common Words Target 35%
-      </anatomy>
-      You are helping gather example experience for a specific job.
-      Above are some good examples of how a good bullet for a job might look like.
-      There's also an anatomy of how to a bullet for experience might be phrased.
-      When I give you the title, return the experiences in a json object. 
-      Be as specific as possible.
-      ${Blacklist}
-      Use your best judgement if someone gives a term that doesn't look like a job, just send back general experience like soft skills.
-      `,
+    <example1>
+    Drove $15M of new partnership business in 12 months for marketing-focused SaaS software.
+    </example1> 
+    <example2> 
+    Spearheaded new training protocols to reduce new hire onboarding by 15%.
+    </example2>
+    <anatomy>
+    Hard and soft skills Target 35%
+    Action Words Target Target 15%
+    Measurable Results Target 15%
+    Common Words Target 35%
+    </anatomy>
+    You are helping gather example experience for a specific job.
+    Above are some good examples of how a good bullet for a job might look like.
+    There's also an anatomy of how to a bullet for experience might be phrased.
+    When I give you the title, return the experiences in a json object. 
+    Be as specific as possible.
+    ${Blacklist}
+    Use your best judgement if someone gives a term that doesn't look like a job, just send back general experience like soft skills.
+    `
   });
+  return output;
 
-  return result.object;
 };

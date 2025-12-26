@@ -32,8 +32,8 @@ const schema = z.object({
 
 app.post('/api/summaries', zValidator('json', schema), async (c) => {
   try {
-    const { GROQ_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GROQ_API_KEY;
+    const { OPENAI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = OPENAI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -48,8 +48,8 @@ app.post('/api/summaries', zValidator('json', schema), async (c) => {
 
 app.post('/api/skills', zValidator('json', schema), async (c) => {
   try {
-    const { GROQ_API_KEY, GEMINI_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GROQ_API_KEY;
+    const { OPENAI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = OPENAI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
@@ -64,8 +64,8 @@ app.post('/api/skills', zValidator('json', schema), async (c) => {
 
 app.post('/api/experience', zValidator('json', schema), async (c) => {
   try {
-    const { GROQ_API_KEY, GEMINI_API_KEY } = validateEnvironment(c.env);
-    const apiKey = GROQ_API_KEY;
+    const { OPENAI_API_KEY } = validateEnvironment(c.env);
+    const apiKey = OPENAI_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'API key configuration error' }, 500);
     }
