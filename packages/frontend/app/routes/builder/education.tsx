@@ -84,9 +84,9 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 }
 
 export default function Education() {
-  const actionData = useActionData<ActionData>();
+  const actionData = useActionData<typeof clientAction>();
   const { prevEducation, returnUrl } = useLoaderData<typeof clientLoader>();
-  const errors = actionData?.data.errors;
+  const errors = actionData?.errors;
 
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(
     prevEducation?.currentlyEnrolled ?? false,
@@ -117,8 +117,8 @@ export default function Education() {
         />
 
         {prevEducation?.educationLevel === 'High School' ||
-        prevEducation?.educationLevel === 'GED' ||
-        prevEducation?.educationLevel === 'Some College' ? (
+          prevEducation?.educationLevel === 'GED' ||
+          prevEducation?.educationLevel === 'Some College' ? (
           <input type="hidden" id="degree" name="degree" value="Diploma" />
         ) : (
           <Input

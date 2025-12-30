@@ -10,7 +10,6 @@ import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import type { FormErrors } from '../../components/Input';
-import type { ActionData } from '../../models/Actions';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),
@@ -36,7 +35,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       );
     }
     return data(
-      { errors: { _form: ['An errored occured.'] } },
+      { errors: { _form: ['An errored occured.'] } as FormErrors },
       { status: 409 },
     );
   }
@@ -55,11 +54,11 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
             <jobTitle>${job.jobTitle}</jobTitle> <employer>${job.employer}</employer>
             <details>
             ${job.details
-              ?.map(
-                (detail, index) => `
+            ?.map(
+              (detail, index) => `
                   <detail${index + 1}>${detail}</detail${index + 1}>`,
-              )
-              .join('')}
+            )
+            .join('')}
             </details>
           </job>`,
       )
@@ -80,8 +79,8 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 
 export default function Summary() {
-  const actionData = useActionData<ActionData>();
-  const errors = actionData?.data.errors;
+  const actionData = useActionData<typeof clientAction>();
+  const errors = actionData?.errors;
   const { prevSummary, returnUrl, experienceString } =
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<{ text: string; title: string }[]>();

@@ -98,9 +98,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
       const endDate = job.currentlyEmployed
         ? 'Present'
         : job.endDate?.toLocaleDateString('en-US', {
-            month: 'long',
-            year: 'numeric',
-          });
+          month: 'long',
+          year: 'numeric',
+        });
       dateNode.append(
         $createTextNode(sanitizeText(`${startDate} - ${endDate}`)),
       );
@@ -142,37 +142,36 @@ export function populateEditorWithUserData(root: any, userData: User) {
   }
 }
 
-  /**
-   * Creates and exports the Word document using the generated docx elements.
-   */
-  export async function exportToWord(editor: any, userData: User) {
-    const doc = new Document({
-      sections: [
-        {
-          properties: {
-            page: {
-              margin: {
-                top: 1000,
-                right: 1000,
-                bottom: 1000,
-                left: 1000,
-              },
+/**
+ * Creates and exports the Word document using the generated docx elements.
+ */
+export async function exportToWord(editor: any, userData: User) {
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1000,
+              right: 1000,
+              bottom: 1000,
+              left: 1000,
             },
           },
-          children: generateDocxElements(userData),
         },
-      ],
-    });
-  
-    Packer.toBlob(doc).then((blob) => {
-      saveAs(
-        blob,
-        `${userData.info?.firstName || 'resume'}_${
-          userData.info?.lastName || ''
-        }_resume.docx`
-      );
-    });
-  }
+        children: generateDocxElements(userData),
+      },
+    ],
+  });
+
+  Packer.toBlob(doc).then((blob: Blob) => {
+    saveAs(
+      blob,
+      `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
+      }_resume.docx`
+    );
+  });
+}
 
 /**
  * The main function that generates the PDF by orchestrating the individual
@@ -216,8 +215,7 @@ export function exportToPDF(
 
   // Save the PDF with a filename based on the user's name
   doc.save(
-    `${userData.info?.firstName || 'resume'}_${
-      userData.info?.lastName || ''
+    `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
     }_resume.pdf`,
   );
 }

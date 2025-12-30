@@ -124,7 +124,9 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const experience = getExperienceDetails(jobId);
-    setQueuedExperience(experience);
+    if (experience) {
+      setQueuedExperience(experience);
+    }
     return data({ prevExperience: experience, jobId });
   }
 

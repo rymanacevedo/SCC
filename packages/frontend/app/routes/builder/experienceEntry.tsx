@@ -99,6 +99,9 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const storedExperience = getExperienceDetails(jobId);
+    if (!storedExperience) {
+      return redirect('/experience');
+    }
     setQueuedExperience(storedExperience);
     return data(storedExperience);
   }
@@ -377,9 +380,9 @@ export default function ExperienceEntry() {
                   ))
                 )}
               </div>
-              {errors?.jobDetails ? (
+              {errors && 'jobDetails' in errors ? (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.jobDetails[0]}
+                  {(errors as any).jobDetails[0]}
                 </p>
               ) : null}
               {/* Manual Experience Input */}
