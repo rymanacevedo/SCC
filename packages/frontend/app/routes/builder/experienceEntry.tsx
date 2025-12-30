@@ -108,8 +108,8 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 export default function ExperienceEntry() {
   const fetcher = useFetcher<TExperience>();
   // const errors: any = fetcher.data?.data?.errors;
-  const action = useActionData<ActionData>();
-  const errors = action?.data.errors;
+  const action = useActionData<typeof clientAction>();
+  const errors = action?.errors;
   const navigate = useNavigate();
   const { details, jobTitle, jobId, employer } =
     useLoaderData<typeof clientLoader>();

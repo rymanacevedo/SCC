@@ -132,9 +132,9 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 
 export default function WorkExperience() {
-  const actionData = useActionData<ActionData>();
+  const actionData = useActionData<typeof clientAction>();
   const { prevExperience, jobId } = useLoaderData<typeof clientLoader>();
-  const errors = actionData?.data.errors;
+  const errors = actionData?.errors;
   const navigate = useNavigate();
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(
     prevExperience?.currentlyEmployed ?? false,

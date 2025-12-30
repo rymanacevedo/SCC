@@ -69,8 +69,8 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 }
 
 export default function PersonalInfo() {
-  const actionData = useActionData<ActionData>();
-  const errors = actionData?.data.errors;
+  const actionData = useActionData<typeof clientAction>();
+  const errors = actionData?.errors;
   const { returnUrl, prevInfo } = useLoaderData<typeof clientLoader>();
 
   return (
