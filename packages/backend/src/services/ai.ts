@@ -31,9 +31,8 @@ const SummarySchema = z
       .describe(
         'A summary of the profession. This is roughly 3-4 sentences. No more then 5 sentences.',
       ),
-  })
-  .array();
 
+  }).array();
 export const createSummaries = async (prompt: string, apiKey: string) => {
   const openai: OpenAIProvider = createOpenAI({
     apiKey,
@@ -42,7 +41,9 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   const { output } = await generateText({
     model: OpenAIModel,
     output: Output.object({
-      schema: SummarySchema,
+      schema: z.object({
+        summaries: SummarySchema,
+      }),
     }),
     prompt,
     system: `
@@ -79,14 +80,14 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
           <details></details>
         </job>
   
-        When I give you the jobs, return the summaries as an array.
+        When I give you the jobs, return the summaries as an array wrapped in a 'summaries' object.
         Be as specific as possible.
         ${Blacklist}
         Use your best judgement if given a term that doesn't look like a job, just send back general professional summary.
       `,
   });
 
-  return output;
+  return output.summaries;
 };
 
 export const createSkills = async (prompt: string, apiKey: string) => {
