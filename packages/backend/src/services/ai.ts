@@ -37,7 +37,7 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const OpenAIModel = openai('o4-mini');
+  const OpenAIModel = openai('gpt-5-nano');
   const { output } = await generateText({
     model: OpenAIModel,
     output: Output.object({
@@ -94,7 +94,7 @@ export const createSkills = async (prompt: string, apiKey: string) => {
   const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const OpenAIModel = openai('o4-mini');
+  const OpenAIModel = openai('gpt-5-nano');
 
   const { output } = await generateText({
     model: OpenAIModel,
@@ -124,7 +124,7 @@ export const createExperience = async (prompt: string, apiKey: string) => {
   const openai: OpenAIProvider = createOpenAI({
     apiKey,
   });
-  const OpenAIModel = openai('o4-mini');
+  const OpenAIModel = openai('gpt-5-nano');
 
   const { output } = await generateText({
     model: OpenAIModel,

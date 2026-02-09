@@ -19,16 +19,16 @@
       "name": "@scc/backend",
       "dependencies": {
         "@ai-sdk/openai": "^3.0.1",
-        "@hono/zod-validator": "^0.7.5",
+        "@hono/zod-validator": "^0.7.6",
         "@scc/frontend": "1.0.0",
         "ai": "^6.0.3",
-        "hono": "^4.7.4",
-        "zod": "^4.1.13",
+        "hono": "^4.11.2",
+        "zod": "^4.2.1",
       },
       "devDependencies": {
-        "@cloudflare/workers-types": "^4.20250303.0",
-        "@types/node": "^22.13.9",
-        "wrangler": "^4.9.1",
+        "@cloudflare/workers-types": "^4.20251225.0",
+        "@types/node": "^22.19.3",
+        "wrangler": "^4.54.0",
       },
     },
     "packages/frontend": {
