@@ -14,6 +14,7 @@ import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
 import Main from '../../components/Main';
 import Select from '../../components/Select';
+import { usePhoneMask } from '../../hooks/usePhoneMask';
 import type { ActionData } from '../../models/Actions';
 import { usStates } from '../../utils/usStates';
 import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
@@ -27,6 +28,7 @@ export const PersonalInfoSchema = z.object({
   phone: z
     .string()
     .optional()
+    .transform((val) => (val ? val.replace(/-/g, '') : val))
     .refine((val) => !val || /^\d{10}$/.test(val), {
       message: 'Phone number must be 10 digits',
     }),
@@ -74,6 +76,7 @@ export default function PersonalInfo() {
   const actionData = useActionData<typeof clientAction>();
   const errors = actionData?.errors;
   const { returnUrl, prevInfo } = useLoaderData<typeof clientLoader>();
+  const phone = usePhoneMask(prevInfo?.phone);
 
   return (
     <Main>
@@ -135,7 +138,8 @@ export default function PersonalInfo() {
             type="tel"
             id="phone"
             error={errors}
-            defaultValue={prevInfo?.phone}
+            value={phone.value}
+            onChange={phone.onChange}
           />
 
           {/* Email */}
