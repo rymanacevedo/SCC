@@ -13,6 +13,8 @@ import Main from '../../components/Main';
 import { addQueryParams } from '../../utils/navigation';
 import { updateUser } from '../../utils/user';
 
+const PREVIOUS_ROUTE = '/experience-summary';
+
 export const EducationLevelSchema = z.union([
   z.literal('GED'),
   z.literal('High School'),
@@ -79,7 +81,7 @@ function EducationLevel() {
         text="Previous"
         type="secondary"
         action="button"
-        callback={() => navigate(-1)}
+        callback={() => navigate(PREVIOUS_ROUTE)}
       />
     </Main>
   );

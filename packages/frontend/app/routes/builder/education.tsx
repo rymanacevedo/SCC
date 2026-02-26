@@ -5,6 +5,7 @@ import {
   data,
   redirect,
   useLoaderData,
+  useNavigate,
 } from 'react-router';
 import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
@@ -14,6 +15,7 @@ import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
 import Main from '../../components/Main';
 import type { ActionData } from '../../models/Actions';
+import { addQueryParams } from '../../utils/navigation';
 import { getUser, updateUser } from '../../utils/user';
 import { EducationLevelSchema } from './educationLevel';
 
@@ -95,12 +97,15 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   return {
     prevEducation: user?.education?.[index],
     returnUrl,
+    educationIndex: educationIndex ?? '0',
   };
 }
 
 export default function Education() {
   const actionData = useActionData<typeof clientAction>();
-  const { prevEducation, returnUrl } = useLoaderData<typeof clientLoader>();
+  const { prevEducation, returnUrl, educationIndex } =
+    useLoaderData<typeof clientLoader>();
+  const navigate = useNavigate();
   const errors = actionData?.errors;
 
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(
@@ -198,7 +203,13 @@ export default function Education() {
                 text="Previous"
                 type="secondary"
                 action="button"
-                callback={() => window.history.back()}
+                callback={() =>
+                  navigate(
+                    addQueryParams('/education-level', {
+                      educationIndex,
+                    }),
+                  )
+                }
               />
               <Button action="submit" text="Next Step" />
             </>

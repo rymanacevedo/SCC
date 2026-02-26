@@ -6,6 +6,7 @@ import {
   useActionData,
   useFetcher,
   useLoaderData,
+  useNavigate,
 } from 'react-router';
 import { Form } from 'react-router';
 import { z } from 'zod';
@@ -112,9 +113,12 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
 // Force the client loader to run during hydration
 clientLoader.hydrate = true as const;
 
+const PREVIOUS_ROUTE = '/education-summary';
+
 export default function Skills() {
   const { prevSkills, experienceString, returnUrl } =
     useLoaderData<typeof clientLoader>();
+  const navigate = useNavigate();
   const fetcher = useFetcher<TSkills>();
   const MAX_SKILLS = 6 as const;
   const actionData = useActionData<typeof clientAction>();
@@ -391,7 +395,7 @@ export default function Skills() {
                     text="Previous"
                     type="secondary"
                     action="button"
-                    callback={() => window.history.back()}
+                    callback={() => navigate(PREVIOUS_ROUTE)}
                   />
                   <Button action="submit" text="Next Step" />
                 </>
