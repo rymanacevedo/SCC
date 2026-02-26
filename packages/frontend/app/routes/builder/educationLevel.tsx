@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import {
   type ClientActionFunctionArgs,
+  type ClientLoaderFunctionArgs,
   Form,
   data,
   redirect,
@@ -11,9 +12,10 @@ import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Main from '../../components/Main';
 import { addQueryParams } from '../../utils/navigation';
-import { updateUser } from '../../utils/user';
+import { getUser, updateUser } from '../../utils/user';
 
 const PREVIOUS_ROUTE = '/experience-summary';
+const MAX_EDUCATION_ENTRIES = 3;
 
 export const EducationLevelSchema = z.union([
   z.literal('GED'),
@@ -30,6 +32,21 @@ export const EducationLevelSchema = z.union([
 const educationLevels = EducationLevelSchema.options.map(
   (option) => option.value,
 );
+
+export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const educationIndex = url.searchParams.get('educationIndex');
+  const index = educationIndex !== null ? Number(educationIndex) : 0;
+  const user = getUser();
+  const currentCount = user?.education?.length ?? 0;
+
+  // Prevent adding beyond the max — only block new entries, not edits
+  if (index >= MAX_EDUCATION_ENTRIES && index >= currentCount) {
+    return redirect('/education-summary');
+  }
+
+  return null;
+}
 
 export async function clientAction({ request }: ClientActionFunctionArgs) {
   const formData = await request.formData();

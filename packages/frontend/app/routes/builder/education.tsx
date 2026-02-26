@@ -87,12 +87,20 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+const MAX_EDUCATION_ENTRIES = 3;
+
 export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
   const educationIndex = url.searchParams.get('educationIndex');
   const index = educationIndex !== null ? Number(educationIndex) : 0;
+  const currentCount = user?.education?.length ?? 0;
+
+  // Prevent adding beyond the max — only block new entries, not edits
+  if (index >= MAX_EDUCATION_ENTRIES && index >= currentCount) {
+    return redirect('/education-summary');
+  }
 
   return {
     prevEducation: user?.education?.[index],
