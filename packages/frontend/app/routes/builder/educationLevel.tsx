@@ -21,6 +21,7 @@ export const EducationLevelSchema = z.union([
   z.literal('PhD'),
   z.literal('Some College'),
   z.literal('Vocational'),
+  z.literal('Certificate'),
 ]);
 
 const educationLevels = EducationLevelSchema.options.map(

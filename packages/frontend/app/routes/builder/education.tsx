@@ -53,8 +53,17 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     currentlyEnrolled: formData.get('currentlyEnrolled') === 'on',
   };
 
+  // Certificate education level makes location optional
+  const user = getUser();
+  const schema =
+    user?.education?.educationLevel === 'Certificate'
+      ? BaseEducationSchema.extend({
+          location: z.string().optional(),
+        })
+      : BaseEducationSchema;
+
   try {
-    const validatedData = BaseEducationSchema.parse(createdData);
+    const validatedData = schema.parse(createdData);
 
     updateUser('education', validatedData);
     return redirect(redirectUrl);
@@ -120,6 +129,8 @@ export default function Education() {
         prevEducation?.educationLevel === 'GED' ||
         prevEducation?.educationLevel === 'Some College' ? (
           <input type="hidden" id="degree" name="degree" value="Diploma" />
+        ) : prevEducation?.educationLevel === 'Certificate' ? (
+          <input type="hidden" id="degree" name="degree" value="Certificate" />
         ) : (
           <Input
             label="Degree or Certificate"
@@ -131,7 +142,11 @@ export default function Education() {
         )}
 
         <Input
-          label="Location"
+          label={
+            prevEducation?.educationLevel === 'Certificate'
+              ? 'Location (optional)'
+              : 'Location'
+          }
           type="text"
           id="location"
           error={errors}
