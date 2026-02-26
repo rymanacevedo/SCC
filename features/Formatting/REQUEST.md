@@ -1,0 +1,1 @@
+As a user, if I export my resume to a word doc, I would like the header to be my name and contact info. Not the title of the document.
