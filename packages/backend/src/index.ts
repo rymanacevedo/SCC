@@ -82,7 +82,7 @@ app.post('/api/experience', zValidator('json', schema), async (c) => {
 
 const bugReportSchema = z.object({
   description: z.string().min(1),
-  url: z.string().url(),
+  url: z.url(),
 });
 
 app.post('/api/bugs', zValidator('json', bugReportSchema), async (c) => {
@@ -97,7 +97,6 @@ app.post('/api/bugs', zValidator('json', bugReportSchema), async (c) => {
       description.length > 70 ? `${description.slice(0, 67)}...` : description;
 
     const body = `## Bug Report\n\n**URL:** ${url}\n\n**Description:**\n${description}\n\n---\n_Auto-reported from the application_`;
-
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO}/issues`,
       {
@@ -106,6 +105,7 @@ app.post('/api/bugs', zValidator('json', bugReportSchema), async (c) => {
           Authorization: `Bearer ${GITHUB_TOKEN}`,
           Accept: 'application/vnd.github+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'scc-backend',
         },
         body: JSON.stringify({
           title,
@@ -152,6 +152,7 @@ app.post('/api/errors', zValidator('json', errorTelemetrySchema), async (c) => {
           Authorization: `Bearer ${GITHUB_TOKEN}`,
           Accept: 'application/vnd.github+json',
           'Content-Type': 'application/json',
+          'User-Agent': 'scc-backend',
         },
         body: JSON.stringify({
           title: `[Error] ${title}`,
