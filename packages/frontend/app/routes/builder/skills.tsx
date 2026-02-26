@@ -57,7 +57,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 // TODO: HOTFIX see github issue https://github.com/remix-run/react-router/issues/12607
-let cachedClientLoader: undefined | any;
+let cachedClientLoader:
+  | undefined
+  | {
+      prevSkills: NonNullable<ReturnType<typeof getUser>>['skills'];
+      experienceString: string;
+      returnUrl: string | null;
+    };
 
 // export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
 //   const { actionResult } = args;

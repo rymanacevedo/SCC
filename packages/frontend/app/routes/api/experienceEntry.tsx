@@ -62,7 +62,7 @@ export const clientAction: ClientActionFunction = async ({
   const cloneData = request.clone();
   const formData = await cloneData.formData();
   const fields = Object.fromEntries(formData.entries());
-  let result: any;
+  let result: z.infer<typeof formSchema>;
   try {
     result = formSchema.parse(fields);
   } catch (error) {

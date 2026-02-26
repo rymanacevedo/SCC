@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef } from 'react';
-import { $getRoot } from 'lexical';
+import { memo, useEffect, useRef, type RefObject } from 'react';
+import { $getRoot, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -28,7 +28,7 @@ interface EditorProps {
 }
 
 function Editor({ user }: EditorProps) {
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<LexicalEditor | null>(null);
   const initialConfig = {
     namespace: 'MyEditor',
     theme,
@@ -37,7 +37,11 @@ function Editor({ user }: EditorProps) {
   };
 
   // Plugin to store editor reference
-  function EditorRefPlugin({ editorRef }: { editorRef: React.RefObject<any> }) {
+  function EditorRefPlugin({
+    editorRef,
+  }: {
+    editorRef: RefObject<LexicalEditor | null>;
+  }) {
     const [editor] = useLexicalComposerContext();
 
     useEffect(() => {
@@ -79,7 +83,7 @@ function Editor({ user }: EditorProps) {
           contentEditable={
             <ContentEditable
               aria-placeholder={'Enter some text...'}
-              placeholder={<div></div>}
+              placeholder={<div />}
             />
           }
           ErrorBoundary={LexicalErrorBoundary}

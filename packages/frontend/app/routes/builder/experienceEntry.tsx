@@ -237,10 +237,10 @@ export default function ExperienceEntry() {
                     'Organization skills',
                     'Public Speaking',
                   ]
-                ).map((experience, index) => (
+                ).map((experience) => (
                   <Button
                     callback={() => handleAddExperience(experience)}
-                    key={`${experience}-${index}`}
+                    key={experience}
                     type="custom"
                     text={`+ ${experience}`}
                     textSize="text-sm"
@@ -273,10 +273,10 @@ export default function ExperienceEntry() {
                     'Leadership',
                     'Active Listening',
                   ]
-                ).map((experience, index) => (
+                ).map((experience) => (
                   <Button
                     callback={() => handleAddExperience(experience)}
-                    key={`${experience}-${index}`}
+                    key={experience}
                     type="custom"
                     text={`+ ${experience}`}
                     textSize="text-sm"
@@ -333,7 +333,7 @@ export default function ExperienceEntry() {
                 ) : (
                   userExperience.map((experience, index) => (
                     <div
-                      key={`experience-${index}`}
+                      key={experience}
                       className="flex items-center gap-2 mb-2"
                     >
                       <Button
@@ -382,7 +382,7 @@ export default function ExperienceEntry() {
               </div>
               {errors && 'jobDetails' in errors ? (
                 <p className="mt-1 text-sm text-red-600">
-                  {(errors as any).jobDetails[0]}
+                  {errors.jobDetails?.[0]}
                 </p>
               ) : null}
               {/* Manual Experience Input */}
