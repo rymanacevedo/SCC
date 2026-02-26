@@ -13,6 +13,8 @@
       "build",
       ".next",
       ".cache",
+      ".ona",
+      ".react-router",
       ".turbo",
       "**/node_modules/**",
       "bin"

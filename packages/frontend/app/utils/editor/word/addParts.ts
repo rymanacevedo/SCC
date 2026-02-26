@@ -172,7 +172,7 @@ export function generateEducationElements(userData: User) {
 
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : userData.education.graduationDate
+      : userData.education.graduationDate;
 
     elements.push(
       new Paragraph({

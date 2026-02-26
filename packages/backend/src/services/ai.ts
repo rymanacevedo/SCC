@@ -31,8 +31,8 @@ const SummarySchema = z
       .describe(
         'A summary of the profession. This is roughly 3-4 sentences. No more then 5 sentences.',
       ),
-
-  }).array();
+  })
+  .array();
 export const createSummaries = async (prompt: string, apiKey: string) => {
   const openai: OpenAIProvider = createOpenAI({
     apiKey,
@@ -152,8 +152,7 @@ export const createExperience = async (prompt: string, apiKey: string) => {
     Be as specific as possible.
     ${Blacklist}
     Use your best judgement if someone gives a term that doesn't look like a job, just send back general experience like soft skills.
-    `
+    `,
   });
   return output;
-
 };

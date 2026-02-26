@@ -98,9 +98,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
       const endDate = job.currentlyEmployed
         ? 'Present'
         : job.endDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
+            month: 'long',
+            year: 'numeric',
+          });
       dateNode.append(
         $createTextNode(sanitizeText(`${startDate} - ${endDate}`)),
       );
@@ -134,7 +134,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
     const gradDateNode = $createParagraphNode();
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : userData.education.graduationDate
+      : userData.education.graduationDate;
     gradDateNode.append(
       $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
     );
@@ -167,8 +167,9 @@ export async function exportToWord(editor: any, userData: User) {
   Packer.toBlob(doc).then((blob: Blob) => {
     saveAs(
       blob,
-      `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
-      }_resume.docx`
+      `${userData.info?.firstName || 'resume'}_${
+        userData.info?.lastName || ''
+      }_resume.docx`,
     );
   });
 }
@@ -215,7 +216,8 @@ export function exportToPDF(
 
   // Save the PDF with a filename based on the user's name
   doc.save(
-    `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
+    `${userData.info?.firstName || 'resume'}_${
+      userData.info?.lastName || ''
     }_resume.pdf`,
   );
 }
