@@ -47,7 +47,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
 
-  const redirectUrl = returnUrl ? returnUrl : '/skills';
+  const redirectUrl = returnUrl ? returnUrl : '/education-summary';
   const createdData = {
     ...entries,
     currentlyEnrolled: formData.get('currentlyEnrolled') === 'on',
