@@ -1,6 +1,8 @@
 import type { User } from './../../user';
-type Education = User['education'];
-export function formatEducationString(education: Education): string {
+type EducationEntry = NonNullable<User['education']>[number];
+export function formatEducationString(
+  education: EducationEntry | undefined,
+): string {
   if (!education) return '';
   const components = [
     education.degree,

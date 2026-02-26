@@ -56,7 +56,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   // Certificate education level makes location optional
   const user = getUser();
   const schema =
-    user?.education?.educationLevel === 'Certificate'
+    user?.education?.[0]?.educationLevel === 'Certificate'
       ? BaseEducationSchema.extend({
           location: z.string().optional(),
         })
@@ -65,7 +65,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   try {
     const validatedData = schema.parse(createdData);
 
-    updateUser('education', validatedData);
+    updateUser('education', validatedData, 0);
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -87,7 +87,7 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const returnUrl = url.searchParams.get('returnUrl');
 
   return {
-    prevEducation: user?.education,
+    prevEducation: user?.education?.[0],
     returnUrl,
   };
 }

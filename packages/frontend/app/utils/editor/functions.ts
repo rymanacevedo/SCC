@@ -125,25 +125,27 @@ export function populateEditorWithUserData(root: RootNode, userData: User) {
     }
   }
 
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     const educationTitleNode = $createHeadingNode('h2');
     educationTitleNode.append($createTextNode('EDUCATION'));
     root.append(educationTitleNode);
 
-    const educationNode = $createParagraphNode();
-    educationNode.append(
-      $createTextNode(sanitizeText(formatEducationString(userData.education))),
-    );
-    root.append(educationNode);
+    for (const entry of userData.education) {
+      const educationNode = $createParagraphNode();
+      educationNode.append(
+        $createTextNode(sanitizeText(formatEducationString(entry))),
+      );
+      root.append(educationNode);
 
-    const gradDateNode = $createParagraphNode();
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate;
-    gradDateNode.append(
-      $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
-    );
-    root.append(gradDateNode);
+      const gradDateNode = $createParagraphNode();
+      const gradDate = entry.currentlyEnrolled
+        ? 'Currently Enrolled'
+        : entry.graduationDate;
+      gradDateNode.append(
+        $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
+      );
+      root.append(gradDateNode);
+    }
   }
 }
 

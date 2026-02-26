@@ -33,7 +33,7 @@ export async function clientAction({ request }: ClientActionFunctionArgs) {
   const educationLevel = formData.get('educationLevel');
   try {
     const validatedData = EducationLevelSchema.parse(educationLevel);
-    updateUser('education', { educationLevel: validatedData });
+    updateUser('education', { educationLevel: validatedData }, 0);
     return redirect('/education');
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -193,7 +193,7 @@ export function addEducation(
   defaultFontSize: number,
 ): number {
   let currentY = yPosition;
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     if (currentY > 270) {
       doc.addPage();
       currentY = 20;
@@ -204,22 +204,17 @@ export function addEducation(
     doc.text('EDUCATION', 14, currentY);
     currentY += 7;
 
-    doc.setFontSize(defaultFontSize);
-    doc.text(formatEducationString(userData.education), 14, currentY);
-    currentY += 6;
+    for (const entry of userData.education) {
+      if (currentY > 270) {
+        doc.addPage();
+        currentY = 20;
+      }
 
-    // Uncomment and adjust below lines if you want to print the graduation date:
-    /*
-    doc.setFont(defaultFont, 'italic');
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-    doc.text(`Graduation: ${gradDate}`, 14, yPosition);
-    yPosition += 10;
-    */
+      doc.setFontSize(defaultFontSize);
+      doc.setFont(defaultFont, 'normal');
+      doc.text(formatEducationString(entry), 14, currentY);
+      currentY += 6;
+    }
   }
   return currentY;
 }

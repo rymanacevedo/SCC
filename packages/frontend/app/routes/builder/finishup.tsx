@@ -154,36 +154,43 @@ export default function Finish() {
             />
             <EditLink to="/education" returnUrl="/finish-up" />
           </div>
-          <div className="space-y-3">
-            <div>
-              <Heading
-                text="School"
-                level="h3"
-                size="text-sm"
-                color="dark:text-gray-400 text-gray-500"
-              />
-              <p className="font-medium">{user.education?.schoolName}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Heading
-                  text="Degree"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">{user.education?.educationLevel}</p>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {user.education?.map((entry, index) => (
+              <div
+                key={`${entry.schoolName}-${index}`}
+                className="space-y-3 py-3 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <Heading
+                    text="School"
+                    level="h3"
+                    size="text-sm"
+                    color="dark:text-gray-400 text-gray-500"
+                  />
+                  <p className="font-medium">{entry.schoolName}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Heading
+                      text="Degree"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{entry.educationLevel}</p>
+                  </div>
+                  <div>
+                    <Heading
+                      text="Field of Study"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{entry.degree}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Heading
-                  text="Field of Study"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">{user.education?.degree}</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 

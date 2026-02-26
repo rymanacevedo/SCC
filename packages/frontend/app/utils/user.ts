@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { BaseExperienceSchema } from '../routes/builder/experience';
 import { BaseEducationSchema } from '../routes/builder/education';
+import { BaseExperienceSchema } from '../routes/builder/experience';
 import { PersonalInfoSchema } from '../routes/builder/info';
 import { SkillsSchema } from '../routes/builder/skills';
 import { SummarySchema } from '../routes/builder/summary';
@@ -15,13 +15,14 @@ export const UserSchema = z.object({
   userId: z.string(),
   info: PartialPersonalInfo.optional(),
   experience: z.array(PartialExperienceSchema).optional(),
-  education: PartialEducationSchema.optional(),
+  education: z.array(PartialEducationSchema).max(3).optional(),
   skills: PartialSkillsSchema.optional(),
   summary: PartialSummarySchema.optional(),
 });
 
 export type User = z.infer<typeof UserSchema>;
 export type Experience = z.infer<typeof BaseExperienceSchema>;
+export type Education = z.infer<typeof BaseEducationSchema>;
 
 export function getUser(): User | null {
   const value = window.sessionStorage.getItem('user');
@@ -70,7 +71,11 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
     ?
         | Partial<(typeof BaseExperienceSchema)['_output']>
         | Partial<(typeof BaseExperienceSchema)['_output']>[]
-    : Partial<User[K]>,
+    : K extends 'education'
+      ?
+          | Partial<(typeof BaseEducationSchema)['_output']>
+          | Partial<(typeof BaseEducationSchema)['_output']>[]
+      : Partial<User[K]>,
   index?: number,
 ): void {
   const currentUser = getUser();
@@ -115,6 +120,27 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
         updatedField = [...currentExperience, newExperience] as User[K];
       }
     }
+  } else if (key === 'education') {
+    const currentEducation = (currentUser.education || []) as (
+      | Partial<(typeof BaseEducationSchema)['_output']>
+      | undefined
+    )[];
+
+    if (Array.isArray(newData)) {
+      // Handle full array update
+      updatedField = newData as User[K];
+    } else if (typeof index === 'number') {
+      // Handle single education update at specific index (merge with existing)
+      const updatedEducation = [...currentEducation];
+      updatedEducation[index] = {
+        ...updatedEducation[index],
+        ...newData,
+      } as Partial<(typeof BaseEducationSchema)['_output']>;
+      updatedField = updatedEducation as User[K];
+    } else {
+      // Append new education entry
+      updatedField = [...currentEducation, newData] as User[K];
+    }
   } else {
     // Handle other fields
     updatedField = currentUser[key]
@@ -134,7 +160,9 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
   key: K,
 ): K extends 'experience'
   ? Required<NonNullable<(typeof BaseExperienceSchema)['_output']>>[]
-  : Required<NonNullable<User[K]>> {
+  : K extends 'education'
+    ? Required<NonNullable<(typeof BaseEducationSchema)['_output']>>[]
+    : Required<NonNullable<User[K]>> {
   const user = getUser();
   if (!user) {
     // TODO: redirect
@@ -169,7 +197,7 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
       }
     });
   } else {
-    // Handle non-array types (info, education, skills, summary)
+    // Handle non-array types (info, skills, summary)
     const traitRecord = trait as Record<string, unknown>;
     for (const subKey in traitRecord) {
       if (traitRecord[subKey] == null) {
@@ -182,7 +210,9 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
 
   return trait as K extends 'experience'
     ? Required<NonNullable<(typeof BaseExperienceSchema)['_output']>>[]
-    : Required<NonNullable<User[K]>>;
+    : K extends 'education'
+      ? Required<NonNullable<(typeof BaseEducationSchema)['_output']>>[]
+      : Required<NonNullable<User[K]>>;
 }
 
 export function clearQueuedExperience() {

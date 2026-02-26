@@ -154,7 +154,7 @@ function generateExperienceElements(userData: User) {
  */
 export function generateEducationElements(userData: User) {
   const elements = [];
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     elements.push(
       new Paragraph({
         text: 'EDUCATION',
@@ -163,25 +163,27 @@ export function generateEducationElements(userData: User) {
       }),
     );
 
-    elements.push(
-      new Paragraph({
-        text: formatEducationString(userData.education),
-        heading: HeadingLevel.HEADING_3,
-      }),
-    );
+    for (const entry of userData.education) {
+      elements.push(
+        new Paragraph({
+          text: formatEducationString(entry),
+          heading: HeadingLevel.HEADING_3,
+        }),
+      );
 
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate;
+      const gradDate = entry.currentlyEnrolled
+        ? 'Currently Enrolled'
+        : entry.graduationDate;
 
-    elements.push(
-      new Paragraph({
-        text: `Graduation: ${gradDate}`,
-        italics: true,
-      }),
-    );
+      elements.push(
+        new Paragraph({
+          text: `Graduation: ${gradDate}`,
+          italics: true,
+        }),
+      );
 
-    elements.push(new Paragraph({ text: '' }));
+      elements.push(new Paragraph({ text: '' }));
+    }
   }
   return elements;
 }
