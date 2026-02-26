@@ -1,14 +1,15 @@
 {
   "name": "scc",
   "module": "index.ts",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo run dev --filter=@scc/frontend...",
     "build": "turbo run build",
     "lint": "biome lint .",
     "format": "biome format . --write",
     "check": "biome check .",
-    "tsc": "bun run --cwd packages/frontend typecheck && bun run --cwd packages/backend typecheck",
     "typecheck": "bun run --cwd packages/frontend typecheck && bun run --cwd packages/backend typecheck",
     "test": "bun test",
     "prepare": "husky"
