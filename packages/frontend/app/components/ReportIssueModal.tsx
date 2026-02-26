@@ -11,9 +11,17 @@ export default function ReportIssueModal({
   isOpen,
   onClose,
 }: ReportIssueModalProps) {
-  const fetcher = useFetcher();
+  const [fetcherKey, setFetcherKey] = useState(0);
+  const fetcher = useFetcher({ key: `bug-report-${fetcherKey}` });
   const formRef = useRef<HTMLFormElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowSuccess(false);
+      setFetcherKey((k) => k + 1);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) {
