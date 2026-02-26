@@ -125,4 +125,50 @@ app.post('/api/bugs', zValidator('json', bugReportSchema), async (c) => {
   }
 });
 
+const errorTelemetrySchema = z.object({
+  timestamp: z.string().min(1),
+  url: z.string().min(1),
+  message: z.string().min(1),
+  stackTrace: z.string(),
+});
+
+app.post('/api/errors', zValidator('json', errorTelemetrySchema), async (c) => {
+  try {
+    const { GITHUB_TOKEN, GITHUB_REPO } = validateEnvironment(c.env);
+    if (!GITHUB_TOKEN || !GITHUB_REPO) {
+      return c.json({ error: 'GitHub configuration missing' }, 500);
+    }
+
+    const { timestamp, url, message, stackTrace } = c.req.valid('json');
+    const title = message.length > 70 ? `${message.slice(0, 67)}...` : message;
+
+    const body = `## Auto-Reported Error\n\n**Timestamp:** ${timestamp}\n**URL:** ${url}\n\n**Error Message:**\n${message}\n\n**Stack Trace:**\n\`\`\`\n${stackTrace}\n\`\`\`\n\n---\n_Auto-reported by error boundary_`;
+
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/issues`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `[Error] ${title}`,
+          body,
+          labels: ['bug', 'auto-reported'],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      return c.json({ error: 'Failed to create GitHub issue' }, 500);
+    }
+
+    return c.json({ success: true });
+  } catch {
+    return c.json({ error: 'Failed to report error' }, 500);
+  }
+});
+
 export default app;
