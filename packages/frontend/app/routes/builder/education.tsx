@@ -46,6 +46,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const entries = Object.fromEntries(formData);
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
+  const educationIndex = url.searchParams.get('educationIndex');
+  const index = educationIndex !== null ? Number(educationIndex) : undefined;
 
   const redirectUrl = returnUrl ? returnUrl : '/education-summary';
   const createdData = {
@@ -55,8 +57,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   // Certificate education level makes location optional
   const user = getUser();
+  const educationEntry =
+    index !== undefined ? user?.education?.[index] : undefined;
   const schema =
-    user?.education?.[0]?.educationLevel === 'Certificate'
+    educationEntry?.educationLevel === 'Certificate'
       ? BaseEducationSchema.extend({
           location: z.string().optional(),
         })
@@ -65,7 +69,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   try {
     const validatedData = schema.parse(createdData);
 
-    updateUser('education', validatedData, 0);
+    updateUser('education', validatedData, index);
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -85,9 +89,11 @@ export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
   const user = getUser();
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
+  const educationIndex = url.searchParams.get('educationIndex');
+  const index = educationIndex !== null ? Number(educationIndex) : 0;
 
   return {
-    prevEducation: user?.education?.[0],
+    prevEducation: user?.education?.[index],
     returnUrl,
   };
 }

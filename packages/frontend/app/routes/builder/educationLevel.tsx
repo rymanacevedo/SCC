@@ -10,6 +10,7 @@ import { z } from 'zod';
 import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Main from '../../components/Main';
+import { addQueryParams } from '../../utils/navigation';
 import { updateUser } from '../../utils/user';
 
 export const EducationLevelSchema = z.union([
@@ -30,11 +31,19 @@ const educationLevels = EducationLevelSchema.options.map(
 
 export async function clientAction({ request }: ClientActionFunctionArgs) {
   const formData = await request.formData();
+  const url = new URL(request.url);
+  const educationIndex = url.searchParams.get('educationIndex');
+  const returnUrl = url.searchParams.get('returnUrl');
   const educationLevel = formData.get('educationLevel');
   try {
     const validatedData = EducationLevelSchema.parse(educationLevel);
-    updateUser('education', { educationLevel: validatedData }, 0);
-    return redirect('/education');
+    const index = educationIndex !== null ? Number(educationIndex) : undefined;
+    updateUser('education', { educationLevel: validatedData }, index);
+    const redirectUrl = addQueryParams('/education', {
+      educationIndex,
+      returnUrl,
+    });
+    return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return data({ error: 'Something bad happened.' }, { status: 409 });

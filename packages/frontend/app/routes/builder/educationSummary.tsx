@@ -11,6 +11,7 @@ import type { Route } from '../../+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Main from '../../components/Main';
+import { addQueryParams } from '../../utils/navigation';
 import { clearQueuedEducation, getRequiredUserTrait } from '../../utils/user';
 
 const MAX_EDUCATION_ENTRIES = 3;
@@ -49,12 +50,10 @@ function EducationSummary() {
       <div>
         {educationEntries.map((entry, index) => (
           <NavLink
-            to={{
-              pathname: '/education-level',
-              search: returnUrl
-                ? `?returnUrl=${encodeURIComponent(returnUrl)}`
-                : undefined,
-            }}
+            to={addQueryParams('/education-level', {
+              educationIndex: index.toString(),
+              returnUrl,
+            })}
             key={`${entry.schoolName}-${entry.degree}-${entry.educationLevel}`}
           >
             <div
@@ -100,7 +99,10 @@ function EducationSummary() {
       {educationEntries.length < MAX_EDUCATION_ENTRIES && (
         <NavLink
           className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
-          to="/education-level"
+          to={addQueryParams('/education-level', {
+            educationIndex: educationEntries.length.toString(),
+            returnUrl,
+          })}
         >
           + Add another education
         </NavLink>
@@ -114,7 +116,13 @@ function EducationSummary() {
               text="Previous"
               type="secondary"
               action="button"
-              callback={() => navigate('/education')}
+              callback={() =>
+                navigate(
+                  addQueryParams('/education', {
+                    educationIndex: (educationEntries.length - 1).toString(),
+                  }),
+                )
+              }
             />
             <Button action="submit" text="Next Step" />
           </>
