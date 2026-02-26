@@ -48,6 +48,8 @@ function Input(props: InputProps) {
     disabled,
     placeholder,
     pattern,
+    value,
+    onChange,
   } = props;
 
   const isNumberInput = (
@@ -63,6 +65,7 @@ function Input(props: InputProps) {
     if (wasInvalid) {
       setShowError(!e.target.validity.valid);
     }
+    onChange?.(e);
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -103,7 +106,7 @@ function Input(props: InputProps) {
         name={id}
         pattern={pattern}
         placeholder={placeholder}
-        defaultValue={defaultValue}
+        {...(value !== undefined ? { value } : { defaultValue })}
         onChange={handleChange}
         onBlur={handleBlur}
         disabled={disabled}

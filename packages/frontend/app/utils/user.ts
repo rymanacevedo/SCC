@@ -79,7 +79,7 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
     return;
   }
 
-  let updatedField;
+  let updatedField: User[K] | undefined;
   if (key === 'experience') {
     const currentExperience = (currentUser.experience || []) as (
       | Partial<(typeof BaseExperienceSchema)['_output']>
@@ -88,13 +88,14 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
 
     if (Array.isArray(newData)) {
       // Handle full array update
-      updatedField = newData;
+      updatedField = newData as User[K];
     } else if (typeof index === 'number') {
       // Handle single experience update at specific index
-      updatedField = [...currentExperience];
-      updatedField[index] = newData as Partial<
+      const updatedExperience = [...currentExperience];
+      updatedExperience[index] = newData as Partial<
         (typeof BaseExperienceSchema)['_output']
       >;
+      updatedField = updatedExperience as User[K];
     } else {
       // Check if an experience with the same jobId already exists
       const newExperience = newData as Partial<
@@ -106,18 +107,19 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
 
       if (existingIndex !== -1) {
         // Update existing experience
-        updatedField = [...currentExperience];
-        updatedField[existingIndex] = newExperience;
+        const updatedExperience = [...currentExperience];
+        updatedExperience[existingIndex] = newExperience;
+        updatedField = updatedExperience as User[K];
       } else {
         // Add new experience
-        updatedField = [...currentExperience, newExperience];
+        updatedField = [...currentExperience, newExperience] as User[K];
       }
     }
   } else {
     // Handle other fields
     updatedField = currentUser[key]
-      ? { ...currentUser[key], ...newData }
-      : newData;
+      ? ({ ...currentUser[key], ...newData } as User[K])
+      : (newData as User[K]);
   }
 
   const updatedUser: User = {

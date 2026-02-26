@@ -1,0 +1,3 @@
+As a user, I would like to see errors in a user friendly way. If an error occurs, I would like to see a modal that says "An error has occurred. Please click the report an issue button in the footer to report this error." and a button to "Close" the modal. The modal should close when the user clicks the "Close" button. The modal should still render despite the error.
+
+As a developer, I would like to know when the applications errors out. I would like telermtry around when it happened, what url did it happen on, what was the error message, and what was the stack trace. This should be sent a backend and logged a database.

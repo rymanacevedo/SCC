@@ -49,21 +49,22 @@ export function addSummary(
   defaultFont: string,
   defaultFontSize: number,
 ): number {
+  let currentY = yPosition;
   if (userData?.summary?.summary) {
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
-    doc.text('SUMMARY', 14, yPosition);
-    yPosition += 7;
+    doc.text('SUMMARY', 14, currentY);
+    currentY += 7;
 
     doc.setFontSize(defaultFontSize);
     doc.setFont(defaultFont, 'normal');
 
     // Wrap the summary text to a maximum width of 180 units.
     const splitSummary = doc.splitTextToSize(userData.summary.summary, 180);
-    doc.text(splitSummary, 14, yPosition);
-    yPosition += splitSummary.length * 5 + 10;
+    doc.text(splitSummary, 14, currentY);
+    currentY += splitSummary.length * 5 + 10;
   }
-  return yPosition;
+  return currentY;
 }
 
 /**
@@ -76,16 +77,17 @@ export function addSkills(
   defaultFont: string,
   defaultFontSize: number,
 ): number {
+  let currentY = yPosition;
   if (userData.skills) {
-    if (yPosition > 270) {
+    if (currentY > 270) {
       doc.addPage();
-      yPosition = 20;
+      currentY = 20;
     }
 
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
-    doc.text('SKILLS', 14, yPosition);
-    yPosition += 7;
+    doc.text('SKILLS', 14, currentY);
+    currentY += 7;
 
     const allSkills = [
       ...(userData.skills.expertRecommended || []),
@@ -99,11 +101,11 @@ export function addSkills(
       // Handle text wrapping for skills
       const skillsText = allSkills.join(', ');
       const splitSkills = doc.splitTextToSize(skillsText, 180);
-      doc.text(splitSkills, 14, yPosition);
-      yPosition += splitSkills.length * 5 + 10;
+      doc.text(splitSkills, 14, currentY);
+      currentY += splitSkills.length * 5 + 10;
     }
   }
-  return yPosition;
+  return currentY;
 }
 
 /**
@@ -116,21 +118,22 @@ export function addExperience(
   defaultFont: string,
   defaultFontSize: number,
 ): number {
+  let currentY = yPosition;
   if (userData.experience && userData.experience.length > 0) {
-    if (yPosition > 270) {
+    if (currentY > 270) {
       doc.addPage();
-      yPosition = 20;
+      currentY = 20;
     }
 
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
-    doc.text('EXPERIENCE', 14, yPosition);
-    yPosition += 7;
+    doc.text('EXPERIENCE', 14, currentY);
+    currentY += 7;
 
     for (const job of userData.experience) {
-      if (yPosition > 270) {
+      if (currentY > 270) {
         doc.addPage();
-        yPosition = 20;
+        currentY = 20;
       }
 
       doc.setFontSize(12);
@@ -138,9 +141,9 @@ export function addExperience(
       doc.text(
         `${job.jobTitle} | ${job.employer} | ${job.location}`,
         14,
-        yPosition,
+        currentY,
       );
-      yPosition += 6;
+      currentY += 6;
 
       doc.setFontSize(defaultFontSize);
       doc.setFont(defaultFont, 'italic');
@@ -154,29 +157,29 @@ export function addExperience(
             month: 'long',
             year: 'numeric',
           });
-      doc.text(`${startDate} - ${endDate}`, 14, yPosition);
-      yPosition += 6;
+      doc.text(`${startDate} - ${endDate}`, 14, currentY);
+      currentY += 6;
 
       if (job.details && job.details.length > 0) {
         doc.setFont(defaultFont, 'normal');
         for (const detail of job.details) {
           // Check if we need a new page
-          if (yPosition > 270) {
+          if (currentY > 270) {
             doc.addPage();
-            yPosition = 20;
+            currentY = 20;
           }
 
           // Add bullet point and handle text wrapping for details.
-          doc.text('\u2022', 14, yPosition);
+          doc.text('\u2022', 14, currentY);
           const splitDetail = doc.splitTextToSize(detail, 180);
-          doc.text(splitDetail, 20, yPosition);
-          yPosition += splitDetail.length * 5 + 2;
+          doc.text(splitDetail, 20, currentY);
+          currentY += splitDetail.length * 5 + 2;
         }
       }
-      yPosition += 8;
+      currentY += 8;
     }
   }
-  return yPosition;
+  return currentY;
 }
 
 /**
@@ -189,20 +192,21 @@ export function addEducation(
   defaultFont: string,
   defaultFontSize: number,
 ): number {
+  let currentY = yPosition;
   if (userData.education) {
-    if (yPosition > 270) {
+    if (currentY > 270) {
       doc.addPage();
-      yPosition = 20;
+      currentY = 20;
     }
 
     doc.setFontSize(14);
     doc.setFont(defaultFont, 'bold');
-    doc.text('EDUCATION', 14, yPosition);
-    yPosition += 7;
+    doc.text('EDUCATION', 14, currentY);
+    currentY += 7;
 
     doc.setFontSize(defaultFontSize);
-    doc.text(formatEducationString(userData.education), 14, yPosition);
-    yPosition += 6;
+    doc.text(formatEducationString(userData.education), 14, currentY);
+    currentY += 6;
 
     // Uncomment and adjust below lines if you want to print the graduation date:
     /*
@@ -217,5 +221,5 @@ export function addEducation(
     yPosition += 10;
     */
   }
-  return yPosition;
+  return currentY;
 }

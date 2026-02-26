@@ -1,0 +1,1 @@
+As a user, I would like to be able to report a bug or issue on the page I am on. There should be a button in the footer that says "Report an issue" that opens a modal. The modal should have a text area to describe the issue and a submit button. The submit button should send the request to the backend and close the modal. This modal will provide the page I am on (url).

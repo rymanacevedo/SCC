@@ -19,7 +19,7 @@ export const clientAction: ClientActionFunction = async ({
   const formData = await cloneData.formData();
   const entries = Object.fromEntries(formData.entries());
 
-  let result: any;
+  let result: z.infer<typeof formSchema>;
 
   try {
     result = formSchema.parse(entries);
@@ -36,7 +36,7 @@ export const clientAction: ClientActionFunction = async ({
     );
   }
 
-  const badWord = containsInappropriateWords(result);
+  const badWord = containsInappropriateWords(result.jobSearch);
 
   if (badWord) {
     return Response.json(

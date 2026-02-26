@@ -2,7 +2,8 @@
   "name": "@scc/backend",
   "scripts": {
     "dev": "wrangler dev --local",
-    "deploy": "wrangler deploy --minify"
+    "deploy": "wrangler deploy --minify",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.1",

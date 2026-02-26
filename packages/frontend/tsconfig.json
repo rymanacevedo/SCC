@@ -5,6 +5,7 @@
     "**/*.ts",
     "**/*.tsx"
   ],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
   "rootDirs": [".", "./.react-router/types"],
   "compilerOptions": {
     "types": ["@react-router/node", "vite/client"],

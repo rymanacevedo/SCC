@@ -54,11 +54,11 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
             <jobTitle>${job.jobTitle}</jobTitle> <employer>${job.employer}</employer>
             <details>
             ${job.details
-            ?.map(
-              (detail, index) => `
+              ?.map(
+                (detail, index) => `
                   <detail${index + 1}>${detail}</detail${index + 1}>`,
-            )
-            .join('')}
+              )
+              .join('')}
             </details>
           </job>`,
       )

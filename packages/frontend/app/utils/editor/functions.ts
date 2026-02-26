@@ -1,5 +1,10 @@
 import { Packer, Document } from 'docx';
-import { $createParagraphNode, $createTextNode } from 'lexical';
+import {
+  $createParagraphNode,
+  $createTextNode,
+  type LexicalEditor,
+  type RootNode,
+} from 'lexical';
 import { $createHeadingNode } from '@lexical/rich-text';
 import type { User } from '../user';
 
@@ -30,7 +35,7 @@ function sanitizeText(text: string): string {
 /**
  * Populates the Lexical editor with user data using sanitized text.
  */
-export function populateEditorWithUserData(root: any, userData: User) {
+export function populateEditorWithUserData(root: RootNode, userData: User) {
   root.clear();
 
   if (userData.info) {
@@ -98,9 +103,9 @@ export function populateEditorWithUserData(root: any, userData: User) {
       const endDate = job.currentlyEmployed
         ? 'Present'
         : job.endDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
+            month: 'long',
+            year: 'numeric',
+          });
       dateNode.append(
         $createTextNode(sanitizeText(`${startDate} - ${endDate}`)),
       );
@@ -134,7 +139,7 @@ export function populateEditorWithUserData(root: any, userData: User) {
     const gradDateNode = $createParagraphNode();
     const gradDate = userData.education.currentlyEnrolled
       ? 'Currently Enrolled'
-      : userData.education.graduationDate
+      : userData.education.graduationDate;
     gradDateNode.append(
       $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
     );
@@ -145,7 +150,10 @@ export function populateEditorWithUserData(root: any, userData: User) {
 /**
  * Creates and exports the Word document using the generated docx elements.
  */
-export async function exportToWord(editor: any, userData: User) {
+export async function exportToWord(
+  _editor: LexicalEditor | null,
+  userData: User,
+) {
   const doc = new Document({
     sections: [
       {
@@ -167,8 +175,9 @@ export async function exportToWord(editor: any, userData: User) {
   Packer.toBlob(doc).then((blob: Blob) => {
     saveAs(
       blob,
-      `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
-      }_resume.docx`
+      `${userData.info?.firstName || 'resume'}_${
+        userData.info?.lastName || ''
+      }_resume.docx`,
     );
   });
 }
@@ -178,7 +187,7 @@ export async function exportToWord(editor: any, userData: User) {
  * sections defined above.
  */
 export function exportToPDF(
-  editor: any,
+  _editor: LexicalEditor | null,
   userData: User,
   defaultFontSize = 12,
   defaultFont = 'helvetica',
@@ -215,7 +224,8 @@ export function exportToPDF(
 
   // Save the PDF with a filename based on the user's name
   doc.save(
-    `${userData.info?.firstName || 'resume'}_${userData.info?.lastName || ''
+    `${userData.info?.firstName || 'resume'}_${
+      userData.info?.lastName || ''
     }_resume.pdf`,
   );
 }

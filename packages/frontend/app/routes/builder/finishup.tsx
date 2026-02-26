@@ -132,8 +132,8 @@ export default function Finish() {
                   </div>
                   {job.details && (
                     <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside">
-                      {job.details.map((detail, index) => (
-                        <li key={index}>{detail}</li>
+                      {job.details.map((detail) => (
+                        <li key={detail}>{detail}</li>
                       ))}
                     </ul>
                   )}
