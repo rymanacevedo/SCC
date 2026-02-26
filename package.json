@@ -1,13 +1,18 @@
 {
   "name": "scc",
   "module": "index.ts",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo run dev --filter=@scc/frontend...",
     "build": "turbo run build",
     "lint": "biome lint .",
     "format": "biome format . --write",
-    "check": "biome check ."
+    "check": "biome check .",
+    "typecheck": "tsc",
+    "test": "bun test",
+    "prepare": "husky"
   },
   "type": "module",
   "devDependencies": {
@@ -18,6 +23,8 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "turbo": "^2.7.2"
   },
   "packageManager": "bun@1.2.2"
