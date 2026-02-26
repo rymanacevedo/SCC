@@ -139,7 +139,7 @@ export function addExperience(
       doc.setFontSize(12);
       doc.setFont(defaultFont, 'bold');
       doc.text(
-        `${job.jobTitle} | ${job.employer} | ${job.location}`,
+        `${job.jobTitle} | ${job.employer} | ${job.city}, ${job.state}`,
         14,
         currentY,
       );

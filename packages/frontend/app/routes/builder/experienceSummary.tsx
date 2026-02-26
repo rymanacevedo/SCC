@@ -65,7 +65,9 @@ function ExperienceSummary() {
                 </span>
                 <Heading level="h2" size="text-2xl" text={e.jobTitle} />
               </div>
-              <em>{e.location}</em>
+              <em>
+                {e.city}, {e.state}
+              </em>
               <span> | </span>
               <em>
                 {e.startDate.getUTCFullYear().toString()}

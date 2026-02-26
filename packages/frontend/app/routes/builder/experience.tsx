@@ -13,8 +13,10 @@ import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
 import Main from '../../components/Main';
+import Select from '../../components/Select';
 import type { ActionData } from '../../models/Actions';
 import { addQueryParams } from '../../utils/navigation';
+import { usStates } from '../../utils/usStates';
 import {
   getExperienceDetails,
   getQueuedExperience,
@@ -25,7 +27,8 @@ export const BaseExperienceSchema = z.object({
   jobId: z.string().min(1),
   jobTitle: z.string().min(1, 'Job Title is required.'),
   employer: z.string().min(1, 'Employer is required.'),
-  location: z.string().min(1, 'Location is required.'),
+  city: z.string().min(1, 'City is required.'),
+  state: z.string().min(1, 'State is required.'),
   startDate: z
     .string()
     .min(1, 'Start date is required.')
@@ -186,12 +189,19 @@ export default function WorkExperience() {
             defaultValue={prevExperience?.employer}
           />
           <Input
-            label="Location"
+            label="City"
             type="text"
-            id="location"
-            placeholder="Denver, CO"
+            id="city"
+            placeholder="Denver"
             error={errors}
-            defaultValue={prevExperience?.location}
+            defaultValue={prevExperience?.city}
+          />
+          <Select
+            label="State"
+            id="state"
+            options={usStates}
+            error={errors}
+            defaultValue={prevExperience?.state}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
             <Input

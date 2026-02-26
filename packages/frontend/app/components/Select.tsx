@@ -64,7 +64,7 @@ function Select({
         onChange={handleChange}
         onBlur={handleBlur}
         disabled={disabled}
-        className={`mt-1 block w-full border shadow-sm ${classNames ?? ''} ${
+        className={`mt-1 block w-full border shadow-sm py-3 text-lg ${classNames ?? ''} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
             : ''

@@ -90,7 +90,9 @@ export function populateEditorWithUserData(root: RootNode, userData: User) {
       const jobTitleNode = $createHeadingNode('h3');
       jobTitleNode.append(
         $createTextNode(
-          sanitizeText(`${job.jobTitle} | ${job.employer} | ${job.location}`),
+          sanitizeText(
+            `${job.jobTitle} | ${job.employer} | ${job.city}, ${job.state}`,
+          ),
         ),
       );
       root.append(jobTitleNode);

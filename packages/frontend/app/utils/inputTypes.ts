@@ -1,4 +1,4 @@
-const defaultShape = 'mt-1 block w-full border shadow-sm';
+const defaultShape = 'mt-1 block w-full border shadow-sm py-3 text-lg';
 
 export const inputTypes = {
   text: `${defaultShape}`,

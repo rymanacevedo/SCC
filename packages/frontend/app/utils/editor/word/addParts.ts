@@ -108,7 +108,7 @@ function generateExperienceElements(userData: User) {
     for (const job of userData.experience) {
       elements.push(
         new Paragraph({
-          text: `${job.jobTitle} | ${job.employer} | ${job.location}`,
+          text: `${job.jobTitle} | ${job.employer} | ${job.city}, ${job.state}`,
           heading: HeadingLevel.HEADING_3,
         }),
       );

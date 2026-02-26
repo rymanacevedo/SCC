@@ -128,7 +128,7 @@ export default function Finish() {
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {job.employer} • {job.location}
+                    {job.employer} • {job.city}, {job.state}
                   </div>
                   {job.details && (
                     <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside">
