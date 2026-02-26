@@ -24,6 +24,20 @@ export type User = z.infer<typeof UserSchema>;
 export type Experience = z.infer<typeof BaseExperienceSchema>;
 export type Education = z.infer<typeof BaseEducationSchema>;
 
+export function sortEducationEntries<
+  T extends Partial<z.infer<typeof BaseEducationSchema>>,
+>(entries: T[]): T[] {
+  return [...entries].sort((a, b) => {
+    // Currently enrolled sorts to the top
+    if (a.currentlyEnrolled && !b.currentlyEnrolled) return -1;
+    if (!a.currentlyEnrolled && b.currentlyEnrolled) return 1;
+    // Reverse chronological by graduation year
+    const yearA = Number(a.graduationDate || '0');
+    const yearB = Number(b.graduationDate || '0');
+    return yearB - yearA;
+  });
+}
+
 export function getUser(): User | null {
   const value = window.sessionStorage.getItem('user');
   try {
@@ -126,21 +140,28 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
       | undefined
     )[];
 
+    let educationArray: typeof currentEducation;
     if (Array.isArray(newData)) {
       // Handle full array update
-      updatedField = newData as User[K];
+      educationArray = newData as typeof currentEducation;
     } else if (typeof index === 'number') {
       // Handle single education update at specific index (merge with existing)
-      const updatedEducation = [...currentEducation];
-      updatedEducation[index] = {
-        ...updatedEducation[index],
+      educationArray = [...currentEducation];
+      educationArray[index] = {
+        ...educationArray[index],
         ...newData,
       } as Partial<(typeof BaseEducationSchema)['_output']>;
-      updatedField = updatedEducation as User[K];
     } else {
       // Append new education entry
-      updatedField = [...currentEducation, newData] as User[K];
+      educationArray = [
+        ...currentEducation,
+        newData,
+      ] as typeof currentEducation;
     }
+    const filtered = educationArray.filter(
+      (e): e is Partial<(typeof BaseEducationSchema)['_output']> => e != null,
+    );
+    updatedField = sortEducationEntries(filtered) as User[K];
   } else {
     // Handle other fields
     updatedField = currentUser[key]
