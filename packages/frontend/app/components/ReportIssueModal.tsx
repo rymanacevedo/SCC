@@ -53,7 +53,7 @@ export default function ReportIssueModal({
           <div className="mb-4">
             <label
               htmlFor="description"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1"
             >
               Describe the issue
             </label>
@@ -73,7 +73,7 @@ export default function ReportIssueModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
             >
               Cancel
             </button>
