@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router';
+export { RouteErrorBoundary as ErrorBoundary } from '../components/RouteErrorBoundary';
 
 export default function HomePage() {
   return (

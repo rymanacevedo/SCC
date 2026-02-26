@@ -1,4 +1,5 @@
 import { memo } from 'react';
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import {
   type ClientActionFunctionArgs,
   type ClientLoaderFunctionArgs,

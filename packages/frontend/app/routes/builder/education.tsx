@@ -1,5 +1,6 @@
 import { type ChangeEvent, useCallback, useState } from 'react';
 // app/routes/builder.education.tsx
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import {
   type ClientLoaderFunctionArgs,
   data,

@@ -1,4 +1,5 @@
 import { data, useLoaderData } from 'react-router';
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import Editor from '../../components/Editor';
 import { type User, getUser } from '../../utils/user';
 

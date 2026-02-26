@@ -1,5 +1,6 @@
 import { data, redirect, useFetcher, useLoaderData } from 'react-router';
 import { Form, useActionData } from 'react-router';
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';

@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from 'react-router';
 import { z } from 'zod';
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';

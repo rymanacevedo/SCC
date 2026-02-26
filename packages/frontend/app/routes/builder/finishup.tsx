@@ -1,4 +1,5 @@
 // app/routes/builder.finish.tsx
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import { redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';

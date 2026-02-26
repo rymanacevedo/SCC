@@ -1,4 +1,5 @@
 // app/routes/builder.personal.tsx
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/RouteErrorBoundary';
 import {
   type ClientLoaderFunctionArgs,
   Form,
