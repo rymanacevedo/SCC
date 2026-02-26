@@ -1,17 +1,17 @@
 import { memo } from 'react';
-import Heading from '../../components/Heading';
-import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 import {
-  data,
   Form,
   NavLink,
+  data,
   redirect,
   useLoaderData,
   useNavigate,
 } from 'react-router';
-import Button from '../../components/Button';
 import type { Route } from '../../+types/root';
+import Button from '../../components/Button';
+import Heading from '../../components/Heading';
 import Main from '../../components/Main';
+import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const url = new URL(request.url);

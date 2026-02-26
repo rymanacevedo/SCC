@@ -1,1 +1,1 @@
-As a developer, I would like telemetry and analytics about how long it takes users to typically complete a resume.
+As a developer, I would like telemetry and analytics about how long it takes users to typically complete a resume. This will help us understand the user experience and identify areas for improvement.

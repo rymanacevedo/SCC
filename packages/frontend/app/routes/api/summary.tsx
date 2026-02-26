@@ -3,10 +3,10 @@ import {
   type ClientActionFunctionArgs,
   data,
 } from 'react-router';
-import { containsInappropriateWords } from '../../utils/filter';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
 import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
+import { containsInappropriateWords } from '../../utils/filter';
 
 const formSchema = z.object({
   jobSearch: z.string(),

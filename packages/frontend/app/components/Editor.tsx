@@ -1,23 +1,23 @@
-import { memo, useEffect, useRef, type RefObject } from 'react';
-import { $getRoot, type LexicalEditor } from 'lexical';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import type { User } from '../utils/user';
-import Button from './Button';
-import Main from './Main';
-import theme from '../utils/editor/theme';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { HeadingNode } from '@lexical/rich-text';
+import { $getRoot, type LexicalEditor } from 'lexical';
+import { type RefObject, memo, useEffect, useRef } from 'react';
+import { CustomParagraphNode } from '../utils/editor/custom/CustomParagraphNode';
 import {
   exportToPDF,
   exportToWord,
   populateEditorWithUserData,
 } from '../utils/editor/functions';
-import { HeadingNode } from '@lexical/rich-text';
-import { CustomParagraphNode } from '../utils/editor/custom/CustomParagraphNode';
+import theme from '../utils/editor/theme';
+import type { User } from '../utils/user';
+import Button from './Button';
+import Main from './Main';
 
 function onError(error: unknown) {
   console.error(error);

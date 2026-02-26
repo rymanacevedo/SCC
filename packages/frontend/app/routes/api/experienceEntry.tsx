@@ -1,10 +1,10 @@
+import { Filter } from 'bad-words';
 import {
-  data,
   type ClientActionFunction,
   type ClientActionFunctionArgs,
+  data,
 } from 'react-router';
 import { z } from 'zod';
-import { Filter } from 'bad-words';
 import type { FormErrors } from '../../components/Input';
 import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
 

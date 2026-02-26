@@ -1,9 +1,9 @@
+import { zValidator } from '@hono/zod-validator';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
-import { createExperience, createSkills, createSummaries } from './services/ai';
 import { validateEnvironment } from '../lib/environment';
+import { createExperience, createSkills, createSummaries } from './services/ai';
 
 type Bindings = {
   ALLOWED_ORIGIN: string;

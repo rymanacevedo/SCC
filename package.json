@@ -1,9 +1,7 @@
 {
   "name": "scc",
   "module": "index.ts",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "dev": "turbo run dev --filter=@scc/frontend...",
     "build": "turbo run build",

@@ -1,5 +1,5 @@
-import { generateText, Output } from 'ai';
-import { createOpenAI, type OpenAIProvider } from '@ai-sdk/openai';
+import { type OpenAIProvider, createOpenAI } from '@ai-sdk/openai';
+import { Output, generateText } from 'ai';
 import { z } from 'zod';
 
 const Blacklist =

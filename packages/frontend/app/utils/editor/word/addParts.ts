@@ -1,4 +1,4 @@
-import { Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
+import { AlignmentType, HeadingLevel, Paragraph, TextRun } from 'docx';
 import fileSaver from 'file-saver';
 import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';

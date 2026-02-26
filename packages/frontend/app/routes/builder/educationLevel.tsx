@@ -1,16 +1,16 @@
 import { memo } from 'react';
-import Button from '../../components/Button';
 import {
   type ClientActionFunctionArgs,
-  data,
   Form,
+  data,
   redirect,
   useNavigate,
 } from 'react-router';
 import { z } from 'zod';
-import { updateUser } from '../../utils/user';
-import Main from '../../components/Main';
+import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
+import Main from '../../components/Main';
+import { updateUser } from '../../utils/user';
 
 export const EducationLevelSchema = z.union([
   z.literal('GED'),

@@ -3,11 +3,11 @@ import { redirect, useLoaderData } from 'react-router';
 import { Form } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
-import Heading from '../../components/Heading';
 import EditLink from '../../components/EditLink';
-import { getUser, type User } from '../../utils/user';
-import Main from '../../components/Main';
+import Heading from '../../components/Heading';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
+import Main from '../../components/Main';
+import { type User, getUser } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();

@@ -7,8 +7,8 @@ import {
   isRouteErrorResponse,
 } from 'react-router';
 
-import { getUser, setUser, type User } from './utils/user';
 import type { Route } from '../.react-router/types/app/+types/root.ts';
+import { type User, getUser, setUser } from './utils/user';
 import './app.css';
 
 export const links: Route.LinksFunction = () => [
