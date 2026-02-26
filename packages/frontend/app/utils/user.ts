@@ -225,6 +225,37 @@ export function clearQueuedExperience() {
   sessionStorage.removeItem('queuedExperience');
 }
 
+export function getQueuedEducation(): Education | null {
+  const value = window.sessionStorage.getItem('queuedEducation');
+  try {
+    if (value) {
+      const edu = JSON.parse(value);
+      const parsedEdu = BaseEducationSchema.parse(edu);
+      return parsedEdu;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('No education in the queue.');
+    console.error(error);
+    return null;
+  }
+}
+
+export function setQueuedEducation(edu: Education) {
+  return window.sessionStorage.setItem('queuedEducation', JSON.stringify(edu));
+}
+
+export function clearQueuedEducation() {
+  const edu = getQueuedEducation();
+  if (!edu) {
+    console.warn('No education in the queue.');
+    return;
+  }
+
+  sessionStorage.removeItem('queuedEducation');
+}
+
 export function getExperienceDetails(jobId: string) {
   const currentUser = getUser();
   if (!currentUser?.experience) {
