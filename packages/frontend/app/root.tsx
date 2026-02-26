@@ -8,6 +8,7 @@ import {
 } from 'react-router';
 
 import type { Route } from '../.react-router/types/app/+types/root.ts';
+import Footer from './components/Footer';
 import { type User, getUser, setUser } from './utils/user';
 import './app.css';
 
@@ -61,8 +62,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <Links />
       </head>
-      <body>
-        {children}
+      <body className="min-h-screen flex flex-col">
+        <div className="flex-1">{children}</div>
+        <Footer />
         <ScrollRestoration />
         <Scripts />
       </body>

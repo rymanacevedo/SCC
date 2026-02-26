@@ -3,6 +3,8 @@ import { z } from 'zod';
 const schema = z.object({
   ALLOWED_ORIGIN: z.string().url().min(1),
   OPENAI_API_KEY: z.string().min(1),
+  GITHUB_TOKEN: z.string().min(1).optional(),
+  GITHUB_REPO: z.string().min(1).optional(),
 });
 
 type EnvSchema = z.infer<typeof schema>;

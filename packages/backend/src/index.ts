@@ -9,6 +9,8 @@ type Bindings = {
   ALLOWED_ORIGIN: string;
   GEMINI_API_KEY: string;
   GROQ_API_KEY: string;
+  GITHUB_TOKEN?: string;
+  GITHUB_REPO?: string;
 };
 
 const app = new Hono<{
@@ -75,6 +77,51 @@ app.post('/api/experience', zValidator('json', schema), async (c) => {
     return c.json(response);
   } catch (error) {
     return c.json({ error: `Failed to generate content: ${error}` }, 500);
+  }
+});
+
+const bugReportSchema = z.object({
+  description: z.string().min(1),
+  url: z.string().url(),
+});
+
+app.post('/api/bugs', zValidator('json', bugReportSchema), async (c) => {
+  try {
+    const { GITHUB_TOKEN, GITHUB_REPO } = validateEnvironment(c.env);
+    if (!GITHUB_TOKEN || !GITHUB_REPO) {
+      return c.json({ error: 'GitHub configuration missing' }, 500);
+    }
+
+    const { description, url } = c.req.valid('json');
+    const title =
+      description.length > 70 ? `${description.slice(0, 67)}...` : description;
+
+    const body = `## Bug Report\n\n**URL:** ${url}\n\n**Description:**\n${description}\n\n---\n_Auto-reported from the application_`;
+
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/issues`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          body,
+          labels: ['bug'],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      return c.json({ error: 'Failed to create GitHub issue' }, 500);
+    }
+
+    return c.json({ success: true });
+  } catch {
+    return c.json({ error: 'Failed to submit bug report' }, 500);
   }
 });
 
