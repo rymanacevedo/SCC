@@ -4,6 +4,7 @@ export default [
   index('routes/home.tsx'),
   // api resource routes
   route('/api/bugs', 'routes/api/bugs.tsx'),
+  route('/api/errors', 'routes/api/errors.tsx'),
   route('/api/skills', 'routes/api/skills.tsx'),
   route('/api/experience', 'routes/api/experience.tsx'),
   route('/api/experienceEntry', 'routes/api/experienceEntry.tsx'),

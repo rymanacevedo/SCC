@@ -14,10 +14,7 @@ export function reportError(error: unknown): void {
       stackTrace: error instanceof Error ? (error.stack ?? '') : '',
     };
 
-    const backendUrl = import.meta.env.VITE_HONO_BACKEND_URL;
-    if (!backendUrl) return;
-
-    fetch(`${backendUrl}/api/errors`, {
+    fetch('/api/errors', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(telemetry),
