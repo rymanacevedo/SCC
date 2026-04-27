@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import {
-  clearQueuedEducation,
-  getQueuedEducation,
-  setQueuedEducation,
-} from './user';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+
+let clearQueuedEducation: typeof import('./user').clearQueuedEducation;
+let getQueuedEducation: typeof import('./user').getQueuedEducation;
+let setQueuedEducation: typeof import('./user').setQueuedEducation;
 
 function createSessionStorageMock() {
   const store = new Map<string, string>();
@@ -23,7 +22,7 @@ function createSessionStorageMock() {
 }
 
 describe('queued education helpers', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     const sessionStorage = createSessionStorageMock();
     Object.defineProperty(globalThis, 'window', {
       value: { sessionStorage },
@@ -33,6 +32,25 @@ describe('queued education helpers', () => {
       value: sessionStorage,
       configurable: true,
     });
+
+    mock.module('../routes/builder/info', () => ({
+      PersonalInfoSchema: {
+        optional: () => undefined,
+      },
+    }));
+    mock.module('../routes/builder/skills', () => ({
+      SkillsSchema: {
+        optional: () => undefined,
+      },
+    }));
+    mock.module('../routes/builder/summary', () => ({
+      SummarySchema: {
+        optional: () => undefined,
+      },
+    }));
+
+    ({ clearQueuedEducation, getQueuedEducation, setQueuedEducation } =
+      await import('./user'));
   });
 
   test('stores and retrieves normalized queued education entries', () => {

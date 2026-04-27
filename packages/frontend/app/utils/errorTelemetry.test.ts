@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 const originalFetch = globalThis.fetch;
 let errorTelemetry: typeof import('./errorTelemetry');
+
+afterEach(() => {
+  mock.restore();
+  globalThis.fetch = originalFetch;
+});
 
 beforeEach(async () => {
   mock.module('../lib/environment', () => ({
@@ -52,8 +57,6 @@ describe('error telemetry', () => {
         url: 'https://example.com/info',
       }),
     ).resolves.toBeUndefined();
-
-    globalThis.fetch = originalFetch;
   });
 
   test('builds a stable fingerprint without timestamp noise', () => {
