@@ -9,7 +9,6 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!node_modules/**/*",
       "!dist/**/*",
       "!build/**/*",

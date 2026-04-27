@@ -1,3 +1,4 @@
 {
-  "**/*.{ts,tsx,css,json,yaml,md,mdx}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+  "**/*.{ts,tsx,css,yaml,md,mdx}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
+  "**/!(biome).json": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
 }
