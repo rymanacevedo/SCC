@@ -35,7 +35,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
   if (intent === 'delete' && typeof index === 'number') {
     const user = getUser();
-    const nextEducation = [...(user?.education || [])];
+    const currentEducation = user?.education || [];
+    if (index < 0 || index >= currentEducation.length) {
+      console.warn(`Invalid education index ${index}. Unable to delete.`);
+      return data({ ok: false }, { status: 400 });
+    }
+
+    const nextEducation = [...currentEducation];
     nextEducation.splice(index, 1);
 
     if (user) {

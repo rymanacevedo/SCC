@@ -122,6 +122,11 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
     if (Array.isArray(newData)) {
       updatedField = newData as User[K];
     } else if (typeof index === 'number') {
+      if (index < 0 || index >= currentExperience.length) {
+        console.warn(`Invalid experience index ${index}. Unable to update.`);
+        return;
+      }
+
       const updatedExperience = [...currentExperience];
       updatedExperience[index] = newData as Partial<
         (typeof BaseExperienceSchema)['_output']
@@ -156,6 +161,11 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
         ),
       ) as User[K];
     } else if (typeof index === 'number') {
+      if (index < 0 || index >= currentEducation.length) {
+        console.warn(`Invalid education index ${index}. Unable to update.`);
+        return;
+      }
+
       const updatedEducation = [...currentEducation];
       updatedEducation[index] = normalizeEducationEntry(
         newData as PartialEducationEntry,
