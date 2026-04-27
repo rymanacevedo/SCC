@@ -8,6 +8,9 @@ import {
 export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
 
+const GITHUB_ISSUE_TITLE_MAX = 256;
+const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
+
 export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
   return [
     '# Auto-reported application error',
@@ -85,7 +88,7 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `Auto-reported error: ${payload.message}`,
+    title: `${AUTO_REPORTED_TITLE_PREFIX}${payload.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
     body: buildAutoReportedIssueBody(payload),
     labels: ['bug', 'auto-reported'],
   });

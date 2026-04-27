@@ -26,16 +26,9 @@ export function Modal({
       return;
     }
 
-    if (open) {
-      if (dialog.open) {
-        dialog.close();
-      }
-
+    if (open && !dialog.open) {
       dialog.showModal();
-      return;
-    }
-
-    if (dialog.open) {
+    } else if (!open && dialog.open) {
       dialog.close();
     }
   }, [open]);
