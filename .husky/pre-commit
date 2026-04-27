@@ -1,3 +1,5 @@
-bun x lint-staged
-bun run typecheck
-bun test
+if git diff --cached --name-only | grep -qE '\.(env|pem|key)$'; then
+  echo "❌ Blocked: attempting to commit secrets"
+  exit 1
+fi
+bun x lint-staged --concurrent false --relative

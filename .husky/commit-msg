@@ -1,0 +1,6 @@
+msg=$(cat "$1")
+if ! echo "$msg" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|ci|perf)(\(.+\))?: .{3,}"; then
+  echo "❌ Commit message must follow conventional commits format"
+  echo "   e.g., feat(nav): add mobile menu toggle"
+  exit 1
+fi

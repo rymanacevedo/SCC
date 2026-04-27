@@ -16,16 +16,16 @@
   },
   "type": "module",
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@types/bun": "latest"
+    "@biomejs/biome": "2.4.12",
+    "@types/bun": "latest",
+    "turbo": "^2.9.6"
   },
   "peerDependencies": {
-    "typescript": "^5.8.2"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "turbo": "^2.7.2"
+    "lint-staged": "^16.2.7"
   },
   "packageManager": "bun@1.2.2"
 }
