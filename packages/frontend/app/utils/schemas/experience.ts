@@ -10,7 +10,7 @@ export const BaseExperienceSchema = z.object({
     .string()
     .min(1, 'Start date is required.')
     .transform((date) => new Date(date))
-    .refine((date) => !Number.isNaN(date.getTime), {
+    .refine((date) => !Number.isNaN(date.getTime()), {
       message: 'Invalid start date format.',
     })
     .refine((date) => date <= new Date(), {
@@ -20,7 +20,7 @@ export const BaseExperienceSchema = z.object({
     .string()
     .transform((date) => (date ? new Date(date) : undefined))
     .optional()
-    .refine((date) => !date || !Number.isNaN(date.getTime), {
+    .refine((date) => !date || !Number.isNaN(date.getTime()), {
       message: 'Invalid end date format',
     }),
   currentlyEmployed: z.boolean().default(false),

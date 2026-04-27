@@ -67,11 +67,11 @@ function Select({
         onChange={handleChange}
         onBlur={handleBlur}
         disabled={disabled}
-        className={`${sharedFormControlClass} bg-white text-gray-900 border-gray-300 dark:bg-gray-900 dark:text-white dark:border-gray-600 ${classNames ?? ''} ${
+        className={`${sharedFormControlClass} bg-white text-gray-900 dark:bg-gray-900 dark:text-white ${classNames ?? ''} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
             : ''
-        } ${isDirty && showError ? 'border-red-500' : ''}`}
+        } ${isDirty && showError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
       >
         <option
           value=""
