@@ -1,13 +1,13 @@
 // app/routes/builder.finish.tsx
-import { redirect, useLoaderData } from 'react-router';
-import { Form } from 'react-router';
+import { Form, redirect, useLoaderData } from 'react-router';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
-import Heading from '../../components/Heading';
 import EditLink from '../../components/EditLink';
-import { getUser, type User } from '../../utils/user';
-import Main from '../../components/Main';
+import Heading from '../../components/Heading';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
+import Main from '../../components/Main';
+import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
+import { getUser, type User } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -128,7 +128,7 @@ export default function Finish() {
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {job.employer} • {job.location}
+                    {job.employer} • {formatExperienceLocation(job)}
                   </div>
                   {job.details && (
                     <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside">
