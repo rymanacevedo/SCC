@@ -9,7 +9,7 @@ import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
 
 export { errorTelemetrySchema };
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function clientAction({ request }: ActionFunctionArgs) {
   let payload: ErrorTelemetryPayload;
 
   try {

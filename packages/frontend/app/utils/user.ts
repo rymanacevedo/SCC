@@ -1,8 +1,14 @@
 import { z } from 'zod';
-import { BaseEducationSchema } from '../routes/builder/education';
 import { PersonalInfoSchema } from '../routes/builder/info';
 import { SkillsSchema } from '../routes/builder/skills';
 import { SummarySchema } from '../routes/builder/summary';
+import {
+  type EducationEntry,
+  normalizeEducationEntry,
+  type PartialEducationEntry,
+  sortEducationEntries,
+} from './education';
+import { BaseEducationSchema } from './schemas/education';
 import { BaseExperienceSchema } from './schemas/experience';
 
 const PartialPersonalInfo = PersonalInfoSchema;
@@ -15,13 +21,14 @@ export const UserSchema = z.object({
   userId: z.string(),
   info: PartialPersonalInfo.optional(),
   experience: z.array(PartialExperienceSchema).optional(),
-  education: PartialEducationSchema.optional(),
+  education: z.array(PartialEducationSchema).max(3).optional(),
   skills: PartialSkillsSchema.optional(),
   summary: PartialSummarySchema.optional(),
 });
 
 export type User = z.infer<typeof UserSchema>;
 export type Experience = z.infer<typeof BaseExperienceSchema>;
+export type Education = z.infer<typeof BaseEducationSchema>;
 
 export function getUser(): User | null {
   const value = window.sessionStorage.getItem('user');
@@ -56,6 +63,23 @@ export function getQueuedExperience(): Experience | null {
   }
 }
 
+export function getQueuedEducation(): PartialEducationEntry | null {
+  const value = window.sessionStorage.getItem('queuedEducation');
+  try {
+    if (value) {
+      const education = JSON.parse(value);
+      const parsedEducation = PartialEducationSchema.parse(education);
+      return parsedEducation;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('No education in the queue.');
+    console.error(error);
+    return null;
+  }
+}
+
 export function setUser(user: User) {
   return window.sessionStorage.setItem('user', JSON.stringify(user));
 }
@@ -64,13 +88,22 @@ export function setQueuedExperience(exp: Experience) {
   return window.sessionStorage.setItem('queuedExperience', JSON.stringify(exp));
 }
 
+export function setQueuedEducation(education: PartialEducationEntry) {
+  return window.sessionStorage.setItem(
+    'queuedEducation',
+    JSON.stringify(normalizeEducationEntry(education)),
+  );
+}
+
 export function updateUser<K extends Exclude<keyof User, 'userId'>>(
   key: K,
   newData: K extends 'experience'
     ?
         | Partial<(typeof BaseExperienceSchema)['_output']>
         | Partial<(typeof BaseExperienceSchema)['_output']>[]
-    : Partial<User[K]>,
+    : K extends 'education'
+      ? PartialEducationEntry | PartialEducationEntry[]
+      : Partial<User[K]>,
   index?: number,
 ): void {
   const currentUser = getUser();
@@ -87,17 +120,14 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
     )[];
 
     if (Array.isArray(newData)) {
-      // Handle full array update
       updatedField = newData as User[K];
     } else if (typeof index === 'number') {
-      // Handle single experience update at specific index
       const updatedExperience = [...currentExperience];
       updatedExperience[index] = newData as Partial<
         (typeof BaseExperienceSchema)['_output']
       >;
       updatedField = updatedExperience as User[K];
     } else {
-      // Check if an experience with the same jobId already exists
       const newExperience = newData as Partial<
         (typeof BaseExperienceSchema)['_output']
       >;
@@ -106,17 +136,40 @@ export function updateUser<K extends Exclude<keyof User, 'userId'>>(
       );
 
       if (existingIndex !== -1) {
-        // Update existing experience
         const updatedExperience = [...currentExperience];
         updatedExperience[existingIndex] = newExperience;
         updatedField = updatedExperience as User[K];
       } else {
-        // Add new experience
         updatedField = [...currentExperience, newExperience] as User[K];
       }
     }
+  } else if (key === 'education') {
+    const currentEducation = (currentUser.education || []) as (
+      | PartialEducationEntry
+      | undefined
+    )[];
+
+    if (Array.isArray(newData)) {
+      updatedField = sortEducationEntries(
+        (newData as PartialEducationEntry[]).map((entry) =>
+          normalizeEducationEntry(entry),
+        ),
+      ) as User[K];
+    } else if (typeof index === 'number') {
+      const updatedEducation = [...currentEducation];
+      updatedEducation[index] = normalizeEducationEntry(
+        newData as PartialEducationEntry,
+      );
+      updatedField = sortEducationEntries(
+        updatedEducation as PartialEducationEntry[],
+      ) as User[K];
+    } else {
+      updatedField = sortEducationEntries([
+        ...currentEducation,
+        normalizeEducationEntry(newData as PartialEducationEntry),
+      ] as PartialEducationEntry[]) as User[K];
+    }
   } else {
-    // Handle other fields
     updatedField = currentUser[key]
       ? ({ ...currentUser[key], ...newData } as User[K])
       : (newData as User[K]);
@@ -134,7 +187,9 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
   key: K,
 ): K extends 'experience'
   ? Required<NonNullable<(typeof BaseExperienceSchema)['_output']>>[]
-  : Required<NonNullable<User[K]>> {
+  : K extends 'education'
+    ? Required<EducationEntry>[]
+    : Required<NonNullable<User[K]>> {
   const user = getUser();
   if (!user) {
     // TODO: redirect
@@ -148,7 +203,7 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
   }
 
   if (Array.isArray(trait)) {
-    // Handle array type (experience)
+    // Handle array type (experience, education)
     if (trait.length === 0) {
       throw new Error(`User trait "${String(key)}" array is empty.`);
     }
@@ -182,17 +237,17 @@ export function getRequiredUserTrait<K extends Exclude<keyof User, 'userId'>>(
 
   return trait as K extends 'experience'
     ? Required<NonNullable<(typeof BaseExperienceSchema)['_output']>>[]
-    : Required<NonNullable<User[K]>>;
+    : K extends 'education'
+      ? Required<EducationEntry>[]
+      : Required<NonNullable<User[K]>>;
 }
 
 export function clearQueuedExperience() {
-  const exp = getQueuedExperience();
-  if (!exp) {
-    console.warn('No experience in the queued.');
-    return;
-  }
-
   sessionStorage.removeItem('queuedExperience');
+}
+
+export function clearQueuedEducation() {
+  sessionStorage.removeItem('queuedEducation');
 }
 
 export function getExperienceDetails(jobId: string) {
@@ -212,6 +267,16 @@ export function getExperienceDetails(jobId: string) {
   }
 
   return currentUser.experience[experienceIndex];
+}
+
+export function getEducationDetails(index: number) {
+  const currentUser = getUser();
+  if (!currentUser?.education) {
+    console.warn('No user or education found.');
+    return;
+  }
+
+  return currentUser.education[index];
 }
 
 export function updateExperienceDetails(jobId: string, details: string[]) {

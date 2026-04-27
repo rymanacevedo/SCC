@@ -94,10 +94,11 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
+  const returnUrl = url.searchParams.get('returnUrl');
   const exp = getQueuedExperience();
   // we prefer the experience in the queue first over the jobId
   if (exp) {
-    return data({ prevExperience: exp, jobId });
+    return data({ prevExperience: exp, jobId, returnUrl });
   }
 
   // Only fall back to getting experience details if no queued experience
@@ -106,15 +107,16 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     if (experience) {
       setQueuedExperience(experience);
     }
-    return data({ prevExperience: experience, jobId });
+    return data({ prevExperience: experience, jobId, returnUrl });
   }
 
-  return data({ prevExperience: undefined, jobId: undefined });
+  return data({ prevExperience: undefined, jobId: undefined, returnUrl });
 }
 
 export default function WorkExperience() {
   const actionData = useActionData<typeof clientAction>();
-  const { prevExperience, jobId } = useLoaderData<typeof clientLoader>();
+  const { prevExperience, jobId, returnUrl } =
+    useLoaderData<typeof clientLoader>();
   const errors = actionData?.errors;
   const navigate = useNavigate();
   const [isCurrentlyEmployed, setIsCurrentlyEmployed] = useState(
@@ -224,7 +226,13 @@ export default function WorkExperience() {
               text="Previous"
               type="secondary"
               action="button"
-              callback={() => navigate('/info')}
+              callback={() =>
+                navigate(
+                  returnUrl
+                    ? addQueryParams('/experience-summary', { returnUrl })
+                    : '/info',
+                )
+              }
             />
           ) : null}
 

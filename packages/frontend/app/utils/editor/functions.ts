@@ -14,6 +14,10 @@ const { saveAs } = fileSaver;
 
 import DOMPurify from 'dompurify';
 import jsPDF from 'jspdf';
+import {
+  getEducationGraduationLabel,
+  sortEducationEntries,
+} from '../education';
 import { formatEducationString } from './formatters/education';
 import { formatExperienceLocation } from './formatters/experience';
 import { formatInfoString } from './formatters/info';
@@ -129,25 +133,30 @@ export function populateEditorWithUserData(root: RootNode, userData: User) {
     }
   }
 
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     const educationTitleNode = $createHeadingNode('h2');
     educationTitleNode.append($createTextNode('EDUCATION'));
     root.append(educationTitleNode);
 
-    const educationNode = $createParagraphNode();
-    educationNode.append(
-      $createTextNode(sanitizeText(formatEducationString(userData.education))),
-    );
-    root.append(educationNode);
+    const sortedEducation = sortEducationEntries(userData.education);
 
-    const gradDateNode = $createParagraphNode();
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate;
-    gradDateNode.append(
-      $createTextNode(sanitizeText(`Graduation: ${gradDate}`)),
-    );
-    root.append(gradDateNode);
+    sortedEducation.forEach((entry) => {
+      const educationNode = $createParagraphNode();
+      educationNode.append(
+        $createTextNode(sanitizeText(formatEducationString(entry))),
+      );
+      root.append(educationNode);
+
+      const gradDateNode = $createParagraphNode();
+      gradDateNode.append(
+        $createTextNode(
+          sanitizeText(
+            `Graduation: ${getEducationGraduationLabel(entry) || 'N/A'}`,
+          ),
+        ),
+      );
+      root.append(gradDateNode);
+    });
   }
 }
 

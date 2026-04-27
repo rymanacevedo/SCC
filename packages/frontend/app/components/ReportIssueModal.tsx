@@ -33,7 +33,7 @@ export function ReportIssueModal({
     <Modal
       open={open}
       title="Report an issue"
-      description="Describe what happened and we'll send it with the current page URL."
+      description="Describe what happened and we'll send the report to support."
       onClose={onClose}
       actions={
         <>
