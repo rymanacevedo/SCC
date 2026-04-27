@@ -1,15 +1,24 @@
-import { data, redirect, useFetcher, useLoaderData } from 'react-router';
-import { Form, useActionData } from 'react-router';
+import {
+  data,
+  Form,
+  redirect,
+  useActionData,
+  useFetcher,
+  useLoaderData,
+} from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
+
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
+
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
+import type { FormErrors } from '../../components/Input';
 import Loading from '../../components/Loading';
 import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
-import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
-import type { FormErrors } from '../../components/Input';
 
 export const SummarySchema = z.object({
   summary: z.string().min(50, 'Summary should be at least 50 characters'),

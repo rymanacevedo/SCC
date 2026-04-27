@@ -1,15 +1,17 @@
+import { zValidator } from '@hono/zod-validator';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+import { type EnvSchema, validateEnvironment } from '../lib/environment';
 import { createExperience, createSkills, createSummaries } from './services/ai';
-import { validateEnvironment } from '../lib/environment';
+import {
+  createAutoReportedIssue,
+  createUserReportedIssue,
+  errorTelemetrySchema,
+  userIssueReportSchema,
+} from './services/github';
 
-type Bindings = {
-  ALLOWED_ORIGIN: string;
-  GEMINI_API_KEY: string;
-  GROQ_API_KEY: string;
-};
+type Bindings = EnvSchema;
 
 const app = new Hono<{
   Bindings: Bindings;
@@ -77,5 +79,43 @@ app.post('/api/experience', zValidator('json', schema), async (c) => {
     return c.json({ error: `Failed to generate content: ${error}` }, 500);
   }
 });
+
+app.post('/api/errors', zValidator('json', errorTelemetrySchema), async (c) => {
+  try {
+    const { GITHUB_REPO, GITHUB_TOKEN } = validateEnvironment(c.env);
+    const payload = c.req.valid('json');
+
+    await createAutoReportedIssue({
+      repo: GITHUB_REPO,
+      token: GITHUB_TOKEN,
+      payload,
+    });
+
+    return c.json({ ok: true });
+  } catch (error) {
+    return c.json({ error: 'Failed to report application error' }, 502);
+  }
+});
+
+app.post(
+  '/api/report-issue',
+  zValidator('json', userIssueReportSchema),
+  async (c) => {
+    try {
+      const { GITHUB_REPO, GITHUB_TOKEN } = validateEnvironment(c.env);
+      const payload = c.req.valid('json');
+
+      await createUserReportedIssue({
+        repo: GITHUB_REPO,
+        token: GITHUB_TOKEN,
+        payload,
+      });
+
+      return c.json({ ok: true });
+    } catch (error) {
+      return c.json({ error: 'Failed to submit issue report' }, 502);
+    }
+  },
+);
 
 export default app;

@@ -14,6 +14,8 @@ import Main from '../../components/Main';
 import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
 import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
+
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');

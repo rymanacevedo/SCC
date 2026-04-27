@@ -1,14 +1,17 @@
 // app/routes/builder.personal.tsx
 import {
   type ClientLoaderFunctionArgs,
-  Form,
   data,
+  Form,
   redirect,
   useActionData,
   useLoaderData,
 } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
+
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
+
 import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
@@ -16,8 +19,8 @@ import Main from '../../components/Main';
 import Select from '../../components/Select';
 import { usePhoneMask } from '../../hooks/usePhoneMask';
 import type { ActionData } from '../../models/Actions';
-import { usStates } from '../../utils/usStates';
 import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
+import { usStates } from '../../utils/usStates';
 
 export const PersonalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),

@@ -1,8 +1,10 @@
-import { type RouteConfig, index, route } from '@react-router/dev/routes';
+import { index, type RouteConfig, route } from '@react-router/dev/routes';
 
 export default [
   index('routes/home.tsx'),
   // api resource routes
+  route('/api/errors', 'routes/api/errors.tsx'),
+  route('/api/report-issue', 'routes/api/report-issue.tsx'),
   route('/api/skills', 'routes/api/skills.tsx'),
   route('/api/experience', 'routes/api/experience.tsx'),
   route('/api/experienceEntry', 'routes/api/experienceEntry.tsx'),

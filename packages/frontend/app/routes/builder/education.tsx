@@ -2,20 +2,24 @@
 import {
   type ClientLoaderFunctionArgs,
   data,
+  Form,
   redirect,
+  useActionData,
   useLoaderData,
 } from 'react-router';
-import { Form, useActionData } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
-import Button from '../../components/Button';
-import Input, { type FormErrors } from '../../components/Input';
-import { getUser, updateUser } from '../../utils/user';
-import type { ActionData } from '../../models/Actions';
-import { EducationLevelSchema } from './educationLevel';
+
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
+
 import { type ChangeEvent, useCallback, useState } from 'react';
-import Main from '../../components/Main';
+import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
+import Input, { type FormErrors } from '../../components/Input';
+import Main from '../../components/Main';
+import type { ActionData } from '../../models/Actions';
+import { getUser, updateUser } from '../../utils/user';
+import { EducationLevelSchema } from './educationLevel';
 
 export const BaseEducationSchema = z.object({
   schoolName: z.string().optional(),
