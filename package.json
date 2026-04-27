@@ -21,7 +21,7 @@
     "turbo": "^2.9.6"
   },
   "peerDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "husky": "^9.1.7",

@@ -10,11 +10,11 @@
       "devDependencies": {
         "@biomejs/biome": "2.4.12",
         "@types/bun": "latest",
-        "turbo": "^2.9.6",
+        "turbo": "^2.9.6"
       },
       "peerDependencies": {
-        "typescript": "^6.0.3",
-      },
+        "typescript": "^6.0.3"
+      }
     },
     "packages/backend": {
       "name": "@scc/backend",
