@@ -1,4 +1,5 @@
 import { memo, useEffect, useState } from 'react';
+import { sharedFormControlClass } from '../utils/inputTypes';
 import type { FormErrors } from './Input';
 
 type SelectOption = {
@@ -14,6 +15,7 @@ type SelectProps = {
   error?: FormErrors;
   disabled?: boolean;
   classNames?: string;
+  placeholder?: string;
 };
 
 function Select({
@@ -24,6 +26,7 @@ function Select({
   error,
   disabled,
   classNames,
+  placeholder = 'Select an option',
 }: SelectProps) {
   const [isDirty, setIsDirty] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -64,15 +67,24 @@ function Select({
         onChange={handleChange}
         onBlur={handleBlur}
         disabled={disabled}
-        className={`mt-1 block w-full border shadow-sm ${classNames ?? ''} ${
+        className={`${sharedFormControlClass} bg-white text-gray-900 border-gray-300 dark:bg-gray-900 dark:text-white dark:border-gray-600 ${classNames ?? ''} ${
           disabled
             ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800'
             : ''
         } ${isDirty && showError ? 'border-red-500' : ''}`}
       >
-        <option value="">Select a state</option>
+        <option
+          value=""
+          className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+        >
+          {placeholder}
+        </option>
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option
+            key={opt.value}
+            value={opt.value}
+            className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+          >
             {opt.label}
           </option>
         ))}

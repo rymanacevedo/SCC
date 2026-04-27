@@ -1,7 +1,8 @@
-import { Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
+import { AlignmentType, HeadingLevel, Paragraph, TextRun } from 'docx';
 import fileSaver from 'file-saver';
 import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';
+import { formatExperienceLocation } from '../formatters/experience';
 import { formatInfoString } from '../formatters/info';
 
 /**
@@ -108,7 +109,7 @@ function generateExperienceElements(userData: User) {
     for (const job of userData.experience) {
       elements.push(
         new Paragraph({
-          text: `${job.jobTitle} | ${job.employer} | ${job.location}`,
+          text: `${job.jobTitle} | ${job.employer} | ${formatExperienceLocation(job)}`,
           heading: HeadingLevel.HEADING_3,
         }),
       );

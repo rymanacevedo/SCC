@@ -1,3 +1,4 @@
+import { type ChangeEvent, useCallback, useState } from 'react';
 import {
   data,
   Form,
@@ -6,46 +7,22 @@ import {
   useLoaderData,
   useNavigate,
 } from 'react-router';
-import type { Route } from '../../../.react-router/types/app/+types/root';
 import { z } from 'zod';
+import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
+import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
+import Main from '../../components/Main';
+import Select from '../../components/Select';
+import type { ActionData } from '../../models/Actions';
+import { addQueryParams } from '../../utils/navigation';
+import { BaseExperienceSchema } from '../../utils/schemas/experience';
 import {
   getExperienceDetails,
   getQueuedExperience,
   setQueuedExperience,
 } from '../../utils/user';
-import type { ActionData } from '../../models/Actions';
-import { addQueryParams } from '../../utils/navigation';
-import { type ChangeEvent, useCallback, useState } from 'react';
-import Main from '../../components/Main';
-import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
-
-export const BaseExperienceSchema = z.object({
-  jobId: z.string().min(1),
-  jobTitle: z.string().min(1, 'Job Title is required.'),
-  employer: z.string().min(1, 'Employer is required.'),
-  location: z.string().min(1, 'Location is required.'),
-  startDate: z
-    .string()
-    .min(1, 'Start date is required.')
-    .transform((date) => new Date(date))
-    .refine((date) => !Number.isNaN(date.getTime), {
-      message: 'Invalid state date format.',
-    })
-    .refine((date) => date <= new Date(), {
-      message: 'State date cannot be in the future.',
-    }),
-  endDate: z
-    .string()
-    .transform((date) => (date ? new Date(date) : undefined))
-    .optional()
-    .refine((date) => !date || !Number.isNaN(date.getTime), {
-      message: 'Invalid end date format',
-    }),
-  currentlyEmployed: z.boolean().default(false),
-  details: z.array(z.string()).optional(),
-});
+import { usStates } from '../../utils/usStates';
 
 const ExperienceSchema = BaseExperienceSchema.refine(
   (data) => {
@@ -186,12 +163,20 @@ export default function WorkExperience() {
             defaultValue={prevExperience?.employer}
           />
           <Input
-            label="Location"
+            label="City"
             type="text"
-            id="location"
-            placeholder="Denver, CO"
+            id="city"
+            placeholder="Denver"
             error={errors}
-            defaultValue={prevExperience?.location}
+            defaultValue={prevExperience?.city}
+          />
+          <Select
+            label="State"
+            id="state"
+            options={usStates}
+            placeholder="Select a state"
+            error={errors}
+            defaultValue={prevExperience?.state}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:col-span-2">
             <Input

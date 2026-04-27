@@ -1,6 +1,7 @@
 import type jsPDF from 'jspdf';
 import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';
+import { formatExperienceLocation } from '../formatters/experience';
 import { formatInfoString } from '../formatters/info';
 
 /**
@@ -139,7 +140,7 @@ export function addExperience(
       doc.setFontSize(12);
       doc.setFont(defaultFont, 'bold');
       doc.text(
-        `${job.jobTitle} | ${job.employer} | ${job.location}`,
+        `${job.jobTitle} | ${job.employer} | ${formatExperienceLocation(job)}`,
         14,
         currentY,
       );

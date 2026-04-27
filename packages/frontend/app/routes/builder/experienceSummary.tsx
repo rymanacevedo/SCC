@@ -1,6 +1,4 @@
 import { memo } from 'react';
-import Heading from '../../components/Heading';
-import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 import {
   data,
   Form,
@@ -9,9 +7,12 @@ import {
   useLoaderData,
   useNavigate,
 } from 'react-router';
-import Button from '../../components/Button';
 import type { Route } from '../../+types/root';
+import Button from '../../components/Button';
+import Heading from '../../components/Heading';
 import Main from '../../components/Main';
+import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
+import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const url = new URL(request.url);
@@ -65,7 +66,7 @@ function ExperienceSummary() {
                 </span>
                 <Heading level="h2" size="text-2xl" text={e.jobTitle} />
               </div>
-              <em>{e.location}</em>
+              <em>{formatExperienceLocation(e)}</em>
               <span> | </span>
               <em>
                 {e.startDate.getUTCFullYear().toString()}
@@ -73,8 +74,8 @@ function ExperienceSummary() {
                 {e.endDate ? e.endDate.getUTCFullYear() : 'Present'}
               </em>
               <ul className="p-4 list-disc">
-                {e.details?.map((d, index) => (
-                  <li key={`${e.jobId}-detail-${index}`}>{d}</li>
+                {e.details?.map((d) => (
+                  <li key={`${e.jobId}-${d}`}>{d}</li>
                 ))}
               </ul>
             </div>

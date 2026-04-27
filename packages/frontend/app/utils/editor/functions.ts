@@ -1,28 +1,30 @@
-import { Packer, Document } from 'docx';
+import { $createHeadingNode } from '@lexical/rich-text';
+import { Document, Packer } from 'docx';
+import fileSaver from 'file-saver';
 import {
   $createParagraphNode,
   $createTextNode,
   type LexicalEditor,
   type RootNode,
 } from 'lexical';
-import { $createHeadingNode } from '@lexical/rich-text';
 import type { User } from '../user';
-
-import fileSaver from 'file-saver';
 import { $createCustomParagraphNode } from './custom/CustomParagraphNode';
+
 const { saveAs } = fileSaver;
+
 import DOMPurify from 'dompurify';
 import jsPDF from 'jspdf';
+import { formatEducationString } from './formatters/education';
+import { formatExperienceLocation } from './formatters/experience';
+import { formatInfoString } from './formatters/info';
 import {
-  addUserInfo,
-  addSummary,
-  addSkills,
-  addExperience,
   addEducation,
+  addExperience,
+  addSkills,
+  addSummary,
+  addUserInfo,
 } from './pdf/addParts';
 import { generateDocxElements } from './word/addParts';
-import { formatEducationString } from './formatters/education';
-import { formatInfoString } from './formatters/info';
 
 /**
  * Use DOMPurify to sanitize the input text.
@@ -90,7 +92,9 @@ export function populateEditorWithUserData(root: RootNode, userData: User) {
       const jobTitleNode = $createHeadingNode('h3');
       jobTitleNode.append(
         $createTextNode(
-          sanitizeText(`${job.jobTitle} | ${job.employer} | ${job.location}`),
+          sanitizeText(
+            `${job.jobTitle} | ${job.employer} | ${formatExperienceLocation(job)}`,
+          ),
         ),
       );
       root.append(jobTitleNode);
