@@ -24,6 +24,8 @@ import {
 } from '../../utils/user';
 import { usStates } from '../../utils/usStates';
 
+export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
+
 const ExperienceSchema = BaseExperienceSchema.refine(
   (data) => {
     if (!data.currentlyEmployed) {
