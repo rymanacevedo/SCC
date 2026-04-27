@@ -1,6 +1,6 @@
 # SCC (Second Chance Center) Monorepo
 
-Welcome to the Second Chance Center (SCC) monorepo! This project stands at the intersection of cutting-edge development and profound social impact. Built with [Bun](https://bun.sh), a fast all-in-one JavaScript runtime, this monorepo showcases an efficient and modern development workflow.
+Welcome to the Second Chance Center (SCC) monorepo! This project stands at the intersection of cutting-edge development and profound social impact.
 
 Beyond its technical foundation, SCC addresses a critical societal need: empowering individuals transitioning from incarceration by providing them with the tools to quickly build professional resumes. Our goal is to streamline the resume creation process, allowing users to generate a high-quality, impactful resume in just **10 minutes**, thereby significantly enhancing their prospects for employment and successful reintegration.
 
@@ -36,14 +36,6 @@ bun run dev
 ```
 
 
-## Why Bun?
-
-We chose Bun for this monorepo for its exceptional performance and streamlined development experience. Bun provides:
-
-*   **Blazing Fast Performance:** From installing dependencies to running scripts, Bun significantly reduces development time.
-*   **All-in-One Runtime:** Bun acts as a JavaScript runtime, package manager, and bundler, simplifying the toolchain.
-*   **Native TypeScript Support:** Seamlessly integrates with TypeScript for a more robust development process.
-
 ## Making an Impact
 
-The SCC project is more than just code; it's a mission to provide a crucial "second chance." By enabling quick resume generation, we empower individuals to overcome significant barriers to employment, contributing directly to their rehabilitation and a more inclusive society.
+The SCC project is built on a mission to provide second chances for those impacted by the criminal justice system. By enabling quick, AI-powered resume generation, we empower individuals to overcome significant barriers to employment, contributing directly to their rehabilitation and a more inclusive society.
