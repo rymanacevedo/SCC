@@ -12,6 +12,7 @@ import Button from '../../components/Button';
 import Heading from '../../components/Heading';
 import Main from '../../components/Main';
 import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
+import { addQueryParams } from '../../utils/navigation';
 import { clearQueuedExperience, getRequiredUserTrait } from '../../utils/user';
 
 export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
@@ -52,10 +53,10 @@ function ExperienceSummary() {
       <div>
         {experiences.map((e, index) => (
           <NavLink
-            to={{
-              pathname: '/experience',
-              search: `?jobId=${encodeURIComponent(e.jobId)}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''}`,
-            }}
+            to={addQueryParams('/experience', {
+              jobId: e.jobId,
+              returnUrl,
+            })}
             key={e.jobId}
           >
             <div
@@ -88,7 +89,7 @@ function ExperienceSummary() {
       {/* TODO: maintain consistent button styles */}
       <NavLink
         className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
-        to="/experience"
+        to={addQueryParams('/experience', { returnUrl })}
       >
         + Add another position
       </NavLink>
@@ -104,7 +105,12 @@ function ExperienceSummary() {
               callback={() =>
                 // return the jobId or get the last item in the list
                 navigate(
-                  `/experience-entry?jobId=${encodeURIComponent(jobId ? jobId : experiences[experiences.length - 1]?.jobId)}`,
+                  addQueryParams('/experience-entry', {
+                    jobId: jobId
+                      ? jobId
+                      : experiences[experiences.length - 1]?.jobId,
+                    returnUrl,
+                  }),
                 )
               }
             />

@@ -1,5 +1,9 @@
 import { AlignmentType, HeadingLevel, Paragraph, TextRun } from 'docx';
 import fileSaver from 'file-saver';
+import {
+  getEducationGraduationLabel,
+  sortEducationEntries,
+} from '../../education';
 import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';
 import { formatExperienceLocation } from '../formatters/experience';
@@ -155,7 +159,7 @@ function generateExperienceElements(userData: User) {
  */
 export function generateEducationElements(userData: User) {
   const elements = [];
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     elements.push(
       new Paragraph({
         text: 'EDUCATION',
@@ -164,25 +168,25 @@ export function generateEducationElements(userData: User) {
       }),
     );
 
-    elements.push(
-      new Paragraph({
-        text: formatEducationString(userData.education),
-        heading: HeadingLevel.HEADING_3,
-      }),
-    );
+    const sortedEducation = sortEducationEntries(userData.education);
 
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate;
+    sortedEducation.forEach((entry) => {
+      elements.push(
+        new Paragraph({
+          text: formatEducationString(entry),
+          heading: HeadingLevel.HEADING_3,
+        }),
+      );
 
-    elements.push(
-      new Paragraph({
-        text: `Graduation: ${gradDate}`,
-        italics: true,
-      }),
-    );
+      elements.push(
+        new Paragraph({
+          text: `Graduation: ${getEducationGraduationLabel(entry) || 'N/A'}`,
+          italics: true,
+        }),
+      );
 
-    elements.push(new Paragraph({ text: '' }));
+      elements.push(new Paragraph({ text: '' }));
+    });
   }
   return elements;
 }

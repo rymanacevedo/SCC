@@ -1,4 +1,8 @@
 import type jsPDF from 'jspdf';
+import {
+  getEducationGraduationLabel,
+  sortEducationEntries,
+} from '../../education';
 import type { User } from '../../user';
 import { formatEducationString } from '../formatters/education';
 import { formatExperienceLocation } from '../formatters/experience';
@@ -194,7 +198,7 @@ export function addEducation(
   defaultFontSize: number,
 ): number {
   let currentY = yPosition;
-  if (userData.education) {
+  if (userData.education && userData.education.length > 0) {
     if (currentY > 270) {
       doc.addPage();
       currentY = 20;
@@ -205,22 +209,27 @@ export function addEducation(
     doc.text('EDUCATION', 14, currentY);
     currentY += 7;
 
-    doc.setFontSize(defaultFontSize);
-    doc.text(formatEducationString(userData.education), 14, currentY);
-    currentY += 6;
+    const sortedEducation = sortEducationEntries(userData.education);
 
-    // Uncomment and adjust below lines if you want to print the graduation date:
-    /*
-    doc.setFont(defaultFont, 'italic');
-    const gradDate = userData.education.currentlyEnrolled
-      ? 'Currently Enrolled'
-      : userData.education.graduationDate?.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-        });
-    doc.text(`Graduation: ${gradDate}`, 14, yPosition);
-    yPosition += 10;
-    */
+    sortedEducation.forEach((entry) => {
+      if (currentY > 270) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(defaultFontSize);
+      doc.setFont(defaultFont, 'normal');
+      doc.text(formatEducationString(entry), 14, currentY);
+      currentY += 6;
+
+      doc.setFont(defaultFont, 'italic');
+      doc.text(
+        `Graduation: ${getEducationGraduationLabel(entry) || 'N/A'}`,
+        14,
+        currentY,
+      );
+      currentY += 8;
+    });
   }
   return currentY;
 }

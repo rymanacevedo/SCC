@@ -90,23 +90,24 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('jobId');
+  const returnUrl = url.searchParams.get('returnUrl');
   const exp = getQueuedExperience();
 
   // we prefer the experience in the queue first over the jobId
   if (exp) {
-    return data(exp);
+    return data({ ...exp, returnUrl });
   }
 
   // Only fall back to getting experience details if no queued experience
   if (jobId) {
     const storedExperience = getExperienceDetails(jobId);
     if (!storedExperience) {
-      return redirect('/experience');
+      return redirect(addQueryParams('/experience', { jobId, returnUrl }));
     }
     setQueuedExperience(storedExperience);
-    return data(storedExperience);
+    return data({ ...storedExperience, returnUrl });
   }
-  return redirect('/experience');
+  return redirect(addQueryParams('/experience', { jobId, returnUrl }));
 }
 
 export default function ExperienceEntry() {
@@ -115,7 +116,7 @@ export default function ExperienceEntry() {
   const action = useActionData<typeof clientAction>();
   const errors = action?.errors;
   const navigate = useNavigate();
-  const { details, jobTitle, jobId, employer } =
+  const { details, jobTitle, jobId, employer, returnUrl } =
     useLoaderData<typeof clientLoader>();
   const [userExperience, setUserExperience] = useState<string[]>(details || []);
 
@@ -417,7 +418,12 @@ export default function ExperienceEntry() {
                   text="Previous"
                   action="button"
                   callback={() =>
-                    navigate(`/experience?jobId=${encodeURIComponent(jobId)}`)
+                    navigate(
+                      addQueryParams('/experience', {
+                        jobId,
+                        returnUrl,
+                      }),
+                    )
                   }
                 />
                 <Button action="submit" text="Next Step" />

@@ -1,11 +1,10 @@
-// app/routes/builder.education.tsx
 import {
-  type ClientLoaderFunctionArgs,
   data,
   Form,
   redirect,
   useActionData,
   useLoaderData,
+  useNavigate,
 } from 'react-router';
 import { z } from 'zod';
 import type { Route } from '../../../.react-router/types/app/+types/root';
@@ -17,50 +16,64 @@ import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
 import Main from '../../components/Main';
-import type { ActionData } from '../../models/Actions';
-import { getUser, updateUser } from '../../utils/user';
-import { EducationLevelSchema } from './educationLevel';
+import {
+  isCertificateEducationLevel,
+  isDiplomaEducationLevel,
+  normalizeEducationEntry,
+  parseEducationIndexParam,
+} from '../../utils/education';
+import { addQueryParams } from '../../utils/navigation';
+import { BaseEducationSchema } from '../../utils/schemas/education';
+import {
+  clearQueuedEducation,
+  getEducationDetails,
+  getQueuedEducation,
+  setQueuedEducation,
+  updateUser,
+} from '../../utils/user';
 
-export const BaseEducationSchema = z.object({
-  schoolName: z.string().optional(),
-  educationLevel: EducationLevelSchema.optional(),
-  degree: z.string().min(1, 'Degree is required.'),
-  location: z.string().min(1, 'Location is required.'),
-  graduationDate: z
-    .string()
-    .transform((val) => {
-      if (!val) return undefined;
-      const year = Number.parseInt(val, 10);
-      if (Number.isNaN(year)) return undefined;
-      return year;
-    })
-    .pipe(
-      z
-        .number()
-        .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-        .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-        .transform((year) => year.toString()) // Transform back to string
-        .optional(),
-    ),
-  currentlyEnrolled: z.boolean().default(false),
+const EducationSchema = BaseEducationSchema.superRefine((education, ctx) => {
+  if (!education.degree.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Degree is required.',
+      path: ['degree'],
+    });
+  }
+
+  if (
+    !isCertificateEducationLevel(education.educationLevel) &&
+    !education.location.trim()
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Location is required.',
+      path: ['location'],
+    });
+  }
 });
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
   const entries = Object.fromEntries(formData);
   const url = new URL(request.url);
+  const index = parseEducationIndexParam(url.searchParams.get('index'));
   const returnUrl = url.searchParams.get('returnUrl');
-
-  const redirectUrl = returnUrl ? returnUrl : '/skills';
-  const createdData = {
+  const redirectUrl = addQueryParams('/education-summary', {
+    returnUrl: returnUrl ?? null,
+  });
+  const queuedEducation = getQueuedEducation();
+  const createdData = normalizeEducationEntry({
+    ...queuedEducation,
     ...entries,
     currentlyEnrolled: formData.get('currentlyEnrolled') === 'on',
-  };
+  });
 
   try {
-    const validatedData = BaseEducationSchema.parse(createdData);
+    const validatedData = EducationSchema.parse(createdData);
 
-    updateUser('education', validatedData);
+    updateUser('education', validatedData, index);
+    clearQueuedEducation();
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -76,25 +89,66 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
-export async function clientLoader({ request }: ClientLoaderFunctionArgs) {
-  const user = getUser();
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const returnUrl = url.searchParams.get('returnUrl');
+  const queuedEducation = getQueuedEducation();
+  const index = parseEducationIndexParam(url.searchParams.get('index'));
+
+  if (queuedEducation) {
+    return {
+      prevEducation: queuedEducation,
+      returnUrl,
+      index,
+    };
+  }
+
+  if (typeof index === 'number') {
+    const education = getEducationDetails(index);
+    if (education) {
+      setQueuedEducation(education);
+      return {
+        prevEducation: education,
+        returnUrl,
+        index,
+      };
+    }
+  }
+
+  if (typeof index !== 'number') {
+    return redirect(
+      addQueryParams('/education-level', {
+        returnUrl: returnUrl ?? null,
+      }),
+    );
+  }
 
   return {
-    prevEducation: user?.education,
+    prevEducation: undefined,
     returnUrl,
+    index,
   };
 }
 
 export default function Education() {
   const actionData = useActionData<typeof clientAction>();
-  const { prevEducation, returnUrl } = useLoaderData<typeof clientLoader>();
+  const { prevEducation, returnUrl, index } =
+    useLoaderData<typeof clientLoader>();
   const errors = actionData?.errors;
+  const navigate = useNavigate();
 
   const [isCurrentlyEnrolled, setIsCurrentlyEnrolled] = useState(
     prevEducation?.currentlyEnrolled ?? false,
   );
+  const isCertificate = isCertificateEducationLevel(
+    prevEducation?.educationLevel,
+  );
+  const usesDiploma = isDiplomaEducationLevel(prevEducation?.educationLevel);
+  const fixedDegree = isCertificate
+    ? 'Certificate'
+    : usesDiploma
+      ? 'Diploma'
+      : null;
 
   const handleCheckboxChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -112,33 +166,37 @@ export default function Education() {
       />
 
       <Form method="post" className="space-y-6">
+        {typeof index === 'number' ? (
+          <input type="hidden" name="index" value={index} />
+        ) : null}
         <Input
           label="School Name"
           type="text"
           id="schoolName"
           error={errors}
+          required
           defaultValue={prevEducation?.schoolName}
         />
 
-        {prevEducation?.educationLevel === 'High School' ||
-        prevEducation?.educationLevel === 'GED' ||
-        prevEducation?.educationLevel === 'Some College' ? (
-          <input type="hidden" id="degree" name="degree" value="Diploma" />
+        {fixedDegree ? (
+          <input type="hidden" id="degree" name="degree" value={fixedDegree} />
         ) : (
           <Input
-            label="Degree or Certificate"
+            label="Degree"
             type="text"
             id="degree"
             error={errors}
+            required
             defaultValue={prevEducation?.degree}
           />
         )}
 
         <Input
-          label="Location"
+          label={isCertificate ? 'Location (Optional)' : 'Location'}
           type="text"
           id="location"
           error={errors}
+          required={!isCertificate}
           defaultValue={prevEducation?.location}
         />
 
@@ -181,7 +239,15 @@ export default function Education() {
                 text="Previous"
                 type="secondary"
                 action="button"
-                callback={() => window.history.back()}
+                callback={() =>
+                  navigate(
+                    addQueryParams('/education-level', {
+                      index:
+                        typeof index === 'number' ? index.toString() : null,
+                      returnUrl: returnUrl ?? null,
+                    }),
+                  )
+                }
               />
               <Button action="submit" text="Next Step" />
             </>

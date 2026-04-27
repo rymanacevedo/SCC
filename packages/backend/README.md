@@ -1,8 +1,6 @@
 # @scc/backend
 
-This package contains the backend services for the Second Chance Center (SCC) monorepo. Built on **Cloudflare Workers** and powered by **Bun**, this backend provides the robust and scalable APIs necessary for the frontend application to deliver its impactful features, including the AI-assisted resume generation.
-
-Our backend leverages the power of Bun for rapid development and deployment, ensuring high performance and efficiency for all our services.
+This package contains the backend services for the Second Chance Center (SCC) monorepo. Built on **Cloudflare Workers** and powered by **Bun**.
 
 ## Key Technologies
 

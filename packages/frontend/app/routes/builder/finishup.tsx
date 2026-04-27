@@ -10,6 +10,10 @@ import Heading from '../../components/Heading';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Main from '../../components/Main';
 import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
+import {
+  getEducationGraduationLabel,
+  sortEducationEntries,
+} from '../../utils/education';
 import { getUser, type User } from '../../utils/user';
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -155,38 +159,68 @@ export default function Finish() {
               size="text-lg"
               classNames="font-semibold"
             />
-            <EditLink to="/education" returnUrl="/finish-up" />
+            <EditLink to="/education-summary" returnUrl="/finish-up" />
           </div>
-          <div className="space-y-3">
-            <div>
-              <Heading
-                text="School"
-                level="h3"
-                size="text-sm"
-                color="dark:text-gray-400 text-gray-500"
-              />
-              <p className="font-medium">{user.education?.schoolName}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Heading
-                  text="Degree"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">{user.education?.educationLevel}</p>
+          <div className="space-y-4">
+            {sortEducationEntries(user.education || []).map((education) => (
+              <div
+                key={`${education.schoolName}-${education.degree}-${education.graduationDate ?? 'present'}`}
+              >
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Heading
+                      text="School"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{education.schoolName}</p>
+                  </div>
+                  <div>
+                    <Heading
+                      text="Graduation"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">
+                      {getEducationGraduationLabel(education)}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <Heading
+                      text="Level"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{education.educationLevel}</p>
+                  </div>
+                  <div>
+                    <Heading
+                      text="Degree"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{education.degree}</p>
+                  </div>
+                </div>
+                {education.location ? (
+                  <div className="mt-3">
+                    <Heading
+                      text="Location"
+                      level="h3"
+                      size="text-sm"
+                      color="dark:text-gray-400 text-gray-500"
+                    />
+                    <p className="font-medium">{education.location}</p>
+                  </div>
+                ) : null}
               </div>
-              <div>
-                <Heading
-                  text="Field of Study"
-                  level="h3"
-                  size="text-sm"
-                  color="dark:text-gray-400 text-gray-500"
-                />
-                <p className="font-medium">{user.education?.degree}</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
