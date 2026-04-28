@@ -60,12 +60,14 @@ describe('POST /api/errors', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(String(init?.body));
+    const headers = new Headers(init?.headers);
 
     expect(body.labels).toEqual(['bug', 'auto-reported']);
     expect(body.title).toContain('Widget exploded');
     expect(body.body).toContain('Timestamp: 2026-04-27T12:00:00.000Z');
     expect(body.body).toContain('URL: https://example.com/skills');
     expect(body.body).toContain('Stack trace');
+    expect(headers.get('User-Agent')).toBe('scc-backend-worker');
   });
 
   test('returns 400 for invalid payloads', async () => {
@@ -210,11 +212,13 @@ describe('POST /api/report-issue', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(String(init?.body));
+    const headers = new Headers(init?.headers);
 
     expect(body.title).toBe('User-reported issue');
     expect(body.labels).toEqual(['bug', 'user-reported']);
     expect(body.body).toContain('The save button did nothing.');
     expect(body.body).toContain('URL: https://example.com/summary');
+    expect(headers.get('User-Agent')).toBe('scc-backend-worker');
   });
 
   test('returns 400 for invalid user issue payloads', async () => {

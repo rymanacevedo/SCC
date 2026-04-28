@@ -11,6 +11,7 @@ export { errorTelemetrySchema, userIssueReportSchema };
 const GITHUB_ISSUE_TITLE_MAX = 256;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
 const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
+const GITHUB_USER_AGENT = 'scc-backend-worker';
 
 export type GitHubIssueCreationErrorKind = 'http' | 'network';
 
@@ -85,6 +86,7 @@ async function createGitHubIssue({
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'User-Agent': GITHUB_USER_AGENT,
         'X-GitHub-Api-Version': '2022-11-28',
       },
       body: JSON.stringify({
