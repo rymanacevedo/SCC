@@ -10,6 +10,31 @@ export { errorTelemetrySchema, userIssueReportSchema };
 
 const GITHUB_ISSUE_TITLE_MAX = 256;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
+const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
+
+export type GitHubIssueCreationErrorKind = 'http' | 'network';
+
+export class GitHubIssueCreationError extends Error {
+  kind: GitHubIssueCreationErrorKind;
+  status?: number;
+  details?: string;
+
+  constructor(
+    message: string,
+    options: {
+      kind: GitHubIssueCreationErrorKind;
+      status?: number;
+      details?: string;
+      cause?: unknown;
+    },
+  ) {
+    super(message, { cause: options.cause });
+    this.name = 'GitHubIssueCreationError';
+    this.kind = options.kind;
+    this.status = options.status;
+    this.details = options.details;
+  }
+}
 
 export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
   return [
@@ -51,26 +76,43 @@ async function createGitHubIssue({
   body: string;
   labels: string[];
 }) {
-  const response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-    body: JSON.stringify({
-      title,
-      body,
-      labels,
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({
+        title,
+        body,
+        labels,
+      }),
+    });
+  } catch (error) {
+    throw new GitHubIssueCreationError(
+      'GitHub issue creation request failed.',
+      {
+        kind: 'network',
+        cause: error,
+      },
+    );
+  }
 
   if (!response.ok) {
-    const details = await response.text();
-    throw new Error(
-      `GitHub issue creation failed: ${response.status} ${details}`,
+    const details = (await response.text()).slice(
+      0,
+      GITHUB_ERROR_BODY_SNIPPET_MAX,
     );
+    throw new GitHubIssueCreationError('GitHub issue creation failed.', {
+      kind: 'http',
+      status: response.status,
+      details,
+    });
   }
 
   return response.json();
