@@ -1,5 +1,6 @@
 import { isRouteErrorResponse } from 'react-router';
 import {
+  buildTelemetryFingerprint,
   type ErrorTelemetryPayload as ErrorTelemetry,
   errorTelemetrySchema,
 } from '../../../shared/errorReporting';
@@ -9,19 +10,11 @@ export const ERROR_MODAL_MESSAGE =
   'An error has occurred. Please click the Report an issue button in the footer to report this error.';
 
 export type { ErrorTelemetry };
-export { errorTelemetrySchema };
+export { buildTelemetryFingerprint, errorTelemetrySchema };
 
 type ErrorInput = unknown;
 const RECENT_REPORT_WINDOW_MS = 1_000;
 const recentlyReportedErrors = new Map<string, number>();
-
-export function buildTelemetryFingerprint(telemetry: ErrorTelemetry): string {
-  return JSON.stringify({
-    url: telemetry.url,
-    message: telemetry.message,
-    stackTrace: telemetry.stackTrace ?? '',
-  });
-}
 
 export function shouldSkipDuplicateTelemetryReport(
   telemetry: ErrorTelemetry,
@@ -49,6 +42,10 @@ export function shouldSkipDuplicateTelemetryReport(
 
 export function resetReportedTelemetryForTests() {
   recentlyReportedErrors.clear();
+}
+
+function shouldReportError(error: ErrorInput): boolean {
+  return !(isRouteErrorResponse(error) && error.status === 404);
 }
 
 export function getErrorMessage(error: ErrorInput): string {
@@ -96,6 +93,10 @@ export async function reportErrorTelemetry(
   options: { timestamp?: string; url?: string } = {},
 ) {
   try {
+    if (!shouldReportError(error)) {
+      return;
+    }
+
     const telemetry = createErrorTelemetry(error, options);
     if (shouldSkipDuplicateTelemetryReport(telemetry)) {
       return;

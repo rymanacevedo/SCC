@@ -2,6 +2,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
 import app from './index';
 
 const originalFetch = globalThis.fetch;
+// biome-ignore lint/suspicious/noConsole: Tests restore the app's error logging after each mock.
 const originalConsoleError = console.error;
 
 const env = {
@@ -33,7 +34,11 @@ function getLoggedObject(
 describe('POST /api/errors', () => {
   test('creates a GitHub issue with structured labels and body', async () => {
     const fetchMock = mock(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        if (String(input).includes('/issues?')) {
+          return Response.json([]);
+        }
+
         return new Response(JSON.stringify({ id: 1 }), {
           status: 201,
           headers: { 'Content-Type': 'application/json' },
@@ -56,14 +61,15 @@ describe('POST /api/errors', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[1];
     const body = JSON.parse(String(init?.body));
     const headers = new Headers(init?.headers);
 
     expect(body.labels).toEqual(['bug', 'auto-reported']);
     expect(body.title).toContain('Widget exploded');
+    expect(body.body).toContain('Fingerprint:');
     expect(body.body).toContain('Timestamp: 2026-04-27T12:00:00.000Z');
     expect(body.body).toContain('URL: https://example.com/skills');
     expect(body.body).toContain('Stack trace');
@@ -181,7 +187,7 @@ describe('POST /api/errors', () => {
 describe('POST /api/report-issue', () => {
   test('creates a GitHub issue for user-submitted reports', async () => {
     const fetchMock = mock(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
+      async (_input: RequestInfo | URL, _init?: RequestInit) => {
         return new Response(JSON.stringify({ id: 2 }), {
           status: 201,
           headers: { 'Content-Type': 'application/json' },

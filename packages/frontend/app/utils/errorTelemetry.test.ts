@@ -57,6 +57,29 @@ describe('error telemetry', () => {
         url: 'https://example.com/info',
       }),
     ).resolves.toBeUndefined();
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not report React Router 404 route errors', async () => {
+    const fetchMock = mock(async () => {
+      return Response.json({ ok: true });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await errorTelemetry.reportErrorTelemetry(
+      {
+        status: 404,
+        statusText: 'Not Found',
+        internal: true,
+        data: 'No route matches URL "/assets/app-abc123.js"',
+      },
+      {
+        timestamp: '2026-04-27T12:00:00.000Z',
+        url: 'https://example.com/assets/app-abc123.js',
+      },
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   test('builds a stable fingerprint without timestamp noise', () => {
@@ -74,6 +97,25 @@ describe('error telemetry', () => {
         stackTrace: 'stack line',
       }),
     );
+  });
+
+  test('normalizes volatile asset hashes and stack coordinates in fingerprints', () => {
+    const first = errorTelemetry.buildTelemetryFingerprint({
+      timestamp: '2026-04-27T12:00:00.000Z',
+      url: 'https://example.com/assets/app-C7NZDCaW.js:12:34',
+      message: 'Chunk failed',
+      stackTrace:
+        'TypeError: Chunk failed\n    at https://example.com/assets/app-C7NZDCaW.js:12:34',
+    });
+    const second = errorTelemetry.buildTelemetryFingerprint({
+      timestamp: '2026-04-27T12:01:00.000Z',
+      url: 'https://example.com/assets/app-d9xQp2Rz.js:98:76',
+      message: 'Chunk failed',
+      stackTrace:
+        'TypeError: Chunk failed\n    at https://example.com/assets/app-d9xQp2Rz.js:98:76',
+    });
+
+    expect(first).toBe(second);
   });
 
   test('suppresses duplicate telemetry within the strict-mode dedupe window', () => {
