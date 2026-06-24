@@ -43,7 +43,7 @@ export function ErrorBoundaryContent({ error }: { error: unknown }) {
                 setIsOpen(false);
                 openReportIssue();
               }}
-              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:text-white"
             >
               Report an issue
             </button>
@@ -68,7 +68,7 @@ export function ErrorBoundaryContent({ error }: { error: unknown }) {
       </Modal>
 
       {stack ? (
-        <pre className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        <pre className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
           <code>{stack}</code>
         </pre>
       ) : null}
