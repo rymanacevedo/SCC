@@ -22,3 +22,17 @@ Run frontend: `bun run dev` in the `packages/frontend` directory. [DO NOT RUN UN
 Run backend: `bun run dev` in the `packages/backend` directory. [DO NOT RUN UNLESS INSTRUCTED]
 
 `bun test` don't run unless instructed
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for `rymanacevedo/SCC` via the `gh` CLI. External PRs are **not** a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use their default label names, plus an extra `Sandcastle` label outside the core state machine. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context layout: `CONTEXT-MAP.md` at the root points to a per-package `CONTEXT.md` (`packages/backend`, `packages/frontend`, `packages/shared`). See `docs/agents/domain.md`.
