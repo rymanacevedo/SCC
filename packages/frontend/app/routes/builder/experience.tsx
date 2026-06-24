@@ -14,7 +14,7 @@ import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Input, { type FormErrors } from '../../components/Input';
 import Main from '../../components/Main';
 import Select from '../../components/Select';
-import type { ActionData } from '../../models/Actions';
+import { generateId } from '../../utils/id';
 import { addQueryParams } from '../../utils/navigation';
 import { BaseExperienceSchema } from '../../utils/schemas/experience';
 import {
@@ -148,9 +148,7 @@ export default function WorkExperience() {
             type="hidden"
             name="jobId"
             id="jobId"
-            value={
-              prevExperience?.jobId ? prevExperience.jobId : crypto.randomUUID()
-            }
+            value={prevExperience?.jobId ? prevExperience.jobId : generateId()}
           />
           <Input
             label="Job Title"

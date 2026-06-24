@@ -2,6 +2,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import type { Route } from '../.react-router/types/app/+types/root.ts';
 import { AppShell } from './components/AppShell';
 import { ErrorBoundaryContent } from './components/ErrorBoundaryContent';
+import { generateId } from './utils/id';
 import { getUser, setUser, type User } from './utils/user';
 import './app.css';
 
@@ -35,7 +36,7 @@ export async function clientLoader() {
 
   if (!user) {
     const user: User = {
-      userId: crypto.randomUUID(),
+      userId: generateId(),
     };
 
     setUser(user);
