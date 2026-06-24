@@ -18,7 +18,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.12",
     "@types/bun": "latest",
-    "turbo": "^2.9.6"
+    "turbo": "^2.10.0"
   },
   "peerDependencies": {
     "typescript": "^6.0.3"
@@ -26,7 +26,7 @@
   "dependencies": {
     "@ai-hero/sandcastle": "^0.10.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.4.0"
   },
   "packageManager": "bun@1.2.2"
 }
