@@ -3,7 +3,7 @@ const UUID_HEX: string[] = Array.from({ length: 256 }, (_, value) =>
   value.toString(16).padStart(2, '0'),
 );
 
-function fillRandomBytes(bytes: Uint8Array) {
+function fillRandomBytes(bytes: Uint8Array<ArrayBuffer>) {
   const crypto = globalThis.crypto;
 
   if (typeof crypto?.getRandomValues === 'function') {
@@ -16,7 +16,7 @@ function fillRandomBytes(bytes: Uint8Array) {
   }
 }
 
-function formatUuidV4(bytes: Uint8Array) {
+function formatUuidV4(bytes: Uint8Array<ArrayBuffer>) {
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
