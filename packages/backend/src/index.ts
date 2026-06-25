@@ -6,9 +6,11 @@ import {
   EnvironmentValidationError,
   type EnvSchema,
   validateBaseEnvironment,
+  validateGeoEnvironment,
   validateGithubEnvironment,
   validateOpenAiEnvironment,
 } from '../lib/environment';
+import { createGeoRestrictionMiddleware } from './middleware/geo-restriction';
 import { createExperience, createSkills, createSummaries } from './services/ai';
 import {
   createAutoReportedIssue,
@@ -41,6 +43,34 @@ export const CorsConfig = async (c: Context, next: () => Promise<void>) => {
   return corsConfig(c, next);
 };
 
+const geoRestrictionMiddlewareCache = new Map<
+  string,
+  ReturnType<typeof createGeoRestrictionMiddleware>
+>();
+
+export const GeoRestrictionConfig = async (
+  c: Context<{ Bindings: Bindings }>,
+  next: () => Promise<void>,
+) => {
+  const { ALLOWED_COUNTRIES } = c.env;
+  let geoRestrictionMiddleware =
+    geoRestrictionMiddlewareCache.get(ALLOWED_COUNTRIES);
+
+  if (!geoRestrictionMiddleware) {
+    const { allowedCountries } = validateGeoEnvironment(c.env);
+    geoRestrictionMiddleware = createGeoRestrictionMiddleware({
+      allowedCountries,
+    });
+    geoRestrictionMiddlewareCache.set(
+      ALLOWED_COUNTRIES,
+      geoRestrictionMiddleware,
+    );
+  }
+
+  return geoRestrictionMiddleware(c, next);
+};
+
+app.use('/api/*', GeoRestrictionConfig);
 app.use('/api/*', CorsConfig);
 
 const schema = z.object({

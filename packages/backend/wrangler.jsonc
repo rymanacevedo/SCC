@@ -2,7 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "scc-backend",
   "main": "src/index.ts",
-  "compatibility_date": "2025-02-26"
+  "compatibility_date": "2025-02-26",
+  "vars": {
+    "ALLOWED_COUNTRIES": "US"
+  }
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
