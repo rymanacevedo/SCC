@@ -4,6 +4,10 @@ export const baseEnvironmentSchema = z.object({
   ALLOWED_ORIGIN: z.string().url().min(1),
 });
 
+export const geoEnvironmentSchema = z.object({
+  ALLOWED_COUNTRIES: z.string().min(1),
+});
+
 export const githubEnvironmentSchema = z.object({
   GITHUB_REPO: z.string().min(1),
   GITHUB_TOKEN: z.string().min(1),
@@ -14,15 +18,19 @@ export const openAiEnvironmentSchema = z.object({
 });
 
 export const environmentSchema = baseEnvironmentSchema
+  .extend(geoEnvironmentSchema.shape)
   .extend(githubEnvironmentSchema.shape)
   .extend(openAiEnvironmentSchema.shape);
 
 export type BaseEnvSchema = z.infer<typeof baseEnvironmentSchema>;
+export type GeoEnvSchema = {
+  allowedCountries: string[];
+};
 export type GithubEnvSchema = z.infer<typeof githubEnvironmentSchema>;
 export type OpenAiEnvSchema = z.infer<typeof openAiEnvironmentSchema>;
 export type EnvSchema = z.infer<typeof environmentSchema>;
 
-export type EnvScope = 'base' | 'github' | 'openai' | 'all';
+export type EnvScope = 'base' | 'geo' | 'github' | 'openai' | 'all';
 
 export class EnvironmentValidationError extends Error {
   scope: EnvScope;
@@ -50,6 +58,35 @@ export function validateBaseEnvironment(
   envFromContext: Record<string, string>,
 ): BaseEnvSchema {
   return parseEnvironment(baseEnvironmentSchema, envFromContext, 'base');
+}
+
+export function parseAllowedCountries(allowedCountries: string): string[] {
+  const countryCodes = allowedCountries
+    .split(',')
+    .map((countryCode) => countryCode.trim().toUpperCase());
+
+  if (
+    countryCodes.length === 0 ||
+    countryCodes.some((countryCode) => !/^[A-Z]{2}$/.test(countryCode))
+  ) {
+    throw new Error('ALLOWED_COUNTRIES must contain ISO-3166-1 alpha-2 codes.');
+  }
+
+  return [...new Set(countryCodes)];
+}
+
+export function validateGeoEnvironment(
+  envFromContext: Record<string, string>,
+): GeoEnvSchema {
+  try {
+    const { ALLOWED_COUNTRIES } = geoEnvironmentSchema.parse(envFromContext);
+
+    return {
+      allowedCountries: parseAllowedCountries(ALLOWED_COUNTRIES),
+    };
+  } catch (error) {
+    throw new EnvironmentValidationError('geo', error);
+  }
 }
 
 export function validateGithubEnvironment(

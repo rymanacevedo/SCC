@@ -7,6 +7,7 @@ const originalConsoleError = console.error;
 
 const env = {
   ALLOWED_ORIGIN: 'https://example.com',
+  ALLOWED_COUNTRIES: 'US',
   GITHUB_REPO: 'acme/scc',
   GITHUB_TOKEN: 'token-123',
   OPENAI_API_KEY: 'openai-123',
@@ -31,6 +32,17 @@ function getLoggedObject(
   return (consoleErrorMock.mock.calls[0] as [Record<string, unknown>])[0];
 }
 
+function requestFromUs(
+  input: string,
+  init?: RequestInit,
+  requestEnv: Record<string, string> = env,
+) {
+  const request = new Request(`http://localhost${input}`, init);
+  Object.defineProperty(request, 'cf', { value: { country: 'US' } });
+
+  return app.request(request, undefined, requestEnv);
+}
+
 describe('POST /api/errors', () => {
   test('creates a GitHub issue with structured labels and body', async () => {
     const fetchMock = mock(
@@ -47,7 +59,7 @@ describe('POST /api/errors', () => {
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/errors',
       {
         method: 'POST',
@@ -77,7 +89,7 @@ describe('POST /api/errors', () => {
   });
 
   test('returns 400 for invalid payloads', async () => {
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/errors',
       {
         method: 'POST',
@@ -100,7 +112,7 @@ describe('POST /api/errors', () => {
       throw new Error('github down');
     }) as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/errors',
       {
         method: 'POST',
@@ -127,7 +139,7 @@ describe('POST /api/errors', () => {
     const consoleErrorMock = mock(() => {});
     console.error = consoleErrorMock as typeof console.error;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/errors',
       {
         method: 'POST',
@@ -139,6 +151,7 @@ describe('POST /api/errors', () => {
       },
       {
         ALLOWED_ORIGIN: env.ALLOWED_ORIGIN,
+        ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES,
         OPENAI_API_KEY: env.OPENAI_API_KEY,
       },
     );
@@ -160,7 +173,7 @@ describe('POST /api/errors', () => {
       return new Response('Bad credentials', { status: 401 });
     }) as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/errors',
       {
         method: 'POST',
@@ -196,7 +209,7 @@ describe('POST /api/report-issue', () => {
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
@@ -228,7 +241,7 @@ describe('POST /api/report-issue', () => {
   });
 
   test('returns 400 for invalid user issue payloads', async () => {
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
@@ -251,7 +264,7 @@ describe('POST /api/report-issue', () => {
       throw new Error('github down');
     }) as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
@@ -282,7 +295,7 @@ describe('POST /api/report-issue', () => {
     const consoleErrorMock = mock(() => {});
     console.error = consoleErrorMock as typeof console.error;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
@@ -298,6 +311,7 @@ describe('POST /api/report-issue', () => {
       },
       {
         ALLOWED_ORIGIN: env.ALLOWED_ORIGIN,
+        ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES,
         OPENAI_API_KEY: env.OPENAI_API_KEY,
       },
     );
@@ -321,7 +335,7 @@ describe('POST /api/report-issue', () => {
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
@@ -337,6 +351,7 @@ describe('POST /api/report-issue', () => {
       },
       {
         ALLOWED_ORIGIN: env.ALLOWED_ORIGIN,
+        ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES,
         GITHUB_REPO: env.GITHUB_REPO,
         GITHUB_TOKEN: env.GITHUB_TOKEN,
       },
@@ -353,7 +368,7 @@ describe('POST /api/report-issue', () => {
       return new Response('Validation failed', { status: 422 });
     }) as unknown as typeof fetch;
 
-    const response = await app.request(
+    const response = await requestFromUs(
       '/api/report-issue',
       {
         method: 'POST',
