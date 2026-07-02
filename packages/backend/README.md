@@ -41,6 +41,17 @@ cp .dev.vars.example .dev.vars
 
 Edit the `.dev.vars` file and populate it with your actual API keys and configuration values. **Do not commit this file to version control.**
 
+Required local variables:
+
+```bash
+ALLOWED_ORIGIN=http://localhost:5173
+ALLOWED_COUNTRIES=US
+GITHUB_REPO=rymanacevedo/SCC
+GITHUB_TOKEN=replace-with-github-token
+OPENAI_API_KEY=replace-with-openai-api-key
+GEMINI_API_KEY=replace-with-gemini-api-key
+```
+
 ### 3. Run Locally (Development)
 
 To start the backend in development mode with hot-reloading:

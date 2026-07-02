@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/enforce-bun.sh"
+            "command": "/Users/ryanacevedo/Code/SCC/.claude/hooks/enforce-bun.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/block-dangerous-git.sh"
+            "command": "/Users/ryanacevedo/Code/SCC/.claude/hooks/block-dangerous-git.sh"
           }
         ]
       }

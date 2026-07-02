@@ -33,7 +33,17 @@ From the root of the SCC monorepo, install all project dependencies. This will a
 bun install
 ```
 
-### 2. Development
+### 2. Environment Variables
+
+Create a `.env` file in the root of the `@scc/frontend` directory based on the provided `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+For local development, `VITE_HONO_BACKEND_URL` should point at the backend Worker, usually `http://localhost:8787`.
+
+### 3. Development
 
 To start the development server with hot-module replacement (HMR):
 
@@ -44,7 +54,7 @@ bun run dev
 
 Your application will typically be available at `http://localhost:5173`. Any changes you make to the code will instantly reflect in your browser.
 
-### 3. Building for Production
+### 4. Building for Production
 
 To create an optimized production build of the frontend application:
 
@@ -55,7 +65,7 @@ bun run build
 
 This command will compile and optimize all assets, ready for deployment.
 
-### 4. Local Production Preview
+### 5. Local Production Preview
 
 To preview the production build locally:
 
@@ -66,7 +76,7 @@ bun run preview
 
 This will serve the optimized build, allowing you to test it before deployment.
 
-### 5. Type Checking
+### 6. Type Checking
 
 To perform a type check on the frontend codebase:
 
