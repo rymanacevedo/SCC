@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { Env } from 'hono';
 
 const env = {
   ALLOWED_ORIGIN: 'https://example.com',
@@ -8,8 +9,15 @@ const env = {
   OPENAI_API_KEY: 'openai-123',
 };
 
+type AppRequest = (
+  input: Request | string,
+  requestInit?: RequestInit,
+  env?: Env['Bindings'] | {},
+  executionCtx?: ExecutionContext,
+) => Response | Promise<Response>;
+
 function requestFromUs(
-  app: { request: (...args: any[]) => Response | Promise<Response> },
+  app: { request: AppRequest },
   input: string,
   init?: RequestInit,
   requestEnv: Record<string, string> = env,

@@ -1,5 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
-import { type Context, Hono } from 'hono';
+import type { LanguageModel } from 'ai';
+import { type Context, Hono, type Input } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
 import {
@@ -28,6 +29,13 @@ type IssueReportingCategory =
   | 'github_http'
   | 'github_network'
   | 'unknown';
+type AiRoute = '/api/summaries' | '/api/skills' | '/api/experience';
+type GenerationRequest = z.infer<typeof schema>;
+type GenerationRouteInput = {
+  out: {
+    json: GenerationRequest;
+  };
+} & Input;
 
 type Bindings = EnvSchema;
 
@@ -79,10 +87,7 @@ const schema = z.object({
 });
 
 type IssueReportingPayload = ErrorTelemetry | UserIssueReport;
-type AiGenerator = (
-  prompt: string,
-  model: ReturnType<typeof resolveModel>,
-) => Promise<unknown>;
+type AiGenerator = (prompt: string, model: LanguageModel) => Promise<unknown>;
 
 function classifyIssueReportingError(error: unknown): {
   category: IssueReportingCategory;
@@ -134,7 +139,7 @@ function logIssueReportingError({
 }
 
 function logAiRouteError(
-  route: '/api/summaries' | '/api/skills' | '/api/experience',
+  route: AiRoute,
   error: unknown,
 ) {
   console.error({
@@ -144,14 +149,14 @@ function logAiRouteError(
 }
 
 function createAiRoute(
-  route: '/api/summaries' | '/api/skills' | '/api/experience',
+  route: AiRoute,
   generate: AiGenerator,
 ) {
-  return async (c: Context<{ Bindings: Bindings }>) => {
+  return async (c: Context<{ Bindings: Bindings }, string, GenerationRouteInput>) => {
     try {
       const env = validateOpenAiEnvironment(c.env);
       const model = resolveModel(env);
-      const { prompt } = c.req.valid('json' as never) as z.infer<typeof schema>;
+      const { prompt } = c.req.valid('json');
       const response = await generate(prompt, model);
       return c.json(response);
     } catch (error) {
