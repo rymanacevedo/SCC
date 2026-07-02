@@ -1,9 +1,8 @@
 import { memo } from 'react';
 import { NavLink } from 'react-router';
+import { getButtonClasses } from '../utils/buttonClasses';
 import type { ButtonTypes } from '../utils/buttonTypes';
-import { buttonTypes } from '../utils/buttonTypes';
 import type { Sizes } from '../utils/sizes';
-import { sizes } from '../utils/sizes';
 
 type ButtonLinkProps = {
   to: string;
@@ -22,14 +21,17 @@ function ButtonLink({
   size,
   classNames,
 }: ButtonLinkProps) {
-  const buttonStyle = buttonTypes[type];
-  const buttonPadding = size ? sizes.buttonPadding[size] : buttonStyle.size;
-  const linkClasses = `${buttonStyle.base} ${buttonPadding} ${textSize} text-center block ${
-    classNames || ''
-  } ${buttonStyle.hover || ''}`;
-
   return (
-    <NavLink to={to} className={linkClasses}>
+    <NavLink
+      to={to}
+      className={getButtonClasses({
+        type,
+        textSize,
+        size,
+        classNames,
+        extraClasses: 'text-center block',
+      })}
+    >
       {text}
     </NavLink>
   );
