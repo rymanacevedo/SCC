@@ -1,5 +1,4 @@
-import { generateText, Output } from 'ai';
-import { createOpenAI, type OpenAIProvider } from '@ai-sdk/openai';
+import { generateText, type LanguageModel, Output } from 'ai';
 import { z } from 'zod';
 
 const Blacklist =
@@ -33,13 +32,9 @@ const SummarySchema = z
       ),
   })
   .array();
-export const createSummaries = async (prompt: string, apiKey: string) => {
-  const openai: OpenAIProvider = createOpenAI({
-    apiKey,
-  });
-  const OpenAIModel = openai('gpt-5-nano');
+export const createSummaries = async (prompt: string, model: LanguageModel) => {
   const { output } = await generateText({
-    model: OpenAIModel,
+    model,
     output: Output.object({
       schema: z.object({
         summaries: SummarySchema,
@@ -90,14 +85,9 @@ export const createSummaries = async (prompt: string, apiKey: string) => {
   return output.summaries;
 };
 
-export const createSkills = async (prompt: string, apiKey: string) => {
-  const openai: OpenAIProvider = createOpenAI({
-    apiKey,
-  });
-  const OpenAIModel = openai('gpt-5-nano');
-
+export const createSkills = async (prompt: string, model: LanguageModel) => {
   const { output } = await generateText({
-    model: OpenAIModel,
+    model,
     output: Output.object({
       schema: SkillsSchema,
     }),
@@ -120,14 +110,12 @@ export const createSkills = async (prompt: string, apiKey: string) => {
   return output;
 };
 
-export const createExperience = async (prompt: string, apiKey: string) => {
-  const openai: OpenAIProvider = createOpenAI({
-    apiKey,
-  });
-  const OpenAIModel = openai('gpt-5-nano');
-
+export const createExperience = async (
+  prompt: string,
+  model: LanguageModel,
+) => {
   const { output } = await generateText({
-    model: OpenAIModel,
+    model,
     output: Output.object({
       schema: ExperienceSchema,
     }),
