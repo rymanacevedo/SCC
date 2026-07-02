@@ -1,12 +1,12 @@
 import { memo, useCallback } from 'react';
+import { getButtonClasses } from '../utils/buttonClasses';
 import type { ButtonTypes } from '../utils/buttonTypes';
 import type { Sizes } from '../utils/sizes';
-import { getButtonClassNames } from './buttonClassNames';
 
 const visuallyHidden =
   'absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0';
 
-type ButtonProps = {
+type Button = {
   text: string;
   textSize?: keyof Sizes['fontSize'];
   type?: keyof ButtonTypes;
@@ -32,7 +32,7 @@ function Button({
   disabled,
   name,
   value,
-}: ButtonProps) {
+}: Button) {
   const handleCallback = useCallback(() => {
     if (callback) {
       callback();
@@ -43,12 +43,12 @@ function Button({
     <button
       type={action}
       onClick={handleCallback}
-      className={getButtonClassNames({
+      className={getButtonClasses({
+        type,
+        textSize,
+        size,
         classNames,
         disabled,
-        size,
-        textSize,
-        type,
       })}
       disabled={disabled}
       name={name}

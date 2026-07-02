@@ -1,30 +1,36 @@
 import { memo } from 'react';
 import { NavLink } from 'react-router';
+import { getButtonClasses } from '../utils/buttonClasses';
 import type { ButtonTypes } from '../utils/buttonTypes';
-import { getButtonClassNames } from './buttonClassNames';
+import type { Sizes } from '../utils/sizes';
 
 type ButtonLinkProps = {
-  classNames?: string;
-  text: string;
   to: string;
+  text: string;
+  textSize?: keyof Sizes['fontSize'];
   type?: keyof ButtonTypes;
+  size?: keyof Sizes['buttonPadding'];
+  classNames?: string;
 };
 
-const DEFAULT_BUTTON_LINK_CLASS_NAMES = 'block text-center';
-
 function ButtonLink({
-  classNames = DEFAULT_BUTTON_LINK_CLASS_NAMES,
-  text,
   to,
-  type = 'secondary',
+  text,
+  textSize = 'text-base',
+  type = 'primary',
+  size,
+  classNames,
 }: ButtonLinkProps) {
   return (
     <NavLink
-      className={getButtonClassNames({
-        classNames,
-        type,
-      })}
       to={to}
+      className={getButtonClasses({
+        type,
+        textSize,
+        size,
+        classNames,
+        extraClasses: 'text-center block',
+      })}
     >
       {text}
     </NavLink>

@@ -8,6 +8,7 @@ import {
 } from 'react-router';
 import type { Route } from '../../+types/root';
 import Button from '../../components/Button';
+import ButtonLink from '../../components/ButtonLink';
 import Heading from '../../components/Heading';
 import Main from '../../components/Main';
 import { formatEducationString } from '../../utils/editor/formatters/education';
@@ -137,14 +138,14 @@ export default function EducationSummary() {
       </div>
 
       {canAddAnother ? (
-        <NavLink
-          className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
+        <ButtonLink
           to={addQueryParams('/education-level', {
             returnUrl: returnUrl ?? null,
           })}
-        >
-          + Add another education entry
-        </NavLink>
+          text="+ Add another education entry"
+          type="secondary"
+          classNames="mb-4 w-full"
+        />
       ) : null}
 
       <Form method="post" className="flex justify-end space-x-5">
@@ -168,7 +169,7 @@ export default function EducationSummary() {
                 )
               }
             />
-            <Button action="submit" text="Next Step" />
+            <Button action="submit" text="Continue to Skills" />
           </>
         )}
       </Form>

@@ -43,9 +43,7 @@ function ExperienceSummary() {
   const { experiences, returnUrl, jobId } =
     useLoaderData<typeof clientLoader>();
   const navigate = useNavigate();
-  const previousJobId = jobId
-    ? jobId
-    : experiences[experiences.length - 1]?.jobId;
+  const previousJobId = jobId ?? experiences[experiences.length - 1]?.jobId;
   const previousStepUrl = addQueryParams('/experience-entry', {
     jobId: previousJobId,
     returnUrl,
@@ -94,10 +92,12 @@ function ExperienceSummary() {
           </NavLink>
         ))}
       </div>
+
       <ButtonLink
-        classNames="mb-4 w-full"
-        text="+ Add another position"
         to={addQueryParams('/experience', { returnUrl })}
+        text="+ Add another position"
+        type="secondary"
+        classNames="mb-4 w-full"
       />
       <Form method="post" className="flex justify-end space-x-5">
         {returnUrl ? (
