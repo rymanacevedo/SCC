@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { LanguageModel } from 'ai';
 import { validateOpenAiEnvironment } from '../../lib/environment';
 import { DEFAULT_MODEL, resolveModel } from './model';
 
@@ -9,13 +10,26 @@ type InspectableModel = {
   };
 };
 
+function inspectModel(model: LanguageModel): InspectableModel {
+  if (
+    typeof model !== 'object' ||
+    model === null ||
+    !('modelId' in model) ||
+    !('config' in model)
+  ) {
+    throw new Error('Expected resolveModel to return an inspectable OpenAI model.');
+  }
+
+  return model as InspectableModel;
+}
+
 describe('resolveModel', () => {
   test('falls back to DEFAULT_MODEL when OPENAI_MODEL is unset', () => {
     const env = validateOpenAiEnvironment({
       OPENAI_API_KEY: 'openai-123',
     });
 
-    const model = resolveModel(env) as unknown as InspectableModel;
+    const model = inspectModel(resolveModel(env));
 
     expect(model.modelId).toBe(DEFAULT_MODEL);
   });
@@ -27,7 +41,7 @@ describe('resolveModel', () => {
       OPENAI_MODEL: 'llama3.1',
     });
 
-    const model = resolveModel(env) as unknown as InspectableModel;
+    const model = inspectModel(resolveModel(env));
 
     expect(model.modelId).toBe('llama3.1');
     expect(model.config.url({ path: '/responses', modelId: model.modelId })).toBe(
