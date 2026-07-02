@@ -9,6 +9,7 @@ import {
 } from 'react-router';
 import type { Route } from '../../+types/root';
 import Button from '../../components/Button';
+import ButtonLink from '../../components/ButtonLink';
 import Heading from '../../components/Heading';
 import Main from '../../components/Main';
 import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
@@ -86,13 +87,12 @@ function ExperienceSummary() {
         ))}
       </div>
 
-      {/* TODO: maintain consistent button styles */}
-      <NavLink
-        className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
+      <ButtonLink
         to={addQueryParams('/experience', { returnUrl })}
-      >
-        + Add another position
-      </NavLink>
+        text="+ Add another position"
+        type="secondary"
+        classNames="mb-4 w-full"
+      />
       <Form method="post" className="flex justify-end space-x-5">
         {returnUrl ? (
           <Button action="submit" text="Resubmit" />
