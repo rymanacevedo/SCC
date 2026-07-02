@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import type { LanguageModel } from 'ai';
+import { APICallError, type LanguageModel } from 'ai';
 import { type Context, Hono, type Input } from 'hono';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
@@ -30,6 +30,7 @@ type IssueReportingCategory =
   | 'github_network'
   | 'unknown';
 type AiRoute = '/api/summaries' | '/api/skills' | '/api/experience';
+type AiRouteCategory = 'config' | 'provider' | 'unknown';
 type GenerationRequest = z.infer<typeof schema>;
 type GenerationRouteInput = {
   out: {
@@ -119,7 +120,7 @@ function logIssueReportingError({
   const metadata = {
     route,
     category,
-    message: error instanceof Error ? error.message : 'Unknown error',
+    message: describeError(error),
     timestamp: payload.timestamp,
     url: payload.url,
   };
@@ -138,11 +139,58 @@ function logIssueReportingError({
   console.error(metadata);
 }
 
-function logAiRouteError(route: AiRoute, error: unknown) {
-  console.error({
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return `Unknown error: ${String(error)}`;
+}
+
+function classifyAiRouteError(error: unknown): {
+  category: AiRouteCategory;
+  status: 500 | 502;
+} {
+  if (error instanceof EnvironmentValidationError && error.scope === 'openai') {
+    return { category: 'config', status: 500 };
+  }
+  if (APICallError.isInstance(error)) {
+    return { category: 'provider', status: 502 };
+  }
+  return { category: 'unknown', status: 500 };
+}
+
+function logAiRouteError({
+  route,
+  error,
+  category,
+}: {
+  route: AiRoute;
+  error: unknown;
+  category: AiRouteCategory;
+}) {
+  const metadata = {
     route,
-    message: error instanceof Error ? error.message : 'Unknown error',
-  });
+    category,
+    name: error instanceof Error ? error.name : undefined,
+    message: describeError(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    causeMessage:
+      error instanceof Error && error.cause instanceof Error
+        ? error.cause.message
+        : undefined,
+  };
+
+  if (APICallError.isInstance(error)) {
+    console.error({
+      ...metadata,
+      providerStatus: error.statusCode,
+      providerUrl: error.url,
+      isRetryable: error.isRetryable,
+    });
+    return;
+  }
+
+  console.error(metadata);
 }
 
 function createAiRoute(route: AiRoute, generate: AiGenerator) {
@@ -156,8 +204,9 @@ function createAiRoute(route: AiRoute, generate: AiGenerator) {
       const response = await generate(prompt, model);
       return c.json(response);
     } catch (error) {
-      logAiRouteError(route, error);
-      return c.json({ error: 'Failed to generate content' }, 500);
+      const { category, status } = classifyAiRouteError(error);
+      logAiRouteError({ route, error, category });
+      return c.json({ error: 'Failed to generate content' }, status);
     }
   };
 }
