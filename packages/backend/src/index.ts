@@ -12,6 +12,7 @@ import {
 } from '../lib/environment';
 import { createGeoRestrictionMiddleware } from './middleware/geo-restriction';
 import { createExperience, createSkills, createSummaries } from './services/ai';
+import { resolveModel } from './services/model';
 import {
   createAutoReportedIssue,
   createUserReportedIssue,
@@ -78,6 +79,10 @@ const schema = z.object({
 });
 
 type IssueReportingPayload = ErrorTelemetry | UserIssueReport;
+type AiGenerator = (
+  prompt: string,
+  model: ReturnType<typeof resolveModel>,
+) => Promise<unknown>;
 
 function classifyIssueReportingError(error: unknown): {
   category: IssueReportingCategory;
@@ -128,53 +133,51 @@ function logIssueReportingError({
   console.error(metadata);
 }
 
-app.post('/api/summaries', zValidator('json', schema), async (c) => {
-  try {
-    const { OPENAI_API_KEY } = validateOpenAiEnvironment(c.env);
-    const apiKey = OPENAI_API_KEY;
-    if (!apiKey) {
-      return c.json({ error: 'API key configuration error' }, 500);
+function logAiRouteError(
+  route: '/api/summaries' | '/api/skills' | '/api/experience',
+  error: unknown,
+) {
+  console.error({
+    route,
+    message: error instanceof Error ? error.message : 'Unknown error',
+  });
+}
+
+function createAiRoute(
+  route: '/api/summaries' | '/api/skills' | '/api/experience',
+  generate: AiGenerator,
+) {
+  return async (c: Context<{ Bindings: Bindings }>) => {
+    try {
+      const env = validateOpenAiEnvironment(c.env);
+      const model = resolveModel(env);
+      const { prompt } = c.req.valid('json' as never) as z.infer<typeof schema>;
+      const response = await generate(prompt, model);
+      return c.json(response);
+    } catch (error) {
+      logAiRouteError(route, error);
+      return c.json({ error: 'Failed to generate content' }, 500);
     }
+  };
+}
 
-    const { prompt } = c.req.valid('json');
-    const response = await createSummaries(prompt, apiKey);
-    return c.json(response);
-  } catch (error) {
-    return c.json({ error: 'Failed to generate content' }, 500);
-  }
-});
+app.post(
+  '/api/summaries',
+  zValidator('json', schema),
+  createAiRoute('/api/summaries', createSummaries),
+);
 
-app.post('/api/skills', zValidator('json', schema), async (c) => {
-  try {
-    const { OPENAI_API_KEY } = validateOpenAiEnvironment(c.env);
-    const apiKey = OPENAI_API_KEY;
-    if (!apiKey) {
-      return c.json({ error: 'API key configuration error' }, 500);
-    }
+app.post(
+  '/api/skills',
+  zValidator('json', schema),
+  createAiRoute('/api/skills', createSkills),
+);
 
-    const { prompt } = c.req.valid('json');
-    const response = await createSkills(prompt, apiKey);
-    return c.json(response);
-  } catch (error) {
-    return c.json({ error: 'Failed to generate content' }, 500);
-  }
-});
-
-app.post('/api/experience', zValidator('json', schema), async (c) => {
-  try {
-    const { OPENAI_API_KEY } = validateOpenAiEnvironment(c.env);
-    const apiKey = OPENAI_API_KEY;
-    if (!apiKey) {
-      return c.json({ error: 'API key configuration error' }, 500);
-    }
-
-    const { prompt } = c.req.valid('json');
-    const response = await createExperience(prompt, apiKey);
-    return c.json(response);
-  } catch (error) {
-    return c.json({ error: `Failed to generate content: ${error}` }, 500);
-  }
-});
+app.post(
+  '/api/experience',
+  zValidator('json', schema),
+  createAiRoute('/api/experience', createExperience),
+);
 
 app.post('/api/errors', zValidator('json', errorTelemetrySchema), async (c) => {
   const payload = c.req.valid('json');
