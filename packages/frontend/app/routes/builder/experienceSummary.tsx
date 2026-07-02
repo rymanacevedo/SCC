@@ -9,6 +9,7 @@ import {
 } from 'react-router';
 import type { Route } from '../../+types/root';
 import Button from '../../components/Button';
+import ButtonLink from '../../components/ButtonLink';
 import Heading from '../../components/Heading';
 import Main from '../../components/Main';
 import { formatExperienceLocation } from '../../utils/editor/formatters/experience';
@@ -42,6 +43,14 @@ function ExperienceSummary() {
   const { experiences, returnUrl, jobId } =
     useLoaderData<typeof clientLoader>();
   const navigate = useNavigate();
+  const previousJobId = jobId
+    ? jobId
+    : experiences[experiences.length - 1]?.jobId;
+  const previousStepUrl = addQueryParams('/experience-entry', {
+    jobId: previousJobId,
+    returnUrl,
+  });
+
   return (
     <Main>
       <Heading
@@ -85,14 +94,11 @@ function ExperienceSummary() {
           </NavLink>
         ))}
       </div>
-
-      {/* TODO: maintain consistent button styles */}
-      <NavLink
-        className="table mr-auto ml-auto w-full text-center p-4 border border-dashed mb-4"
+      <ButtonLink
+        classNames="mb-4 w-full"
+        text="+ Add another position"
         to={addQueryParams('/experience', { returnUrl })}
-      >
-        + Add another position
-      </NavLink>
+      />
       <Form method="post" className="flex justify-end space-x-5">
         {returnUrl ? (
           <Button action="submit" text="Resubmit" />
@@ -102,19 +108,9 @@ function ExperienceSummary() {
               text="Previous"
               type="secondary"
               action="button"
-              callback={() =>
-                // return the jobId or get the last item in the list
-                navigate(
-                  addQueryParams('/experience-entry', {
-                    jobId: jobId
-                      ? jobId
-                      : experiences[experiences.length - 1]?.jobId,
-                    returnUrl,
-                  }),
-                )
-              }
+              callback={() => navigate(previousStepUrl)}
             />
-            <Button action="submit" text="Next Step" />
+            <Button action="submit" text="Continue to Education" />
           </>
         )}
       </Form>
