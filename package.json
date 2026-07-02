@@ -10,6 +10,7 @@
     "lint": "biome lint .",
     "format": "biome format . --write",
     "check": "biome check .",
+    "sandcastle": "bun .sandcastle/main.ts",
     "typecheck": "bun run --cwd packages/frontend typecheck && bun run --cwd packages/backend typecheck",
     "test": "bun test",
     "prepare": "husky"
