@@ -10,8 +10,10 @@ type ButtonLinkProps = {
   type?: keyof ButtonTypes;
 };
 
+const DEFAULT_BUTTON_LINK_CLASS_NAMES = 'block text-center';
+
 function ButtonLink({
-  classNames = 'block text-center',
+  classNames = DEFAULT_BUTTON_LINK_CLASS_NAMES,
   text,
   to,
   type = 'secondary',

@@ -43,6 +43,14 @@ function ExperienceSummary() {
   const { experiences, returnUrl, jobId } =
     useLoaderData<typeof clientLoader>();
   const navigate = useNavigate();
+  const previousJobId = jobId
+    ? jobId
+    : experiences[experiences.length - 1]?.jobId;
+  const previousStepUrl = addQueryParams('/experience-entry', {
+    jobId: previousJobId,
+    returnUrl,
+  });
+
   return (
     <Main>
       <Heading
@@ -100,17 +108,7 @@ function ExperienceSummary() {
               text="Previous"
               type="secondary"
               action="button"
-              callback={() =>
-                // return the jobId or get the last item in the list
-                navigate(
-                  addQueryParams('/experience-entry', {
-                    jobId: jobId
-                      ? jobId
-                      : experiences[experiences.length - 1]?.jobId,
-                    returnUrl,
-                  }),
-                )
-              }
+              callback={() => navigate(previousStepUrl)}
             />
             <Button action="submit" text="Continue to Education" />
           </>

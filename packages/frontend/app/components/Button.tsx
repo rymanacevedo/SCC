@@ -6,7 +6,7 @@ import { getButtonClassNames } from './buttonClassNames';
 const visuallyHidden =
   'absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0';
 
-type Button = {
+type ButtonProps = {
   text: string;
   textSize?: keyof Sizes['fontSize'];
   type?: keyof ButtonTypes;
@@ -32,7 +32,7 @@ function Button({
   disabled,
   name,
   value,
-}: Button) {
+}: ButtonProps) {
   const handleCallback = useCallback(() => {
     if (callback) {
       callback();

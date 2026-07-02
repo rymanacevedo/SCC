@@ -11,6 +11,8 @@ type GetButtonClassNamesOptions = {
   type?: keyof ButtonTypes;
 };
 
+const DISABLED_BUTTON_CLASSES = 'opacity-50 bg-gray-300 hover:bg-gray-300';
+
 export function getButtonClassNames({
   classNames,
   disabled,
@@ -20,13 +22,13 @@ export function getButtonClassNames({
 }: GetButtonClassNamesOptions) {
   const buttonStyle = buttonTypes[type];
   const buttonPadding = size ? sizes.buttonPadding[size] : buttonStyle.size;
-  const baseClasses = `${buttonStyle.base} ${buttonPadding} ${textSize} ${
-    classNames || ''
-  }`;
+  const baseClasses = [buttonStyle.base, buttonPadding, textSize, classNames]
+    .filter(Boolean)
+    .join(' ');
 
   if (disabled) {
-    return `${baseClasses} opacity-50 bg-gray-300 hover:bg-gray-300`;
+    return `${baseClasses} ${DISABLED_BUTTON_CLASSES}`;
   }
 
-  return `${baseClasses} ${buttonStyle.hover || ''}`;
+  return [baseClasses, buttonStyle.hover].filter(Boolean).join(' ');
 }
