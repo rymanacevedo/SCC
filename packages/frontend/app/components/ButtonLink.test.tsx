@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
+import { getButtonClasses } from '../utils/buttonClasses';
 import ButtonLink from './ButtonLink';
 
 describe('ButtonLink', () => {
@@ -18,8 +19,13 @@ describe('ButtonLink', () => {
 
     expect(markup).toContain('href="/education-level"');
     expect(markup).toContain('+ Add another education entry');
-    expect(markup).toContain('w-full');
-    expect(markup).toContain('bg-white');
-    expect(markup).toContain('text-center');
+    expect(markup).toContain(
+      getButtonClasses({
+        type: 'secondary',
+        textSize: 'text-base',
+        classNames: 'w-full',
+        extraClasses: 'text-center block',
+      }),
+    );
   });
 });
