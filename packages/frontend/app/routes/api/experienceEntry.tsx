@@ -1,12 +1,12 @@
+import { Filter } from 'bad-words';
 import {
-  data,
   type ClientActionFunction,
   type ClientActionFunctionArgs,
+  data,
 } from 'react-router';
 import { z } from 'zod';
-import { Filter } from 'bad-words';
 import type { FormErrors } from '../../components/Input';
-import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
+import { proxySuggestions } from '../../utils/suggestions';
 
 const formSchema = z.object({
   jobTitleSearch: z.string().min(3, 'Job Title is required to search.'),
@@ -102,19 +102,7 @@ export const clientAction: ClientActionFunction = async ({
   };
 
   if (result.jobTitleSearch) {
-    const bckEndUrl = `${VITE_HONO_BACKEND_URL}/api/experience`;
-    const res = await fetch(bckEndUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt: result.jobTitleSearch }),
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error! status ${res.status}`);
-    }
-    const experience = await res.json();
-    return Response.json(experience);
+    return proxySuggestions('/api/experience', result.jobTitleSearch);
   }
 
   return Response.json(experience);

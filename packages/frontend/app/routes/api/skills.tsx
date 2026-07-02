@@ -1,11 +1,12 @@
 import {
-  data,
   type ClientActionFunction,
   type ClientActionFunctionArgs,
+  data,
 } from 'react-router';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
 import { filter } from '../../utils/filter';
+import { proxySuggestions } from '../../utils/suggestions';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -56,19 +57,7 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const bckEndUrl = `${import.meta.env.VITE_HONO_BACKEND_URL}/api/skills`;
-    const res = await fetch(bckEndUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt: result.jobSearch }),
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error! status ${res.status}`);
-    }
-    const skills = await res.json();
-    return Response.json(skills);
+    return proxySuggestions('/api/skills', result.jobSearch);
   }
   return Response.json({});
 };

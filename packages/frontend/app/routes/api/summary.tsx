@@ -3,10 +3,10 @@ import {
   type ClientActionFunctionArgs,
   data,
 } from 'react-router';
-import { containsInappropriateWords } from '../../utils/filter';
 import { z } from 'zod';
 import type { FormErrors } from '../../components/Input';
-import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
+import { containsInappropriateWords } from '../../utils/filter';
+import { proxySuggestions } from '../../utils/suggestions';
 
 const formSchema = z.object({
   jobSearch: z.string(),
@@ -46,20 +46,7 @@ export const clientAction: ClientActionFunction = async ({
   }
 
   if (result.jobSearch) {
-    const bckEndUrl = `${VITE_HONO_BACKEND_URL}/api/summaries`;
-    const res = await fetch(bckEndUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt: result.jobSearch }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP error! status ${res.status}`);
-    }
-    const summaries = await res.json();
-    return Response.json(summaries);
+    return proxySuggestions('/api/summaries', result.jobSearch);
   }
   return Response.json({});
 };

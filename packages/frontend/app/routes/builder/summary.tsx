@@ -190,32 +190,34 @@ export default function Summary() {
           />
           <div className="space-y-4">
             <Loading fetcher={fetcher}>
-              {fetcher.data?.map((example) => (
-                <button
-                  type="button"
-                  key={example.text}
-                  className="text-left border p-4 rounded-md cursor-pointer 
+              {(Array.isArray(fetcher.data) ? fetcher.data : []).map(
+                (example) => (
+                  <button
+                    type="button"
+                    key={example.text}
+                    className="text-left border p-4 rounded-md cursor-pointer 
             hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  onClick={() => {
-                    const textarea = document.getElementById(
-                      'summary',
-                    ) as HTMLTextAreaElement;
-                    if (textarea) {
-                      textarea.value = example.text;
-                    }
-                  }}
-                >
-                  <Heading
-                    text={example.title}
-                    level="h3"
-                    size="text-base"
-                    classNames="mb-2"
-                  />
-                  <p className="text-sm dark:text-gray-400 text-gray-600">
-                    {example.text}
-                  </p>
-                </button>
-              ))}
+                    onClick={() => {
+                      const textarea = document.getElementById(
+                        'summary',
+                      ) as HTMLTextAreaElement;
+                      if (textarea) {
+                        textarea.value = example.text;
+                      }
+                    }}
+                  >
+                    <Heading
+                      text={example.title}
+                      level="h3"
+                      size="text-base"
+                      classNames="mb-2"
+                    />
+                    <p className="text-sm dark:text-gray-400 text-gray-600">
+                      {example.text}
+                    </p>
+                  </button>
+                ),
+              )}
             </Loading>
           </div>
         </div>
