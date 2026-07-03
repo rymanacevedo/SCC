@@ -17,7 +17,6 @@ export const openAiEnvironmentSchema = z.object({
   OPENAI_API_KEY: z.string().min(1),
   OPENAI_BASE_URL: z.string().url().optional(),
   OPENAI_MODEL: z.string().min(1).optional(),
-  GEMINI_API_KEY: z.string().min(1).optional(),
 });
 
 export const environmentSchema = baseEnvironmentSchema
