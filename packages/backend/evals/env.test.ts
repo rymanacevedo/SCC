@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadEvalEnvironment } from './env';
+import { loadEvalEnvironment, readEvalEnvironment } from './env';
 
 const tempDirs: string[] = [];
 
@@ -23,6 +23,19 @@ describe('loadEvalEnvironment', () => {
     );
 
     const env = await loadEvalEnvironment(tempDir);
+
+    expect(env).toEqual({
+      OPENAI_API_KEY: 'openai-test',
+      GEMINI_API_KEY: 'gemini-test',
+    });
+  });
+
+  test('reads the eval environment from process-style variables', () => {
+    const env = readEvalEnvironment({
+      OPENAI_API_KEY: 'openai-test',
+      GEMINI_API_KEY: 'gemini-test',
+      UNUSED_KEY: 'ignored',
+    });
 
     expect(env).toEqual({
       OPENAI_API_KEY: 'openai-test',

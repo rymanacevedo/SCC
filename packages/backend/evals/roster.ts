@@ -3,10 +3,11 @@ import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModel } from 'ai';
 import type { EvalEnvironment } from './env';
 
-export type BakeOffModelId =
-  | 'gpt-5-nano'
-  | 'gemini-2.5-flash-lite'
-  | 'gemini-2.5-flash';
+type OpenAiBakeOffModelId = 'gpt-5-nano';
+
+type GeminiBakeOffModelId = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash';
+
+export type BakeOffModelId = OpenAiBakeOffModelId | GeminiBakeOffModelId;
 
 type ModelFactory = (environment: EvalEnvironment) => LanguageModel;
 
@@ -15,14 +16,14 @@ export type ModelRosterEntry = {
   createModel: ModelFactory;
 };
 
-const createOpenAiModel = (modelId: BakeOffModelId): ModelFactory => {
+const createOpenAiModel = (modelId: OpenAiBakeOffModelId): ModelFactory => {
   return (environment) =>
     createOpenAI({
       apiKey: environment.OPENAI_API_KEY,
     })(modelId);
 };
 
-const createGeminiModel = (modelId: BakeOffModelId): ModelFactory => {
+const createGeminiModel = (modelId: GeminiBakeOffModelId): ModelFactory => {
   return (environment) =>
     createGoogleGenerativeAI({
       apiKey: environment.GEMINI_API_KEY,

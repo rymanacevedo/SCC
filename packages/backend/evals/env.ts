@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+const evalEnvironmentFileName = '.dev.vars';
+
 const evalEnvironmentSchema = z.object({
   OPENAI_API_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
@@ -9,7 +11,7 @@ const evalEnvironmentSchema = z.object({
 
 export type EvalEnvironment = z.infer<typeof evalEnvironmentSchema>;
 
-function parseDotEnv(contents: string): Record<string, string> {
+function parseEvalEnvironmentFile(contents: string): Record<string, string> {
   const entries = contents
     .split(/\r?\n/u)
     .map((line) => line.trim())
@@ -30,13 +32,19 @@ function parseDotEnv(contents: string): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
+export function readEvalEnvironment(
+  environmentSource: Record<string, string | undefined>,
+): EvalEnvironment {
+  return evalEnvironmentSchema.parse(environmentSource);
+}
+
 export async function loadEvalEnvironment(
   backendDirectory: string,
 ): Promise<EvalEnvironment> {
-  const envPath = join(backendDirectory, '.dev.vars');
+  const envPath = join(backendDirectory, evalEnvironmentFileName);
   const contents = await readFile(envPath, 'utf8');
 
-  return evalEnvironmentSchema.parse(parseDotEnv(contents));
+  return readEvalEnvironment(parseEvalEnvironmentFile(contents));
 }
 
 export async function applyEvalEnvironment(

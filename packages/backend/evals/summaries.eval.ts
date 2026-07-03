@@ -1,6 +1,7 @@
 import { evalite } from 'evalite';
 import { wrapAISDKModel } from 'evalite/ai-sdk';
 import { createSummaries } from '../src/services/ai';
+import { readEvalEnvironment } from './env';
 import { summaryFixtures } from './fixtures/summaries';
 import { buildEvalName, modelRoster } from './roster';
 
@@ -14,19 +15,17 @@ type SummariesEvalResult =
       error: string;
     };
 
+const summaryEvalData = summaryFixtures.map((fixture) => ({
+  input: fixture,
+}));
+
 for (const rosterEntry of modelRoster) {
   evalite(buildEvalName('Summaries', rosterEntry.modelId), {
-    data: summaryFixtures.map((fixture) => ({
-      input: fixture,
-    })),
+    data: summaryEvalData,
     task: async ({ prompt }) => {
       try {
-        const model = wrapAISDKModel(
-          rosterEntry.createModel({
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
-            GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
-          }),
-        );
+        const environment = readEvalEnvironment(process.env);
+        const model = wrapAISDKModel(rosterEntry.createModel(environment));
 
         return {
           status: 'ok',
