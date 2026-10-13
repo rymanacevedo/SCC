@@ -1,8 +1,8 @@
 // CustomParagraphNode.ts
 import {
   type EditorConfig,
-  type SerializedParagraphNode,
   ParagraphNode,
+  type SerializedParagraphNode,
 } from 'lexical';
 
 // Extend the serialized type to include the custom className

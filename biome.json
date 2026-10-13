@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -9,6 +9,10 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.mts",
+      "**/*.cts",
       "!node_modules/**/*",
       "!dist/**/*",
       "!build/**/*",
@@ -18,11 +22,7 @@
       "!.react-router/**/*",
       "!.turbo/**/*",
       "!**/node_modules/**/*",
-      "!bin/**/*",
-      "**/*.ts",
-      "**/*.tsx",
-      "**/*.mts",
-      "**/*.cts"
+      "!bin/**/*"
     ]
   },
   "formatter": {
@@ -30,6 +30,10 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.mts",
+      "**/*.cts",
       "!node_modules/**/*",
       "!dist/**/*",
       "!build/**/*",
@@ -39,11 +43,7 @@
       "!.react-router/**/*",
       "!.turbo/**/*",
       "!**/node_modules/**/*",
-      "!bin/**/*",
-      "**/*.ts",
-      "**/*.tsx",
-      "**/*.mts",
-      "**/*.cts"
+      "!bin/**/*"
     ]
   },
   "assist": {
@@ -56,7 +56,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error"

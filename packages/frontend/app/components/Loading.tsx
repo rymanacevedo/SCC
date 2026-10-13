@@ -1,5 +1,5 @@
-import type { FetcherWithComponents } from 'react-router';
 import { memo, type ReactNode } from 'react';
+import type { FetcherWithComponents } from 'react-router';
 
 interface LoadingProps {
   fetcher: FetcherWithComponents<unknown>;
