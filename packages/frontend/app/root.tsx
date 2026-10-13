@@ -6,6 +6,13 @@ import { generateId } from './utils/id';
 import { getUser, setUser, type User } from './utils/user';
 import './app.css';
 
+/**
+ * Cloudflare Web Analytics site token for sccc.netlify.app. Not a secret: it
+ * ships in every page. Empty disables the beacon; it only loads in production
+ * builds so the dev server never pollutes the field data.
+ */
+const CF_BEACON_TOKEN = '';
+
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
@@ -64,6 +71,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration />
         <Scripts />
+        {import.meta.env.PROD && CF_BEACON_TOKEN ? (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: CF_BEACON_TOKEN })}
+          />
+        ) : null}
       </body>
     </html>
   );
