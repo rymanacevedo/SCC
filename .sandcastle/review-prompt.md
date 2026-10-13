@@ -6,11 +6,11 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 
 ## Branch diff
 
-!`git diff {{TARGET_BRANCH}}...{{BRANCH}}`
+!`git diff {{BASE_BRANCH}}...{{BRANCH}}`
 
 ## Commits on this branch
 
-!`git log {{TARGET_BRANCH}}..{{BRANCH}} --oneline`
+!`git log {{BASE_BRANCH}}..{{BRANCH}} --oneline`
 
 # REVIEW PROCESS
 
@@ -47,9 +47,9 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run tests and type checking to ensure nothing is broken
-3. Commit describing the refinements
+2. Run `bun run typecheck` and `bun run test` to ensure nothing is broken; this task explicitly instructs these checks.
+3. Commit describing the refinements using the repo's conventional-commit format.
 
 If the code is already clean and well-structured, do nothing.
 
-Once complete, output <promise>COMPLETE</promise>.
+Keep the issue open and the branch local for the batch PR. If correctness or verification is blocked, report the blocker without signaling completion. Once the branch is correct, verified, and fully committed, output <promise>COMPLETE</promise>.
