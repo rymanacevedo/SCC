@@ -49,3 +49,9 @@ _Avoid_: editor, resume editor, rich-text editor
 **Export**:
 A PDF or DOCX rendering of the Outline, produced on demand when the user asks for it.
 _Avoid_: download, generate
+
+## API
+
+**API client**:
+The one browser module through which every builder page talks to the Worker's `/api/*` routes: three generators, error telemetry, issue reports. It returns results, never throws, and can be aborted on navigation.
+_Avoid_: fetcher, proxy, resource route, service

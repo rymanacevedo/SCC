@@ -6,7 +6,7 @@ SCC is split into packages, each with its own bounded vocabulary. This map point
 |---------|----------|-----------------|
 | Backend | [`packages/backend/GLOSSARY.md`](packages/backend/GLOSSARY.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
 | Frontend | [`packages/frontend/GLOSSARY.md`](packages/frontend/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
-| Shared | _not yet documented_ | Cross-package types and utilities |
+| Shared | _not yet documented_ | Schemas both contexts import: Section schemas, the generation request and output contracts, error reporting |
 
 ## Architectural decisions
 
