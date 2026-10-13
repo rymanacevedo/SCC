@@ -29,3 +29,21 @@ A measurement of *model/prompt output quality* — not pass/fail on code. Lives 
 
 ### Bake-off
 A one-shot comparative eval across a fixed **roster** of candidate models over the same fixtures, run to make a model-selection decision. The verdict is human; if it changes the production model, that change is recorded as its own ADR and commit — a bake-off never mutates production configuration itself.
+
+## Migration verdict
+
+### Verdict
+The document that compares the migrated site against the baseline tag, cell by cell, and ends in one overall PASS or FAIL. Scored metrics can fail it; reported metrics only appear in it.
+_Avoid_: perf report, comparison, results
+
+### Gate
+The subset of the Verdict's rules that must pass on a preview deployment before cutover. A Gate failure blocks the cutover; thresholds change only by a map ticket, never by the implementer.
+_Avoid_: perf budget, acceptance criteria
+
+### App script bytes
+The script transfer bytes a page downloads from the app's own build. The scored byte metric in the Verdict: it measures the app, not its vendors.
+_Avoid_: script transfer bytes, JS size, bundle size (the built-asset figure is a different, reported-only number)
+
+### Third-party script bytes
+The script transfer bytes a page downloads from hosts outside the app's build, today only the Web Analytics beacon. Reported in the Verdict, never scored.
+_Avoid_: vendor bytes, analytics overhead
