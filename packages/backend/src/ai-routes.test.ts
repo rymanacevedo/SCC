@@ -1,5 +1,7 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import type { Env } from 'hono';
+import { createMockModel } from '../test/mock-model';
+import * as modelAdapter from './services/model';
 
 const env = {
   ALLOWED_ORIGIN: 'https://example.com',
@@ -29,6 +31,45 @@ function requestFromUs(
 }
 
 describe('AI routes', () => {
+  const summaries = [{ title: 'Engineer', text: 'Builds reliable systems.' }];
+  const suggestions = {
+    expertRecommended: ['Problem solving'],
+    other: ['Communication'],
+  };
+
+  for (const { route, output, responseBody } of [
+    { route: 'summaries', output: { summaries }, responseBody: summaries },
+    { route: 'skills', output: suggestions, responseBody: suggestions },
+    { route: 'experience', output: suggestions, responseBody: suggestions },
+  ]) {
+    test(`POST /api/${route} preserves generated JSON with a V4 mock model`, async () => {
+      const model = createMockModel(output);
+      const resolveModel = spyOn(modelAdapter, 'resolveModel').mockReturnValue(
+        model,
+      );
+
+      try {
+        const { default: app } = await import('./index');
+        const response = await requestFromUs(app, `/api/${route}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: env.ALLOWED_ORIGIN,
+          },
+          body: JSON.stringify({
+            prompt: '<job><jobTitle>Engineer</jobTitle></job>',
+          }),
+        });
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual(responseBody);
+        expect(model.doGenerateCalls).toHaveLength(1);
+      } finally {
+        resolveModel.mockRestore();
+      }
+    });
+  }
+
   test('returns 400 for invalid generation payloads', async () => {
     const { default: app } = await import('./index');
 
