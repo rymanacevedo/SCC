@@ -25,12 +25,20 @@ const envelopeSchema = z.object({
   user: z.record(z.string(), z.unknown()),
   drafts: z.record(z.string(), z.unknown()),
 });
-const fresh = (): Envelope => ({
+const createEnvelope = (): Envelope => ({
   version: STORAGE_VERSION,
   timestamp: new Date().toISOString(),
   user: {},
   drafts: {},
 });
+
+type StoredEntry =
+  | NonNullable<User['experience']>[number]
+  | NonNullable<User['education']>[number];
+
+function entryId(entry: StoredEntry): string {
+  return 'jobId' in entry ? entry.jobId : entry.educationId;
+}
 
 export function createUserStorage(
   storage: () => Storage = () => window.sessionStorage,
@@ -60,21 +68,21 @@ export function createUserStorage(
   function read(): Result<Envelope> {
     try {
       const raw = storage().getItem(STORAGE_KEY);
-      if (raw === null) return { ok: true, value: fresh() };
+      if (raw === null) return { ok: true, value: createEnvelope() };
       let parsed: z.infer<typeof envelopeSchema>;
       try {
         parsed = envelopeSchema.parse(JSON.parse(raw));
       } catch {
         // Back up before replacing: if either write fails, preserve the original.
         storage().setItem(BACKUP_KEY, raw);
-        const result = save(fresh());
+        const result = save(createEnvelope());
         if (result.ok)
           telemetry(
             'Stored envelope could not be parsed; started a fresh User.',
           );
         return result;
       }
-      const value = fresh();
+      const value = createEnvelope();
       value.timestamp = parsed.timestamp;
       let changed = parsed.version !== STORAGE_VERSION;
       for (const section of Object.keys(sectionSchemas) as Section[]) {
@@ -138,14 +146,9 @@ export function createUserStorage(
     const parsed = sectionSchemas[section].element.safeParse(entry);
     if (!parsed.success) return { ok: false, error: 'validation' };
     return change((envelope) => {
-      const identity = (value: { jobId: string } | { educationId: string }) =>
-        'jobId' in value ? value.jobId : value.educationId;
-      const entries: (
-        | NonNullable<User['experience']>[number]
-        | NonNullable<User['education']>[number]
-      )[] = [...(envelope.user[section] ?? [])];
+      const entries: StoredEntry[] = [...(envelope.user[section] ?? [])];
       const index = entries.findIndex(
-        (value) => identity(value) === identity(parsed.data),
+        (value) => entryId(value) === entryId(parsed.data),
       );
       if (index < 0) entries.push(parsed.data);
       else entries[index] = parsed.data;
@@ -160,7 +163,7 @@ export function createUserStorage(
     const current = read();
     if (!current.ok) return current;
     const entry = current.value.user[section]?.find(
-      (value) => ('jobId' in value ? value.jobId : value.educationId) === id,
+      (value) => entryId(value) === id,
     );
     if (!entry) return { ok: false, error: 'not-found' };
     Object.assign(current.value.drafts, { [section]: entry });
@@ -206,9 +209,14 @@ const escapePromptText = (text: string) =>
 export function serializePrompt(user: User): string | undefined {
   if (!user.experience?.length) return undefined;
   return user.experience
-    .map(
-      (job) =>
-        `<job><jobTitle>${escapePromptText(job.jobTitle)}</jobTitle><employer>${escapePromptText(job.employer)}</employer><details>${(job.details ?? []).map((detail, i) => `<detail${i + 1}>${escapePromptText(detail)}</detail${i + 1}>`).join('')}</details></job>`,
-    )
+    .map((job) => {
+      const details = (job.details ?? [])
+        .map((detail, index) => {
+          const tag = `detail${index + 1}`;
+          return `<${tag}>${escapePromptText(detail)}</${tag}>`;
+        })
+        .join('');
+      return `<job><jobTitle>${escapePromptText(job.jobTitle)}</jobTitle><employer>${escapePromptText(job.employer)}</employer><details>${details}</details></job>`;
+    })
     .join('');
 }

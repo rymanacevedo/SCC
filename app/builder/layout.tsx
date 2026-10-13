@@ -32,6 +32,12 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
       });
     }
     const nav = builderNav(step, url);
+    let submitLabel = 'Next Step';
+    if (pending.pending) {
+      submitLabel = 'Saving…';
+    } else if (nav.returnUrl) {
+      submitLabel = 'Resubmit';
+    }
     return (
       <section>
         <h1 className="mb-6 text-3xl font-bold">{title}</h1>
@@ -63,11 +69,7 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
                 disabled={pending.pending}
                 className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
               >
-                {pending.pending
-                  ? 'Saving…'
-                  : nav.returnUrl
-                    ? 'Resubmit'
-                    : 'Next Step'}
+                {submitLabel}
               </button>
             </nav>
           </form>

@@ -7,10 +7,13 @@ export function formValues(data: FormData): FormValues {
   for (const [name, entry] of data) {
     if (typeof entry !== 'string') continue;
     const previous = values[name];
-    values[name] =
-      previous === undefined
-        ? entry
-        : [...(Array.isArray(previous) ? previous : [previous]), entry];
+    if (previous === undefined) {
+      values[name] = entry;
+    } else if (Array.isArray(previous)) {
+      values[name] = [...previous, entry];
+    } else {
+      values[name] = [previous, entry];
+    }
   }
   return values;
 }

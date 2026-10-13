@@ -12,7 +12,7 @@ import {
   SummarySchema,
 } from '../shared/schemas/generation.ts';
 
-const statuses: Record<number, FailureCode> = {
+const failureCodeByStatus: Record<number, FailureCode> = {
   400: 'validation',
   403: 'forbidden',
   404: 'not-found',
@@ -35,7 +35,7 @@ async function post<T>(
     if (!response.ok)
       return {
         ok: false,
-        error: statuses[response.status] ?? 'server',
+        error: failureCodeByStatus[response.status] ?? 'server',
         status: response.status,
       };
     let output: unknown;
