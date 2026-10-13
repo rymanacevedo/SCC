@@ -1,0 +1,294 @@
+{
+  "lighthouse": [
+    {
+      "formFactor": "desktop",
+      "page": "experience",
+      "runs": 5,
+      "median": {
+        "perf": 0.99,
+        "ttfb": 105.034,
+        "fcp": 1101,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 706.198926746129,
+        "tti": 981.864,
+        "bytesTotal": 224853,
+        "bytesScript": 75000,
+        "bytesDocument": 1264,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "home",
+      "runs": 5,
+      "median": {
+        "perf": 0.99,
+        "ttfb": 100.53,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 695.7191963131382,
+        "tti": 987.0135000000002,
+        "bytesTotal": 222970,
+        "bytesScript": 75001,
+        "bytesDocument": 1263,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "resume",
+      "runs": 5,
+      "median": {
+        "perf": 0.98,
+        "ttfb": 95.82800000000002,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 692.7754783698781,
+        "tti": 1068.8950000000002,
+        "bytesTotal": 495117,
+        "bytesScript": 75000,
+        "bytesDocument": 1263,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "summary",
+      "runs": 5,
+      "median": {
+        "perf": 0.99,
+        "ttfb": 98.83800000000001,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 649.9025000000001,
+        "tti": 958.2425000000002,
+        "bytesTotal": 222281,
+        "bytesScript": 75000,
+        "bytesDocument": 1264,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "experience",
+      "runs": 5,
+      "median": {
+        "perf": 0.94,
+        "ttfb": 119.94,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 1861.9091237027571,
+        "tti": 2995.3135,
+        "bytesTotal": 225048,
+        "bytesScript": 75000,
+        "bytesDocument": 1271,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "home",
+      "runs": 5,
+      "median": {
+        "perf": 0.9,
+        "ttfb": 120.149,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 3043.5212000123497,
+        "tti": 2881.534999999999,
+        "bytesTotal": 223030,
+        "bytesScript": 75000,
+        "bytesDocument": 1264,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "resume",
+      "runs": 5,
+      "median": {
+        "perf": 0.84,
+        "ttfb": 100.945,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 2429.94638429098,
+        "tti": 4364.984,
+        "bytesTotal": 495221,
+        "bytesScript": 75000,
+        "bytesDocument": 1264,
+        "bytesScriptThirdParty": 10224
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "summary",
+      "runs": 5,
+      "median": {
+        "perf": 0.94,
+        "ttfb": 98.59499999999998,
+        "fcp": 1000,
+        "lcp": 1000,
+        "tbt": 0,
+        "cls": 0,
+        "si": 1780.7205,
+        "tti": 2868.2405,
+        "bytesTotal": 222243,
+        "bytesScript": 75000,
+        "bytesDocument": 1263,
+        "bytesScriptThirdParty": 10224
+      }
+    }
+  ],
+  "flows": [
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.99,
+        "fcp": 574.3157,
+        "lcp": 836.3922500000001,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 716.8577134102218
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 252.92299515991212,
+        "lcp": 489.53582548217776,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 478.84083183139074
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 50,
+        "si": null
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.79,
+        "fcp": 1630.0056,
+        "lcp": 3155.9260999999997,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 1630.0056
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.93,
+        "fcp": 804.6169,
+        "lcp": 2180.6169,
+        "tbt": 56,
+        "cls": 0,
+        "inp": null,
+        "si": 1138.606264830817
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 50,
+        "si": null
+      }
+    }
+  ],
+  "bundle": {
+    "js": {
+      "bytes": 1801481,
+      "gzipBytes": 543286
+    },
+    "css": {
+      "bytes": 26231,
+      "gzipBytes": 5751
+    },
+    "fileCount": 72
+  },
+  "api": {
+    "localStub": {
+      "samples": 30,
+      "nonOk": 0,
+      "starttransferMs": {
+        "p50": 3,
+        "p95": 4,
+        "max": 4
+      }
+    },
+    "live": {
+      "samples": 5,
+      "nonOk": 0,
+      "colos": [
+        "MCI"
+      ],
+      "starttransferMs": {
+        "min": 5210,
+        "p50": 5510,
+        "max": 8481
+      }
+    }
+  }
+}
