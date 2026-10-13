@@ -5,12 +5,12 @@ SCC is split into packages, each with its own bounded vocabulary. This map point
 | Context | Glossary | What lives here |
 |---------|----------|-----------------|
 | Backend | [`packages/backend/GLOSSARY.md`](packages/backend/GLOSSARY.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
-| Frontend | _not yet documented_ | React Router app: the section-by-section builder UI |
+| Frontend | [`packages/frontend/GLOSSARY.md`](packages/frontend/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
 | Shared | _not yet documented_ | Cross-package types and utilities |
 
 ## Architectural decisions
 
 - **System-wide** decisions live in `docs/adr/` at the repo root.
-- **Context-specific** decisions live under each package, e.g. [`packages/backend/docs/adr/`](packages/backend/docs/adr/).
+- **Context-specific** decisions live under each package, e.g. [`packages/backend/docs/adr/`](packages/backend/docs/adr/) and [`packages/frontend/docs/adr/`](packages/frontend/docs/adr/).
 
 Read the ADRs that touch the area you're about to work in before proposing changes there.
