@@ -16,7 +16,7 @@ export async function clientAction({ request }: ActionFunctionArgs) {
     payload = errorTelemetrySchema.parse(await request.json());
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return data({ errors: error.flatten() }, { status: 400 });
+      return data({ errors: z.flattenError(error) }, { status: 400 });
     }
 
     return data({ error: 'Invalid request payload.' }, { status: 400 });

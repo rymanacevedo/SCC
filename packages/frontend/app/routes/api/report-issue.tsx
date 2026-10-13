@@ -8,7 +8,7 @@ import {
   userIssueReportSchema as reportIssueSchema,
   type UserIssueReportPayload,
 } from '../../../../shared/errorReporting';
-import type { FormErrors } from '../../components/Input';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import { VITE_HONO_BACKEND_URL } from '../../lib/environment';
 
 export { reportIssueSchema };
@@ -27,10 +27,7 @@ export const clientAction: ClientActionFunction = async ({
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return data(
-        { errors: error.flatten().fieldErrors as FormErrors },
-        { status: 400 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
 
     return data({ error: 'Invalid request payload.' }, { status: 400 });

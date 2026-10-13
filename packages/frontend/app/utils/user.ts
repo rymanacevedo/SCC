@@ -1,19 +1,21 @@
 import { z } from 'zod';
-import { PersonalInfoSchema } from '../routes/builder/info';
-import { SkillsSchema } from '../routes/builder/skills';
-import { SummarySchema } from '../routes/builder/summary';
 import {
   type EducationEntry,
   normalizeEducationEntry,
   type PartialEducationEntry,
   sortEducationEntries,
 } from './education';
-import { BaseEducationSchema } from './schemas/education';
+import {
+  type BaseEducationSchema,
+  PartialEducationSchema,
+} from './schemas/education';
 import { BaseExperienceSchema } from './schemas/experience';
+import { PersonalInfoSchema } from './schemas/info';
+import { SkillsSchema } from './schemas/skills';
+import { SummarySchema } from './schemas/summary';
 
 const PartialPersonalInfo = PersonalInfoSchema;
 const PartialExperienceSchema = BaseExperienceSchema;
-const PartialEducationSchema = BaseEducationSchema.partial();
 const PartialSkillsSchema = SkillsSchema;
 const PartialSummarySchema = SummarySchema;
 

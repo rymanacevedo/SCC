@@ -7,7 +7,9 @@ import {
   useLoaderData,
 } from 'react-router';
 import { z } from 'zod';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import type { Route } from '../../../.react-router/types/app/+types/root';
+import { SummarySchema } from '../../utils/schemas/summary';
 
 export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
 
@@ -20,9 +22,7 @@ import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
 import { getUser, updateUser } from '../../utils/user';
 
-export const SummarySchema = z.object({
-  summary: z.string().min(50, 'Summary should be at least 50 characters'),
-});
+export { SummarySchema };
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const formData = await request.formData();
@@ -38,10 +38,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return data(
-        { errors: error.flatten().fieldErrors as FormErrors },
-        { status: 400 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
     return data(
       { errors: { _form: ['An errored occured.'] } as FormErrors },

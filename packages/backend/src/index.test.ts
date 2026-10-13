@@ -103,6 +103,10 @@ describe('POST /api/errors', () => {
     );
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      success: false,
+      error: { name: 'ZodError', message: expect.any(String) },
+    });
   });
 
   test('returns 502 when GitHub is unreachable', async () => {

@@ -8,10 +8,11 @@ import {
   useNavigate,
 } from 'react-router';
 import { z } from 'zod';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
-import Input, { type FormErrors } from '../../components/Input';
+import Input from '../../components/Input';
 import Main from '../../components/Main';
 import Select from '../../components/Select';
 import { generateId } from '../../utils/id';
@@ -79,10 +80,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return redirect(redirectUrl);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return data(
-        { errors: error.flatten().fieldErrors as FormErrors },
-        { status: 400 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
     return data(
       { errors: { _form: ['An errored occured.'] } },

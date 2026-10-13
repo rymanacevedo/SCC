@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 
 let clearQueuedEducation: typeof import('./user').clearQueuedEducation;
 let getQueuedEducation: typeof import('./user').getQueuedEducation;
@@ -21,38 +21,22 @@ function createSessionStorageMock() {
   };
 }
 
-describe('queued education helpers', () => {
-  beforeEach(async () => {
-    const sessionStorage = createSessionStorageMock();
-    Object.defineProperty(globalThis, 'window', {
-      value: { sessionStorage },
-      configurable: true,
-    });
-    Object.defineProperty(globalThis, 'sessionStorage', {
-      value: sessionStorage,
-      configurable: true,
-    });
-
-    mock.module('../routes/builder/info', () => ({
-      PersonalInfoSchema: {
-        optional: () => undefined,
-      },
-    }));
-    mock.module('../routes/builder/skills', () => ({
-      SkillsSchema: {
-        optional: () => undefined,
-      },
-    }));
-    mock.module('../routes/builder/summary', () => ({
-      SummarySchema: {
-        optional: () => undefined,
-      },
-    }));
-
-    ({ clearQueuedEducation, getQueuedEducation, setQueuedEducation } =
-      await import('./user'));
+beforeEach(async () => {
+  const sessionStorage = createSessionStorageMock();
+  Object.defineProperty(globalThis, 'window', {
+    value: { sessionStorage },
+    configurable: true,
+  });
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    value: sessionStorage,
+    configurable: true,
   });
 
+  ({ clearQueuedEducation, getQueuedEducation, setQueuedEducation } =
+    await import('./user'));
+});
+
+describe('queued education helpers', () => {
   test('stores and retrieves normalized queued education entries', () => {
     setQueuedEducation({
       schoolName: 'Coursera',
@@ -82,5 +66,26 @@ describe('queued education helpers', () => {
     clearQueuedEducation();
 
     expect(getQueuedEducation()).toBeNull();
+  });
+});
+
+describe('stored User compatibility with Zod 3', () => {
+  test('reads fixed stored JSON as the object captured before the Zod 4 bump', async () => {
+    // Captured by parsing this fixture with frontend Zod 3.25.76 before the bump.
+    const { default: fixture } = await import('./fixtures/user-zod3.json');
+    const { getUser } = await import('./user');
+    window.sessionStorage.setItem('user', JSON.stringify(fixture.stored));
+    const user = getUser();
+    expect(user).not.toBeNull();
+    expect(user).toEqual({
+      ...fixture.parsed,
+      experience: fixture.parsed.experience.map((entry) => ({
+        ...entry,
+        startDate: new Date(entry.startDate),
+        endDate: undefined,
+      })),
+    });
+    expect(user?.education?.[0]).not.toHaveProperty('degree');
+    expect(user?.education?.[2]).toEqual({});
   });
 });

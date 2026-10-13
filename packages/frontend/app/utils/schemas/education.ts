@@ -15,8 +15,8 @@ export const EducationLevelSchema = z.union([
 export const BaseEducationSchema = z.object({
   schoolName: z.string().min(1, 'School Name is required.'),
   educationLevel: EducationLevelSchema,
-  degree: z.string().optional().default(''),
-  location: z.string().optional().default(''),
+  degree: z.string().prefault(''),
+  location: z.string().prefault(''),
   graduationDate: z
     .string()
     .transform((val) => {
@@ -33,5 +33,15 @@ export const BaseEducationSchema = z.object({
         .transform((year) => year.toString())
         .optional(),
     ),
-  currentlyEnrolled: z.boolean().default(false),
+  currentlyEnrolled: z.boolean().prefault(false),
+});
+
+// Stored and queued education may be incomplete. Zod 3's partial schema skipped
+// defaults for absent fields; Zod 4 applies even prefaults inside optional fields.
+export const PartialEducationSchema = BaseEducationSchema.partial().extend({
+  degree: BaseEducationSchema.shape.degree.unwrap().optional(),
+  location: BaseEducationSchema.shape.location.unwrap().optional(),
+  currentlyEnrolled: BaseEducationSchema.shape.currentlyEnrolled
+    .unwrap()
+    .optional(),
 });

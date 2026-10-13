@@ -23,6 +23,6 @@ export const BaseExperienceSchema = z.object({
     .refine((date) => !date || !Number.isNaN(date.getTime()), {
       message: 'Invalid end date format',
     }),
-  currentlyEmployed: z.boolean().default(false),
+  currentlyEmployed: z.boolean().prefault(false),
   details: z.array(z.string()).optional(),
 });
