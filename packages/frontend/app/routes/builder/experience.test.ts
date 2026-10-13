@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import { BaseExperienceSchema } from '../../utils/schemas/experience';
 
 const validExperience = {
@@ -28,9 +29,7 @@ describe('BaseExperienceSchema', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.city).toEqual([
-        'City is required.',
-      ]);
+      expect(fieldErrors(result.error).city).toEqual(['City is required.']);
     }
   });
 
@@ -42,9 +41,7 @@ describe('BaseExperienceSchema', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.state).toEqual([
-        'State is required.',
-      ]);
+      expect(fieldErrors(result.error).state).toEqual(['State is required.']);
     }
   });
 });

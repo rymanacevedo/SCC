@@ -1,0 +1,53 @@
+{
+  "excludeScriptHosts": [
+    "static.cloudflareinsights.com"
+  ],
+  "fcp": {
+    "relative": 0.1,
+    "absoluteMs": 100
+  },
+  "lcp": {
+    "relative": 0.1,
+    "absoluteMs": 100
+  },
+  "tbt": {
+    "absoluteMs": 50
+  },
+  "cls": {
+    "absolute": 0.025,
+    "seededMobileMax": 0.1
+  },
+  "bytesScript": {
+    "relative": 0.05,
+    "reductionTarget": 0.25,
+    "targetPages": [
+      "home",
+      "experience",
+      "summary",
+      "resume"
+    ]
+  },
+  "inp": {
+    "maxMs": 100
+  },
+  "apiStubP50": {
+    "absoluteMs": 5
+  },
+  "narrowMiss": {
+    "toleranceMultiplier": 2,
+    "rerunCount": 9
+  },
+  "reportedOnly": [
+    "ttfb",
+    "si",
+    "tti",
+    "perf",
+    "bytesTotal",
+    "bytesDocument",
+    "bytesScriptThirdParty",
+    "api.live",
+    "bundle",
+    "workerBundle",
+    "fieldData"
+  ]
+}

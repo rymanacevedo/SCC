@@ -4,7 +4,7 @@ import {
   data,
 } from 'react-router';
 import { z } from 'zod';
-import type { FormErrors } from '../../components/Input';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import { filter } from '../../utils/filter';
 import { proxySuggestions } from '../../utils/suggestions';
 
@@ -37,10 +37,7 @@ export const clientAction: ClientActionFunction = async ({
     result = formSchema.parse(fields);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return data(
-        { errors: error.flatten().fieldErrors as FormErrors },
-        { status: 400 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
     return data(
       { errors: { _form: ['An errored occured.'] } },

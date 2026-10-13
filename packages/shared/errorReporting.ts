@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const errorTelemetrySchema = z.object({
-  timestamp: z.string().datetime(),
+  timestamp: z.iso.datetime(),
   url: z.string().min(1),
   message: z.string().min(1),
   stackTrace: z.string().optional(),
@@ -9,8 +9,8 @@ export const errorTelemetrySchema = z.object({
 
 export const userIssueReportSchema = z.object({
   description: z.string().trim().min(1),
-  timestamp: z.string().datetime(),
-  url: z.string().url(),
+  timestamp: z.iso.datetime(),
+  url: z.url(),
 });
 
 export type ErrorTelemetryPayload = z.infer<typeof errorTelemetrySchema>;

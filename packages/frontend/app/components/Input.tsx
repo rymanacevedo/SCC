@@ -1,9 +1,8 @@
 import { memo, useEffect, useState } from 'react';
+import type { FieldErrors as FormErrors } from '../../../shared/fieldErrors';
 import { type InputTypeKeys, inputTypes } from '../utils/inputTypes';
 
-export type FormErrors = {
-  [key: string]: string[] | undefined;
-};
+export type { FieldErrors as FormErrors } from '../../../shared/fieldErrors';
 
 type BaseInputProps = {
   label: string;

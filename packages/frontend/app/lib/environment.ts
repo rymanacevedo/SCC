@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const schema = z.object({
-  VITE_HONO_BACKEND_URL: z.string().url().min(1),
+  VITE_HONO_BACKEND_URL: z.url().min(1),
 });
 
 type EnvSchema = z.infer<typeof schema>;

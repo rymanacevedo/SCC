@@ -1,2 +1,8 @@
-{ "name": "scc-perf-tools", "private": true, "type": "module",
-  "dependencies": { "lighthouse": "13.5.0", "puppeteer": "24" } }
+{
+  "name": "scc-perf-tools",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "lighthouse": "13.5.0"
+  }
+}

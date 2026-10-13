@@ -8,10 +8,10 @@ import {
   useLoaderData,
   useNavigate,
 } from 'react-router';
+import { fieldErrors } from '../../../../shared/fieldErrors';
 import type { Route } from '../../../.react-router/types/app/+types/root';
 import Button from '../../components/Button';
 import Heading from '../../components/Heading';
-import type { FormErrors } from '../../components/Input';
 import Loading from '../../components/Loading';
 
 export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
@@ -20,7 +20,6 @@ import { z } from 'zod';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
-import type { ActionData } from '../../models/Actions';
 import { addQueryParams } from '../../utils/navigation';
 import {
   getExperienceDetails,
@@ -73,16 +72,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      if (error instanceof z.ZodError) {
-        return data(
-          { errors: error.flatten().fieldErrors as FormErrors },
-          { status: 400 },
-        );
-      }
-      return data(
-        { errors: { _form: ['An errored occured.'] } },
-        { status: 409 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
   }
 }

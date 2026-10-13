@@ -1,0 +1,100 @@
+{
+  "stored": {
+    "userId": "stored-user",
+    "info": {
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "city": "Denver",
+      "state": "CO",
+      "zipCode": "80202",
+      "phone": "303-555-0123",
+      "email": "ada@example.com"
+    },
+    "experience": [
+      {
+        "jobId": "job-1",
+        "jobTitle": "Developer",
+        "employer": "Example Co",
+        "city": "Denver",
+        "state": "CO",
+        "startDate": "2024-01-01",
+        "endDate": "",
+        "details": [
+          "Built tools"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "schoolName": "Example University",
+        "educationLevel": "Bachelors"
+      },
+      {
+        "schoolName": "Example School",
+        "degree": "",
+        "location": "",
+        "currentlyEnrolled": false,
+        "graduationDate": "2024"
+      },
+      {}
+    ],
+    "skills": {
+      "expertRecommended": [
+        "Coding"
+      ],
+      "other": []
+    },
+    "summary": {
+      "summary": "A thoughtful developer building reliable tools for users."
+    }
+  },
+  "parsed": {
+    "userId": "stored-user",
+    "info": {
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "city": "Denver",
+      "state": "CO",
+      "zipCode": "80202",
+      "phone": "3035550123",
+      "email": "ada@example.com"
+    },
+    "experience": [
+      {
+        "jobId": "job-1",
+        "jobTitle": "Developer",
+        "employer": "Example Co",
+        "city": "Denver",
+        "state": "CO",
+        "startDate": "2024-01-01T00:00:00.000Z",
+        "currentlyEmployed": false,
+        "details": [
+          "Built tools"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "schoolName": "Example University",
+        "educationLevel": "Bachelors"
+      },
+      {
+        "schoolName": "Example School",
+        "degree": "",
+        "location": "",
+        "graduationDate": "2024",
+        "currentlyEnrolled": false
+      },
+      {}
+    ],
+    "skills": {
+      "expertRecommended": [
+        "Coding"
+      ],
+      "other": []
+    },
+    "summary": {
+      "summary": "A thoughtful developer building reliable tools for users."
+    }
+  }
+}
