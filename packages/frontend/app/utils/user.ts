@@ -14,18 +14,13 @@ import { PersonalInfoSchema } from './schemas/info';
 import { SkillsSchema } from './schemas/skills';
 import { SummarySchema } from './schemas/summary';
 
-const PartialPersonalInfo = PersonalInfoSchema;
-const PartialExperienceSchema = BaseExperienceSchema;
-const PartialSkillsSchema = SkillsSchema;
-const PartialSummarySchema = SummarySchema;
-
 export const UserSchema = z.object({
   userId: z.string(),
-  info: PartialPersonalInfo.optional(),
-  experience: z.array(PartialExperienceSchema).optional(),
+  info: PersonalInfoSchema.optional(),
+  experience: z.array(BaseExperienceSchema).optional(),
   education: z.array(PartialEducationSchema).max(3).optional(),
-  skills: PartialSkillsSchema.optional(),
-  summary: PartialSummarySchema.optional(),
+  skills: SkillsSchema.optional(),
+  summary: SummarySchema.optional(),
 });
 
 export type User = z.infer<typeof UserSchema>;

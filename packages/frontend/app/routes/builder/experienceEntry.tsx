@@ -20,7 +20,6 @@ import { z } from 'zod';
 import { HeadingWithSubHeading } from '../../components/HeadingWithSubHeading';
 import Main from '../../components/Main';
 import useEffectOnce from '../../hooks/useEffectOnce';
-import type { ActionData } from '../../models/Actions';
 import { addQueryParams } from '../../utils/navigation';
 import {
   getExperienceDetails,
@@ -73,13 +72,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      if (error instanceof z.ZodError) {
-        return data({ errors: fieldErrors(error) }, { status: 400 });
-      }
-      return data(
-        { errors: { _form: ['An errored occured.'] } },
-        { status: 409 },
-      );
+      return data({ errors: fieldErrors(error) }, { status: 400 });
     }
   }
 }

@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-
-let clearQueuedEducation: typeof import('./user').clearQueuedEducation;
-let getQueuedEducation: typeof import('./user').getQueuedEducation;
-let setQueuedEducation: typeof import('./user').setQueuedEducation;
+import fixture from './fixtures/user-zod3.json';
+import {
+  clearQueuedEducation,
+  getQueuedEducation,
+  getUser,
+  setQueuedEducation,
+} from './user';
 
 function createSessionStorageMock() {
   const store = new Map<string, string>();
@@ -21,7 +24,7 @@ function createSessionStorageMock() {
   };
 }
 
-beforeEach(async () => {
+beforeEach(() => {
   const sessionStorage = createSessionStorageMock();
   Object.defineProperty(globalThis, 'window', {
     value: { sessionStorage },
@@ -31,9 +34,6 @@ beforeEach(async () => {
     value: sessionStorage,
     configurable: true,
   });
-
-  ({ clearQueuedEducation, getQueuedEducation, setQueuedEducation } =
-    await import('./user'));
 });
 
 describe('queued education helpers', () => {
@@ -70,10 +70,8 @@ describe('queued education helpers', () => {
 });
 
 describe('stored User compatibility with Zod 3', () => {
-  test('reads fixed stored JSON as the object captured before the Zod 4 bump', async () => {
+  test('reads fixed stored JSON as the object captured before the Zod 4 bump', () => {
     // Captured by parsing this fixture with frontend Zod 3.25.76 before the bump.
-    const { default: fixture } = await import('./fixtures/user-zod3.json');
-    const { getUser } = await import('./user');
     window.sessionStorage.setItem('user', JSON.stringify(fixture.stored));
     const user = getUser();
     expect(user).not.toBeNull();
