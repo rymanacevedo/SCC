@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
+
 export const errorTelemetrySchema = z.object({
   timestamp: z.iso.datetime(),
   url: z.string().min(1),
