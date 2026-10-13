@@ -4,6 +4,7 @@ SCC is split into packages, each with its own bounded vocabulary. This map point
 
 | Context | Glossary | What lives here |
 |---------|----------|-----------------|
+| System | [`GLOSSARY.md`](GLOSSARY.md) | Terms spanning every context: the kinds of Test, Eval, Bake-off |
 | Backend | [`packages/backend/GLOSSARY.md`](packages/backend/GLOSSARY.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
 | Frontend | [`packages/frontend/GLOSSARY.md`](packages/frontend/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
 | Shared | _not yet documented_ | Schemas both contexts import: Section schemas, the generation request and output contracts, error reporting |
