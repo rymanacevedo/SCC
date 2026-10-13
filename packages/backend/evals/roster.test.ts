@@ -10,7 +10,7 @@ describe('modelRoster', () => {
     ]);
   });
 
-  test('builds evalite row names as section plus model', () => {
+  test('builds eval row names as section plus model', () => {
     expect(buildEvalName('Summaries', 'gemini-2.5-flash-lite')).toBe(
       'Summaries — gemini-2.5-flash-lite',
     );
