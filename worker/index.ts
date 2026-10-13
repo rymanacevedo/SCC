@@ -9,9 +9,7 @@ export default {
   fetch(request: Request) {
     if (!worker || cachedEnv !== env) {
       cachedEnv = env;
-      worker = createWorker(
-        createApiRouter(env as unknown as Record<string, string>),
-      );
+      worker = createWorker(createApiRouter(env));
     }
     return worker.fetch(request);
   },

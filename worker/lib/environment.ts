@@ -40,7 +40,7 @@ export class EnvironmentValidationError extends Error {
 
 function parseEnvironment<T extends z.ZodRawShape>(
   schema: z.ZodObject<T>,
-  envFromContext: Record<string, string>,
+  envFromContext: object,
   scope: EnvScope,
 ): z.infer<z.ZodObject<T>> {
   try {
@@ -65,9 +65,7 @@ export function parseAllowedCountries(allowedCountries: string): string[] {
   return [...new Set(countryCodes)];
 }
 
-export function validateGeoEnvironment(
-  envFromContext: Record<string, string>,
-): GeoEnvSchema {
+export function validateGeoEnvironment(envFromContext: object): GeoEnvSchema {
   try {
     const { ALLOWED_COUNTRIES } = geoEnvironmentSchema.parse(envFromContext);
 
@@ -80,19 +78,17 @@ export function validateGeoEnvironment(
 }
 
 export function validateGithubEnvironment(
-  envFromContext: Record<string, string>,
+  envFromContext: object,
 ): GithubEnvSchema {
   return parseEnvironment(githubEnvironmentSchema, envFromContext, 'github');
 }
 
 export function validateOpenAiEnvironment(
-  envFromContext: Record<string, string>,
+  envFromContext: object,
 ): OpenAiEnvSchema {
   return parseEnvironment(openAiEnvironmentSchema, envFromContext, 'openai');
 }
 
-export function validateEnvironment(
-  envFromContext: Record<string, string>,
-): EnvSchema {
+export function validateEnvironment(envFromContext: object): EnvSchema {
   return parseEnvironment(environmentSchema, envFromContext, 'all');
 }
