@@ -24,6 +24,30 @@ _Avoid_: queued entry, pending entry, work in progress
 The user's action that discards the User and every Draft and returns to the beginning of the builder.
 _Avoid_: reset, clear, new resume
 
+**Step**:
+A Builder page's position in the fixed order the builder walks from Info to the Preview.
+_Avoid_: stage, screen, wizard step
+
+**Hub page**:
+A page that lists a Section's entries and continues to the next Section: the experience summary, the education summary, and finish up.
+_Avoid_: summary page, overview, list page
+
+**Revisit**:
+Returning from a Hub page to one Builder page to change an answer, then coming straight back to where the user left.
+_Avoid_: resubmit, return URL, edit flow
+
+**Suggestion**:
+An example the generator offers beside a Builder page for one Section; it becomes resume content only when the user picks it.
+_Avoid_: example, recommendation, AI result
+
+**Field error**:
+A validation message attached to one answer on a Builder page.
+_Avoid_: input error, validation error
+
+**Form error**:
+A message about the submission as a whole, such as the answers not being saved, rather than any one answer.
+_Avoid_: global error, page error
+
 ## Resume
 
 **Resume**:
