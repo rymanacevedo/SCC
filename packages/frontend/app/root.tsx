@@ -11,7 +11,7 @@ import './app.css';
  * ships in every page. Empty disables the beacon; it only loads in production
  * builds so the dev server never pollutes the field data.
  */
-const CF_BEACON_TOKEN = '';
+const CF_BEACON_TOKEN = '0188c2a006814dfe92d4672aab3c6a56';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
