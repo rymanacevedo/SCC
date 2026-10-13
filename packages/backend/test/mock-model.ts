@@ -1,6 +1,6 @@
 import { MockLanguageModelV4 } from 'ai/test';
 
-export function createMockModel(output: unknown) {
+export function createMockJsonModel(output: unknown) {
   return new MockLanguageModelV4({
     doGenerate: async () => ({
       content: [

@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import type { Env } from 'hono';
-import { createMockModel } from '../test/mock-model';
+import { createMockJsonModel } from '../test/mock-model';
 import * as modelAdapter from './services/model';
 
 const env = {
@@ -43,7 +43,7 @@ describe('AI routes', () => {
     { route: 'experience', output: suggestions, responseBody: suggestions },
   ]) {
     test(`POST /api/${route} preserves generated JSON with a V4 mock model`, async () => {
-      const model = createMockModel(output);
+      const model = createMockJsonModel(output);
       const resolveModel = spyOn(modelAdapter, 'resolveModel').mockReturnValue(
         model,
       );
