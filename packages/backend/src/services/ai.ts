@@ -41,7 +41,7 @@ export const createSummaries = async (prompt: string, model: LanguageModel) => {
       }),
     }),
     prompt,
-    system: `
+    instructions: `
         <example1>
         <title>Software Developer</title>
         <text>Results-driven software developer with 5 years of experience building web applications. Proficient in JavaScript, React, and Node.js. Strong problem-solving abilities and experience working in agile environments.
@@ -92,7 +92,7 @@ export const createSkills = async (prompt: string, model: LanguageModel) => {
       schema: SkillsSchema,
     }),
     prompt,
-    system: `
+    instructions: `
           You are helping gather soft skills for a user who submitted their job title, employer, and job details.
           I've give you a string that formatted jobs like such:
           <job>
@@ -120,7 +120,7 @@ export const createExperience = async (
       schema: ExperienceSchema,
     }),
     prompt,
-    system: `
+    instructions: `
     <example1>
     Drove $15M of new partnership business in 12 months for marketing-focused SaaS software.
     </example1> 
