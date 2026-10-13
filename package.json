@@ -13,23 +13,23 @@
     "sandcastle": "bun .sandcastle/main.ts",
     "typecheck": "bun run --cwd packages/frontend typecheck && bun run --cwd packages/backend typecheck",
     "test": "bun test",
-    "prepare": "husky"
+    "prepare": "husky && bun run --cwd packages/backend types"
   },
   "type": "module",
   "devDependencies": {
-    "@biomejs/biome": "2.5.1",
-    "@types/bun": "latest",
-    "turbo": "^2.10.0",
+    "@biomejs/biome": "2.5.15",
+    "@types/bun": "^1.4",
+    "turbo": "^2.11.0",
     "puppeteer": "24"
   },
   "peerDependencies": {
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@ai-hero/sandcastle": "^0.12.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17",
     "zod": "^4.4.3"
   },
-  "packageManager": "bun@1.2.2"
+  "packageManager": "bun@1.4.3"
 }
