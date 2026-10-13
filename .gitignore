@@ -28,3 +28,7 @@ dist-ssr
 .turbo
 .env
 .dev.vars
+
+# Generated Cloudflare runtime types and local state
+packages/backend/worker-configuration.d.ts
+.wrangler/
