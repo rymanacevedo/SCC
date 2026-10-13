@@ -5,8 +5,9 @@ import {
 } from 'remix/router';
 import { get, route } from 'remix/routes';
 import { render } from 'remix/spa';
+import { ComingSoon } from './pages/coming-soon.tsx';
 import { HomePage } from './pages/home.tsx';
-import { ComingSoon, Shell } from './pages/shell.tsx';
+import { Shell } from './pages/shell.tsx';
 
 // Importing this module constructs routes only; browser startup lives in main.
 export const router = createRouter({
