@@ -14,18 +14,18 @@ A function that maps one section's input to AI-generated content. There are thre
 A safety constant in `services/ai.ts` listing roles the generators must not write resume content for; on a match the generator returns general advice instead. Interpolated into every section generator's system prompt. Safety-critical — editing it changes what the product will and won't produce. Steers the model's *output*; refusing *input* is the Profanity filter's job.
 
 ### Profanity filter
-A guard on the three generation routes that refuses a Generation request whose prompt contains a disallowed word or role, before any model is called. Refuses input; the Blacklist, by contrast, steers output. One copy, on the Worker, so every caller is covered.
+A guard on the three generation routes that refuses a Generation request whose prompt contains a disallowed word or role, before any model is called. Refuses input; the Blacklist, by contrast, steers output. One copy, on the Worker, so every caller is covered; a refusal names the matched term in the Error envelope.
 
 ## API surface
 
 ### Generation request
-The body a builder page sends to a generation route: `{ prompt }`, the section answers already serialized by the frontend. The Worker never sees the User, only the prompt.
+The body a builder page sends to a generation route: `{ prompt }` with a non-empty string prompt, the section answers already serialized by the frontend. The Worker never sees the User, only the prompt.
 
 ### Error envelope
-The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues` on a 400. The status code is the discriminator; the `error` text is for logs and tests, never shown to the user verbatim.
+The one shape every non-2xx `/api/*` response carries: `{ error }`, plus an `issues` array on every 400 (validation details, or an empty array for a filtered prompt). The status code is the discriminator; the `error` text is for logs and tests, never shown to the user verbatim.
 
 ### Same-origin guard
-The middleware that replaces CORS now that UI and API share one origin: rejects cross-site browser requests and non-JSON bodies on `/api/*`. No configuration, no allowed-origin variable.
+The middleware that replaces CORS now that UI and API share one origin: rejects requests marked `Sec-Fetch-Site: cross-site` with 403 and bodies without the `application/json` content type with 415. Absent fetch-site metadata is accepted, including command-line callers. No configuration, no allowed-origin variable.
 
 ## Generation architecture
 

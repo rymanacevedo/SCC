@@ -28,3 +28,6 @@ export const SummarySchema = z
       ),
   })
   .array();
+
+export const generationRequestSchema = z.object({ prompt: z.string().min(1) });
+export type GenerationRequest = z.infer<typeof generationRequestSchema>;

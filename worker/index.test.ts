@@ -1,9 +1,10 @@
 import { expect, spyOn, test } from 'bun:test';
-import { createWorker } from './index.ts';
+import { createApiRouter } from './router.ts';
+import { createWorker } from './worker.ts';
 
 test('unknown API paths return a JSON 404 Error envelope for every method', async () => {
   for (const method of ['GET', 'POST', 'OPTIONS']) {
-    const response = await createWorker().fetch(
+    const response = await createWorker(createApiRouter({})).fetch(
       new Request('https://scc.example/api/anything', { method }),
     );
     expect(response.status).toBe(404);
