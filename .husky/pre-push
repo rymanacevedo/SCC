@@ -1,2 +1,5 @@
+# In a worktree git hands hooks a GIT_DIR pointing at the main repository, and any
+# test that shells out to git would inherit it. Let git rediscover from the cwd.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
 bun run typecheck
 bun run test

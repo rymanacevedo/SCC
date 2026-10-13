@@ -27,6 +27,20 @@ const passingAfter = () => {
   after.lighthouse[1].median.bytesScript = 75000;
   return after;
 };
+// Git exports GIT_DIR and friends to hooks, and inside a worktree they point at
+// the enclosing repository. Child processes that inherit them would then commit
+// and tag there instead of in the temporary repository, so every git call and
+// the verdict script itself run with those variables removed.
+function isolatedEnv() {
+  const env: Record<string, string | undefined> = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('GIT_')) delete env[key];
+  }
+  return env;
+}
+function git(args: string[], cwd?: string) {
+  return execFileSync('git', args, { cwd, env: isolatedEnv() });
+}
 const temporary: string[] = [];
 function temp() {
   const dir = mkdtempSync(join(tmpdir(), 'scc-verdict-'));
@@ -44,7 +58,7 @@ function run(
   cwd?: string,
   perfTag?: string,
 ) {
-  const env = { ...process.env };
+  const env = isolatedEnv();
   delete env.PERF_TAG;
   delete env.PERF_DIR;
   if (perfTag !== undefined) env.PERF_TAG = perfTag;
@@ -193,9 +207,8 @@ test('baseline as both CLI inputs is an explicit PASS self-check, not a migratio
 
 test('runbook refuses untagged HEAD and stale PERF_TAG, accepts a matching tag', () => {
   const dir = temp();
-  execFileSync('git', ['init', '-q', dir]);
-  execFileSync(
-    'git',
+  git(['init', '-q', dir]);
+  git(
     [
       '-c',
       'user.name=Test',
@@ -206,14 +219,14 @@ test('runbook refuses untagged HEAD and stale PERF_TAG, accepts a matching tag',
       '-qm',
       'test',
     ],
-    { cwd: dir },
+    dir,
   );
   const input = join(baseline, 'summary.json');
   const out = join(dir, 'verdict.md');
   const untagged = run(input, input, out, dir, 'remix-v3/gate-1');
   expect(untagged.status).toBe(2);
   expect(untagged.stderr).toContain('tagged HEAD');
-  execFileSync('git', ['tag', 'remix-v3/gate-1'], { cwd: dir });
+  git(['tag', 'remix-v3/gate-1'], dir);
   expect(run(input, input, out, dir, 'stale').status).toBe(2);
   expect(run(input, input, out, dir, 'remix-v3/gate-1').status).toBe(0);
 });
