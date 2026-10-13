@@ -1,196 +1,229 @@
-// Sequential Reviewer — implement-then-review loop
-//
-// This template drives a two-phase workflow per issue:
-//   Phase 1 (Implement): A Codex agent picks an open issue, works on it
-//                        on a dedicated branch, commits the changes, and signals
-//                        completion.
-//   Phase 2 (Review):    A second Codex agent reviews the branch diff and either
-//                        approves it or makes corrections directly on the branch.
-//
-// Both phases share a single sandbox created via createSandbox(), so the
-// implementer and reviewer work on the same explicit branch.
-//
-// The outer loop repeats up to MAX_ITERATIONS times, processing one issue per
-// iteration and stopping early once the backlog is exhausted (an implement
-// phase that produces no commits). This is a middle-complexity option between
-// the simple-loop (no review gate) and the parallel-planner (concurrent
-// execution with a planning phase).
-//
-// Usage:
-//   npx tsx .sandcastle/main.ts
-// Or add to package.json:
-//   "scripts": { "sandcastle": "npx tsx .sandcastle/main.ts" }
-
-import { existsSync, readFileSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import * as sandcastle from '@ai-hero/sandcastle';
-import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
+import { z } from 'zod';
+import {
+  copyToWorktree,
+  createDockerSandbox,
+  hooks,
+  MAX_CONCURRENT_ISSUES,
+  prepareEnvironment,
+  SANDCASTLE_MODEL,
+} from './config';
+import { readTaggedOutput } from './output';
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
+const planSchema = z.object({
+  issues: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[1-9]\d*$/),
+        title: z.string().min(1),
+      }),
+    )
+    .max(MAX_CONCURRENT_ISSUES)
+    .refine(
+      (issues) =>
+        new Set(issues.map((issue) => issue.id)).size === issues.length,
+      'Each issue must appear only once.',
+    ),
+});
 
-const loadSandcastleEnv = () => {
-  const envPath = path.resolve('.sandcastle/.env');
-  if (!existsSync(envPath)) {
-    return;
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+const baseBranch = prepareEnvironment();
+const batchId = Date.now().toString();
+const batchBranch = `sandcastle/batch-${batchId}`;
+const agent = () => sandcastle.codex(SANDCASTLE_MODEL);
+
+// Each run submits one batch for human review before selecting more work.
+const batch = await sandcastle.createSandbox({
+  branch: batchBranch,
+  baseBranch,
+  sandbox: createDockerSandbox(),
+  hooks,
+  copyToWorktree,
+});
+
+async function verify(
+  sandbox: sandcastle.Sandbox,
+  branch: string,
+): Promise<void> {
+  const head = await sandbox.exec('git branch --show-current');
+  if (head.exitCode !== 0 || head.stdout.trim() !== branch) {
+    throw new Error(`Expected verification on branch ${branch}.`);
   }
-
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)\s*$/);
-    if (!match || process.env[match[1]] !== undefined) {
-      continue;
-    }
-
-    process.env[match[1]] = match[2].replace(/^["']|["']$/g, '');
-  }
-};
-
-loadSandcastleEnv();
-
-// Codex subscription auth: mount the host Codex home read-only, then copy the
-// auth files into the writable sandbox home before Codex starts.
-const hostCodexHome = path.join(os.homedir(), '.codex');
-const sandboxCodexMount = '/mnt/host-codex';
-const sandboxCodexHome = '/home/agent/.codex';
-const sandboxTmpDir = '/home/agent/tmp';
-const sandboxBunCacheDir = '/home/agent/.bun-cache';
-
-const ensureHostCodexAuth = () => {
-  const authPath = path.join(hostCodexHome, 'auth.json');
-  if (!existsSync(authPath)) {
+  const verification = await sandbox.exec(
+    "timeout 600s bash -c 'bun run typecheck && bun run test'",
+  );
+  if (verification.exitCode !== 0) {
     throw new Error(
-      `Codex subscription auth not found at ${authPath}. Run Codex login on the host before running Sandcastle.`,
+      `Verification failed:\n${verification.stdout}\n${verification.stderr}`,
     );
   }
-};
-
-const createDockerSandbox = () =>
-  docker({
-    env: {
-      CODEX_HOME: sandboxCodexHome,
-      GH_TOKEN: process.env.GH_TOKEN ?? '',
-      HOME: '/home/agent',
-      TMPDIR: sandboxTmpDir,
-      BUN_INSTALL_CACHE_DIR: sandboxBunCacheDir,
-    },
-    mounts: [
-      {
-        hostPath: hostCodexHome,
-        sandboxPath: sandboxCodexMount,
-        readonly: true,
-      },
-    ],
-  });
-
-// Maximum number of implement→review cycles to run before stopping.
-// Each cycle works on one issue. Raise this to process more issues per run.
-const MAX_ITERATIONS = 10;
-
-// Shared model for the implementation and review phases.
-const SANDCASTLE_MODEL = 'gpt-6.1-sol';
-
-// Hooks run inside the sandbox before the agent starts each iteration.
-// Install Linux-native dependencies there, not in the host checkout.
-const hooks = {
-  sandbox: {
-    onSandboxReady: [
-      {
-        command: [
-          `mkdir -p ${sandboxCodexHome}`,
-          `mkdir -p ${sandboxTmpDir} ${sandboxBunCacheDir}`,
-          `test -f "${sandboxCodexMount}/auth.json"`,
-          `cp "${sandboxCodexMount}/auth.json" "${sandboxCodexHome}/auth.json"`,
-          `if [ -f "${sandboxCodexMount}/config.toml" ]; then cp "${sandboxCodexMount}/config.toml" "${sandboxCodexHome}/config.toml"; fi`,
-        ].join(' && '),
-      },
-      {
-        command: 'bash .sandcastle/setup-sandbox.sh --skip-auth',
-        timeoutMs: 600_000,
-      },
-    ],
-  },
-};
-
-// Copy node_modules from the host into the worktree before each sandbox
-// starts. The setup hook verifies Linux-native packages and reinstalls with Bun
-// if the copied host dependencies are not usable in the container.
-const copyToWorktree = ['node_modules'];
-
-ensureHostCodexAuth();
-
-// ---------------------------------------------------------------------------
-// Main loop
-// ---------------------------------------------------------------------------
-
-for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-  console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
-
-  // Generate a unique branch name for this iteration.
-  const branch = `sandcastle/sequential-reviewer/${Date.now()}`;
-
-  // Create a single sandbox that both the implementer and reviewer share.
-  // This gives both agents a real, named branch that persists across phases.
-  const sandbox = await sandcastle.createSandbox({
-    branch,
-    sandbox: createDockerSandbox(),
-    hooks,
-    copyToWorktree,
-  });
-
-  try {
-    // -----------------------------------------------------------------------
-    // Phase 1: Implement
-    //
-    // A Codex agent picks the next open issue, writes the
-    // implementation (using RGR: Red → Green → Repeat → Refactor), and
-    // commits the result.
-    //
-    // The agent signals completion via <promise>COMPLETE</promise> when done.
-    // -----------------------------------------------------------------------
-    // One iteration so each outer pass implements a single issue on its own
-    // branch, then hands it to the reviewer. A higher value lets the agent
-    // drain the whole backlog onto this one branch in a single pass, which
-    // defeats the per-issue review.
-    const implement = await sandbox.run({
-      name: 'implementer',
-      maxIterations: 1,
-      agent: sandcastle.codex(SANDCASTLE_MODEL),
-      promptFile: './.sandcastle/implement-prompt.md',
-    });
-
-    if (!implement.commits.length) {
-      // No commits means the backlog is empty or every remaining issue is
-      // blocked — there is nothing left to implement or review, so stop.
-      console.log('Implementation agent made no commits. Stopping.');
-      break;
-    }
-
-    console.log(`\nImplementation complete on branch: ${branch}`);
-    console.log(`Commits: ${implement.commits.length}`);
-
-    // -----------------------------------------------------------------------
-    // Phase 2: Review
-    //
-    // A second Codex agent reviews the diff of the branch produced by
-    // Phase 1. It uses the {{BRANCH}} prompt argument to inspect the right
-    // branch, and either approves or makes corrections directly on the branch.
-    // -----------------------------------------------------------------------
-    await sandbox.run({
-      name: 'reviewer',
-      maxIterations: 1,
-      agent: sandcastle.codex(SANDCASTLE_MODEL),
-      promptFile: './.sandcastle/review-prompt.md',
-      promptArgs: {
-        BRANCH: branch,
-      },
-    });
-
-    console.log('\nReview complete.');
-  } finally {
-    await sandbox.close();
+  const clean = await sandbox.exec('git status --porcelain');
+  if (clean.exitCode !== 0 || clean.stdout.trim()) {
+    throw new Error('Verification left uncommitted changes.');
   }
 }
 
-console.log('\nAll done.');
+try {
+  const plan = await batch.run({
+    name: 'planner',
+    maxIterations: 1,
+    agent: agent(),
+    promptFile: './.sandcastle/plan-prompt.md',
+    promptArgs: { MAX_ISSUES: String(MAX_CONCURRENT_ISSUES) },
+    completionSignal: '</plan>',
+  });
+  const unchanged = await batch.exec(
+    `git diff --quiet ${shellQuote(baseBranch)} HEAD && test -z "$(git status --porcelain)"`,
+  );
+  if (unchanged.exitCode !== 0) {
+    throw new Error(
+      'Planner changed the batch branch; aborting before implementation.',
+    );
+  }
+
+  const issues = readTaggedOutput(plan.stdout, 'plan', planSchema).issues.map(
+    (issue) => ({
+      ...issue,
+      branch: `sandcastle/issue-${issue.id}-${batchId}`,
+    }),
+  );
+
+  if (!issues.length) {
+    console.log('No unblocked Sandcastle issues outside existing PRs.');
+  } else {
+    const settled = await Promise.allSettled(
+      issues.map(async (issue) => {
+        const sandbox = await sandcastle.createSandbox({
+          branch: issue.branch,
+          baseBranch,
+          sandbox: createDockerSandbox(),
+          hooks,
+          copyToWorktree,
+        });
+        try {
+          const implement = await sandbox.run({
+            name: `implementer-${issue.id}`,
+            maxIterations: 1,
+            agent: agent(),
+            promptFile: './.sandcastle/implement-prompt.md',
+            promptArgs: {
+              TASK_ID: issue.id,
+              ISSUE_TITLE: issue.title,
+              BRANCH: issue.branch,
+            },
+          });
+          if (!implement.commits.length) return null;
+          if (!implement.completionSignal) {
+            throw new Error(
+              `Issue ${issue.id} implementation did not signal completion.`,
+            );
+          }
+          const review = await sandbox.run({
+            name: `reviewer-${issue.id}`,
+            maxIterations: 1,
+            agent: agent(),
+            promptFile: './.sandcastle/review-prompt.md',
+            promptArgs: { BRANCH: issue.branch, BASE_BRANCH: baseBranch },
+          });
+          if (!review.completionSignal) {
+            throw new Error(
+              `Issue ${issue.id} review did not signal completion.`,
+            );
+          }
+          await verify(sandbox, issue.branch);
+          return issue;
+        } finally {
+          const closed = await sandbox.close();
+          if (closed.preservedWorktreePath) {
+            console.log(
+              `Preserved issue worktree: ${closed.preservedWorktreePath}`,
+            );
+          }
+        }
+      }),
+    );
+
+    const completed: typeof issues = [];
+    for (const [index, outcome] of settled.entries()) {
+      if (outcome.status === 'rejected') {
+        console.error(`Issue ${issues[index]?.id} failed:`, outcome.reason);
+      } else if (outcome.value) {
+        completed.push(outcome.value);
+      }
+    }
+
+    if (!completed.length) {
+      console.log('No verified branches available for a PR.');
+    } else {
+      const result = await batch.run({
+        name: 'batch-merger',
+        maxIterations: 1,
+        agent: agent(),
+        promptFile: './.sandcastle/merge-prompt.md',
+        promptArgs: {
+          BASE_BRANCH: baseBranch,
+          BATCH_BRANCH: batchBranch,
+          BRANCHES: completed.map((issue) => `- ${issue.branch}`).join('\n'),
+          ISSUES: completed
+            .map((issue) => `- #${issue.id}: ${issue.title}`)
+            .join('\n'),
+        },
+        completionSignal: '</pull-request>',
+      });
+      const metadata = readTaggedOutput(
+        result.stdout,
+        'pull-request',
+        z.object({ title: z.string().min(1).max(256) }),
+      );
+      await verify(batch, batchBranch);
+      for (const issue of completed) {
+        const merged = await batch.exec(
+          `git merge-base --is-ancestor ${shellQuote(issue.branch)} HEAD`,
+        );
+        if (merged.exitCode !== 0) {
+          throw new Error(
+            `Reviewed branch ${issue.branch} is missing from the batch.`,
+          );
+        }
+      }
+      const bodyChecks = [
+        '## Summary',
+        '## Evidence',
+        '## Merge Danger',
+        ...completed.map((issue) => `Closes #${issue.id}`),
+      ];
+      const body = await batch.exec(
+        bodyChecks
+          .map(
+            (heading) =>
+              `grep -Fxq ${shellQuote(heading)} /home/agent/tmp/sandcastle-pr.md`,
+          )
+          .join(' && '),
+      );
+      if (body.exitCode !== 0)
+        throw new Error('The pr skill did not produce a PR body.');
+      const push = await batch.exec(
+        `gh auth setup-git && timeout 120s git push --set-upstream origin ${shellQuote(batchBranch)}`,
+      );
+      if (push.exitCode !== 0)
+        throw new Error(`Batch push failed:\n${push.stderr}`);
+      const pr = await batch.exec(
+        [
+          'timeout 120s gh pr create',
+          `--base ${shellQuote(baseBranch)}`,
+          `--head ${shellQuote(batchBranch)}`,
+          `--title ${shellQuote(metadata.title)}`,
+          '--body-file /home/agent/tmp/sandcastle-pr.md',
+        ].join(' '),
+      );
+      if (pr.exitCode !== 0)
+        throw new Error(`PR creation failed:\n${pr.stderr}`);
+      console.log(`PR submitted for human review: ${pr.stdout.trim()}`);
+    }
+  }
+} finally {
+  const closed = await batch.close();
+  if (closed.preservedWorktreePath) {
+    console.log(`Preserved batch worktree: ${closed.preservedWorktreePath}`);
+  }
+}
