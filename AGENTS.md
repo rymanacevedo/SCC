@@ -35,4 +35,4 @@ The five canonical triage roles use their default label names, plus an extra `Sa
 
 ### Domain docs
 
-Multi-context layout: `CONTEXT-MAP.md` at the root points to a per-package `CONTEXT.md` (`packages/backend`, `packages/frontend`, `packages/shared`). See `docs/agents/domain.md`.
+Multi-context layout: `GLOSSARY-MAP.md` at the root points to a per-package `GLOSSARY.md` (`packages/backend`, `packages/frontend`, `packages/shared`). See `docs/agents/domain.md`.

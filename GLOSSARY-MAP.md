@@ -1,10 +1,10 @@
-# Context Map
+# Glossary Map
 
-SCC is split into packages, each with its own bounded vocabulary. This map points to the per-package glossary (`CONTEXT.md`). Before exploring a package's code, read its glossary and use those terms exactly — prefer them over synonyms.
+SCC is split into packages, each with its own bounded vocabulary. This map points to the per-package glossary (`GLOSSARY.md`). Before exploring a package's code, read its glossary and use those terms exactly — prefer them over synonyms.
 
 | Context | Glossary | What lives here |
 |---------|----------|-----------------|
-| Backend | [`packages/backend/CONTEXT.md`](packages/backend/CONTEXT.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
+| Backend | [`packages/backend/GLOSSARY.md`](packages/backend/GLOSSARY.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
 | Frontend | _not yet documented_ | React Router app: the section-by-section builder UI |
 | Shared | _not yet documented_ | Cross-package types and utilities |
 
