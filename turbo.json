@@ -8,6 +8,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
+      "env": ["VITE_*"],
       "outputs": ["dist/client/**"]
     },
     "lint": {
