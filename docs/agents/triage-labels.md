@@ -20,4 +20,4 @@ These labels live outside the canonical triage state machine. Skills won't apply
 
 | Label        | When to apply                                                    |
 | ------------ | ---------------------------------------------------------------- |
-| `Sandcastle` | _(Placeholder — describe when this label should be applied.)_    |
+| `Sandcastle` | Queue for the Sandcastle runner (`bun run sandcastle`). Apply to a `ready-for-agent` issue whose acceptance criteria are current and whose blockers are recorded as native GitHub dependencies; the planner skips open blockers and issues already referenced by an open PR. Remove it when an issue's spec goes stale so the runner does not burn a slot stopping on it. |
