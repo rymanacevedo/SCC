@@ -29,7 +29,7 @@ Introduced by [ADR-0001](docs/adr/0001-env-driven-model-selection.md) — **acce
 A deterministic check of *code* behavior. Runs under `bun test` (`*.test.ts`, co-located with source), drives the generation seam with a `MockLanguageModelV3` from `ai/test` — no network, no API key, $0. A failing test means the code is wrong.
 
 ### Eval
-A measurement of *model/prompt output quality* — not pass/fail on code. Runs under evalite (`*.eval.ts` in `evals/`), calls real models through the generation seam, costs real tokens, and is judged by scorers plus human review in the evalite UI. A "failing" eval means a model or prompt performs worse, not that code is broken. Evals compose their own `LanguageModel`s (any provider, via the AI SDK) and never go through HTTP routes or `resolveModel`.
+A measurement of *model/prompt output quality* — not pass/fail on code. Lives in `evals/` (fixtures, model roster, eval environment), calls real models through the generation seam, costs real tokens, and is judged by scorers plus human review. The eval harness that runs them is being chosen (evalite was removed; see the Remix v3 wayfinder map). A "failing" eval means a model or prompt performs worse, not that code is broken. Evals compose their own `LanguageModel`s (any provider, via the AI SDK) and never go through HTTP routes or `resolveModel`.
 
 ### Bake-off
 A one-shot comparative eval across a fixed **roster** of candidate models over the same fixtures, run to make a model-selection decision. The verdict is human; if it changes the production model, that change is recorded as its own ADR and commit — a bake-off never mutates production configuration itself.
