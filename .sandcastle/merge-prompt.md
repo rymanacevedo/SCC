@@ -22,6 +22,6 @@ Keep issue state unchanged. The runner verifies the combined branch, pushes the 
 
 After every listed branch is integrated, verification passes, changes are committed, and the PR body file exists, emit the PR title. Write it as a conventional commit (`type(scope): summary`, under 72 characters) that names what this batch actually changes, derived from the issue titles above. A generic title such as "resolve the reviewed Sandcastle issues" is not acceptable.
 
-Format, with your own title in place of the placeholder:
+Format, with your own title:
 
 <pull-request>{"title": "<type>(<scope>): <what this batch changes>"}</pull-request>
