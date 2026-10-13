@@ -1,6 +1,5 @@
 // app/routes/builder.finish.tsx
 import { Form, redirect, useLoaderData } from 'react-router';
-import type { Route } from '../../../.react-router/types/app/+types/root';
 
 export { RouteErrorBoundary as ErrorBoundary } from '../../components/ErrorBoundaryContent';
 
@@ -16,15 +15,8 @@ import {
 } from '../../utils/education';
 import { getUser, type User } from '../../utils/user';
 
-export async function clientAction({ request }: Route.ClientActionArgs) {
-  const formData = await request.formData();
-  const data = Object.fromEntries(formData);
-
-  try {
-    return redirect('/resume');
-  } catch (error) {
-    // Handle errors
-  }
+export async function clientAction() {
+  return redirect('/resume');
 }
 
 export function clientLoader() {

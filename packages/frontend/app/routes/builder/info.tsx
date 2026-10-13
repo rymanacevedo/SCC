@@ -20,7 +20,6 @@ import Input from '../../components/Input';
 import Main from '../../components/Main';
 import Select from '../../components/Select';
 import { usePhoneMask } from '../../hooks/usePhoneMask';
-import type { ActionData } from '../../models/Actions';
 import { clearQueuedExperience, getUser, updateUser } from '../../utils/user';
 import { usStates } from '../../utils/usStates';
 

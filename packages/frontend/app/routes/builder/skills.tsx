@@ -3,7 +3,6 @@ import {
   data,
   Form,
   redirect,
-  useActionData,
   useFetcher,
   useLoaderData,
 } from 'react-router';
@@ -115,7 +114,6 @@ export default function Skills() {
     useLoaderData<typeof clientLoader>();
   const fetcher = useFetcher<TSkills>();
   const MAX_SKILLS = 6 as const;
-  const actionData = useActionData<typeof clientAction>();
   const [userSkills, setUserSkills] = useState<TSkills>(
     prevSkills || {
       expertRecommended: [],

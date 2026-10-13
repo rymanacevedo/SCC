@@ -1,5 +1,4 @@
 import { AlignmentType, HeadingLevel, Paragraph, TextRun } from 'docx';
-import fileSaver from 'file-saver';
 import {
   getEducationGraduationLabel,
   sortEducationEntries,

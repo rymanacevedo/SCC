@@ -9,7 +9,7 @@ type EnvSchema = z.infer<typeof schema>;
 let env: EnvSchema;
 try {
   env = schema.parse(import.meta.env);
-} catch (error) {
+} catch {
   throw new Error(
     'Invalid environment variables.  See console for details. Are you pointing to VITE_HONO_BACKEND_URL in env variables?',
   );
