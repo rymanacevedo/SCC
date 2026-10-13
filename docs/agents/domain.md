@@ -2,13 +2,13 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
-**This repo uses a multi-context layout.** `GLOSSARY-MAP.md` at the root points to one `GLOSSARY.md` per package.
+**This repo uses a multi-context layout.** `GLOSSARY-MAP.md` at the root points to one `GLOSSARY.md` per context.
 
 ## Before exploring, read these
 
 - **`GLOSSARY-MAP.md`** at the repo root: it points at one `GLOSSARY.md` per context. Read each one relevant to the topic.
-- **`packages/<package>/GLOSSARY.md`**: the per-context glossary for the package you're working in.
-- **`docs/adr/`** at the root for system-wide decisions, and **`packages/<package>/docs/adr/`** for context-scoped decisions. Read ADRs that touch the area you're about to work in.
+- **`<context>/GLOSSARY.md`**: the per-context glossary for the context you're working in.
+- **`docs/adr/`** at the root for system-wide decisions, and **`<context>/docs/adr/`** for context-scoped decisions. Read ADRs that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -20,16 +20,12 @@ Multi-context layout (this repo):
 /
 ├── GLOSSARY-MAP.md
 ├── docs/adr/                          ← system-wide decisions
-└── packages/
-    ├── backend/
-    │   ├── GLOSSARY.md
-    │   └── docs/adr/                  ← context-specific decisions
-    ├── frontend/
-    │   ├── GLOSSARY.md
-    │   └── docs/adr/
-    └── shared/
-        ├── GLOSSARY.md
-        └── docs/adr/
+├── worker/
+│   ├── GLOSSARY.md
+│   └── docs/adr/
+└── app/
+    ├── GLOSSARY.md
+    └── docs/adr/
 ```
 
 ## Use the glossary's vocabulary

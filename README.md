@@ -1,41 +1,21 @@
-# SCC (Second Chance Center) Monorepo
+# SCC — Resume builder
 
-Welcome to the Second Chance Center (SCC) monorepo! This project stands at the intersection of cutting-edge development and profound social impact.
+SCC helps people write a resume by answering simple questions section by section.
+The Remix v3 migration begins with a client-rendered shell and a JSON API fallback;
+builder pages and API routes follow in separate migration tickets.
 
-Beyond its technical foundation, SCC addresses a critical societal need: empowering individuals transitioning from incarceration by providing them with the tools to quickly build professional resumes. Our goal is to streamline the resume creation process, allowing users to generate a high-quality, impactful resume in just **10 minutes**, thereby significantly enhancing their prospects for employment and successful reintegration.
+Use Node 24 (at least 24.3.0) and Bun 1.4.3. Install from the root with `bun install`.
+Copy `.dev.vars.example` to `.dev.vars` and supply local secrets as needed.
 
-## Project Structure
+- `bun run dev`: Vite client and Worker on http://localhost:5173.
+- `bun run build` and `bun run preview`: build and serve in workerd.
+- `bun run typecheck`: regenerate Worker types and check both TypeScript projects.
+- `bun run test`: deterministic Tests, with one shared happy-dom preload.
+- `bun run test:e2e`: fails until the Flow test ticket supplies the runner.
+- `bun run evals`: reserved for the replacement harness in #189; never part of Tests.
 
-This monorepo is designed to host multiple packages, fostering a cohesive development environment for different parts of the SCC ecosystem.
-
-Currently, the primary packages include:
-
-*   `@scc/frontend`: The user-facing application where individuals can easily create their resumes.
-
-## Getting Started
-
-To get the SCC monorepo up and running on your local machine, follow these simple steps:
-
-### 1. Install Dependencies
-
-Navigate to the root of the monorepo and install all project dependencies using Bun:
-
-```bash
-bun install
-```
-
-This command will leverage Bun's incredibly fast package installation to set up all necessary packages across the monorepo.
-
-### 2. Run the Frontend Application
-
-To start the development server for the frontend, navigate into the `@scc/frontend` package and run the dev script:
-
-```bash
-cd packages/frontend
-bun run dev
-```
-
-
-## Making an Impact
-
-The SCC project is built on a mission to provide second chances for those impacted by the criminal justice system. By enabling quick, AI-powered resume generation, we empower individuals to overcome significant barriers to employment, contributing directly to their rehabilitation and a more inclusive society.
+`app/` contains the browser application, `worker/` the API and generation seam,
+`shared/` their schemas, `evals/` the model roster and corpus, and `test/` shared
+Test support. Domain vocabulary starts at [GLOSSARY-MAP.md](GLOSSARY-MAP.md).
+The analytics token in `index.html` is filled by the dev during cutover.
+Deployment and cutover remain dev-run; see [the runbook](docs/runbooks/remix-v3-cutover.md).

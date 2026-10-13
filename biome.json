@@ -19,8 +19,6 @@
       "!.next/**/*",
       "!.cache/**/*",
       "!.ona/**/*",
-      "!.react-router/**/*",
-      "!.turbo/**/*",
       "!**/node_modules/**/*",
       "!bin/**/*"
     ]
@@ -40,8 +38,6 @@
       "!.next/**/*",
       "!.cache/**/*",
       "!.ona/**/*",
-      "!.react-router/**/*",
-      "!.turbo/**/*",
       "!**/node_modules/**/*",
       "!bin/**/*"
     ]

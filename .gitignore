@@ -24,11 +24,9 @@ dist-ssr
 *.sw?
 # Local Netlify folder
 .netlify
-# turbo cache
-.turbo
 .env
 .dev.vars
 
 # Generated Cloudflare runtime types and local state
-packages/backend/worker-configuration.d.ts
+worker-configuration.d.ts
 .wrangler/

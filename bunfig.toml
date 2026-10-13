@@ -1,2 +1,2 @@
-[install]
-workspaces = true
+[test]
+preload = ["./test/preload.ts"]

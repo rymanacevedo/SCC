@@ -18,8 +18,7 @@ Long term maintainability is a core priority. If you add new functionality, firs
 
 ## Commands
 
-Run frontend: `bun run dev` in the `packages/frontend` directory. [DO NOT RUN UNLESS INSTRUCTED]
-Run backend: `bun run dev` in the `packages/backend` directory. [DO NOT RUN UNLESS INSTRUCTED]
+Run app and Worker: `bun run dev` at the root. [DO NOT RUN UNLESS INSTRUCTED]
 
 `bun test` don't run unless instructed
 
@@ -35,4 +34,4 @@ The five canonical triage roles use their default label names, plus an extra `Sa
 
 ### Domain docs
 
-Multi-context layout: `GLOSSARY-MAP.md` at the root points to a per-package `GLOSSARY.md` (`packages/backend`, `packages/frontend`, `packages/shared`). See `docs/agents/domain.md`.
+Multi-context layout: `GLOSSARY-MAP.md` at the root points to a per-context `GLOSSARY.md` (`worker`, `app`). See `docs/agents/domain.md`.

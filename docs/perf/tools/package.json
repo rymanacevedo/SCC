@@ -1,8 +1,0 @@
-{
-  "name": "scc-perf-tools",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "lighthouse": "13.5.0"
-  }
-}

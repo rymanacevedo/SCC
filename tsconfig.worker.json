@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ESNext"
+    ],
+    "types": [
+      "./worker-configuration.d.ts",
+      "bun",
+      "node"
+    ]
+  },
+  "include": [
+    "worker/**/*.ts",
+    "shared/**/*.ts",
+    "evals/**/*.ts",
+    "test/mock-model.ts"
+  ]
+}

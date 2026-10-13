@@ -28,23 +28,22 @@ for both phases.
 
 ## Naming and vocabulary
 
-- Use the domain terms from the package glossaries (`GLOSSARY-MAP.md` points to
-  `packages/backend/GLOSSARY.md`, `packages/frontend/GLOSSARY.md`,
-  `packages/shared/GLOSSARY.md`). Capitalised glossary terms such as Section,
+- Use the domain terms from the context glossaries (`GLOSSARY-MAP.md` points to
+  `worker/GLOSSARY.md`, `app/GLOSSARY.md`). Capitalised glossary terms such as Section,
   Hub page, Blacklist, Error envelope, Same-origin guard name real concepts;
   match them in identifiers and comments.
 - New domain concepts get a glossary entry in the same change.
 
 ## Testing
 
-- `bun test` is the suite; `bun run typecheck` must pass in both packages.
+- `bun test` is the suite; `bun run typecheck` must pass in both TypeScript projects.
 - Behaviour changes ship with a regression test. Prefer seam and contract tests
   (route in, JSON out; generator with a mock model) over mocking internals.
 - Tests must not depend on network, real AI providers, or wall-clock time.
 
 ## Architecture
 
-- Shared schemas live in `packages/shared`; the frontend and backend import
+- Shared schemas live in `shared`; the app and Worker import
   them rather than redefining shapes.
 - Keep the generation seam `(prompt, model)` and the Blacklist untouched unless
   the issue explicitly changes them (ADR-0001).
