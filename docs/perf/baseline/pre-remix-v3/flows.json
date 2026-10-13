@@ -1,0 +1,106 @@
+{
+  "flows": [
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.99,
+        "fcp": 574.3157,
+        "lcp": 836.3922500000001,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 716.8577134102218
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 252.92299515991212,
+        "lcp": 489.53582548217776,
+        "tbt": 0,
+        "cls": 0.0444654583661676,
+        "inp": null,
+        "si": 478.84083183139074
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 26.569,
+        "si": null
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.79,
+        "fcp": 1630.0056,
+        "lcp": 3155.9260999999997,
+        "tbt": 0,
+        "cls": 0.24494539781881974,
+        "inp": null,
+        "si": 1630.0056
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.93,
+        "fcp": 804.6169,
+        "lcp": 2180.6169,
+        "tbt": 56,
+        "cls": 0.1481799289662721,
+        "inp": null,
+        "si": 1138.606264830817
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0.01272743407439333,
+        "inp": 21.161,
+        "si": null
+      }
+    }
+  ]
+}

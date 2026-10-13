@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://sccc.netlify.app/experience",
+    "isRepresentativeRun": false,
+    "htmlPath": "sccc_netlify_app-experience-2026_10_13_03_26_47.report.html",
+    "jsonPath": "sccc_netlify_app-experience-2026_10_13_03_26_47.report.json",
+    "summary": {
+      "performance": 0.98
+    }
+  },
+  {
+    "url": "https://sccc.netlify.app/experience",
+    "isRepresentativeRun": false,
+    "htmlPath": "sccc_netlify_app-experience-2026_10_13_03_26_58.report.html",
+    "jsonPath": "sccc_netlify_app-experience-2026_10_13_03_26_58.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "https://sccc.netlify.app/experience",
+    "isRepresentativeRun": false,
+    "htmlPath": "sccc_netlify_app-experience-2026_10_13_03_27_08.report.html",
+    "jsonPath": "sccc_netlify_app-experience-2026_10_13_03_27_08.report.json",
+    "summary": {
+      "performance": 0.98
+    }
+  },
+  {
+    "url": "https://sccc.netlify.app/experience",
+    "isRepresentativeRun": false,
+    "htmlPath": "sccc_netlify_app-experience-2026_10_13_03_27_19.report.html",
+    "jsonPath": "sccc_netlify_app-experience-2026_10_13_03_27_19.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "https://sccc.netlify.app/experience",
+    "isRepresentativeRun": true,
+    "htmlPath": "sccc_netlify_app-experience-2026_10_13_03_27_29.report.html",
+    "jsonPath": "sccc_netlify_app-experience-2026_10_13_03_27_29.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  }
+]

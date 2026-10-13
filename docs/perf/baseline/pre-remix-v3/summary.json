@@ -1,0 +1,294 @@
+{
+  "lighthouse": [
+    {
+      "formFactor": "desktop",
+      "page": "experience",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-experience-2026_10_13_03_27_29.report.json",
+      "median": {
+        "perf": 0.99,
+        "ttfb": 105.034,
+        "fcp": 670.1955,
+        "lcp": 981.864,
+        "tbt": 0,
+        "cls": 0,
+        "si": 706.198926746129,
+        "tti": 981.864,
+        "bytesTotal": 224853,
+        "bytesScript": 141921,
+        "bytesDocument": 1264
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "home",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app--2026_10_13_03_25_06.report.json",
+      "median": {
+        "perf": 0.99,
+        "ttfb": 100.53,
+        "fcp": 677.9205000000001,
+        "lcp": 987.0135000000001,
+        "tbt": 0,
+        "cls": 0,
+        "si": 695.7191963131382,
+        "tti": 987.0135000000002,
+        "bytesTotal": 222970,
+        "bytesScript": 140093,
+        "bytesDocument": 1263
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "resume",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-resume-2026_10_13_03_30_35.report.json",
+      "median": {
+        "perf": 0.98,
+        "ttfb": 95.82800000000002,
+        "fcp": 631.973,
+        "lcp": 1068.595,
+        "tbt": 0,
+        "cls": 0.00102743133992937,
+        "si": 692.7754783698781,
+        "tti": 1068.8950000000002,
+        "bytesTotal": 495117,
+        "bytesScript": 412240,
+        "bytesDocument": 1263
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "summary",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-summary-2026_10_13_03_28_46.report.json",
+      "median": {
+        "perf": 0.99,
+        "ttfb": 98.83800000000001,
+        "fcp": 649.9025000000001,
+        "lcp": 958.2425000000002,
+        "tbt": 0,
+        "cls": 0,
+        "si": 649.9025000000001,
+        "tti": 958.2425000000002,
+        "bytesTotal": 222281,
+        "bytesScript": 139407,
+        "bytesDocument": 1264
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "experience",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-experience-2026_10_13_03_26_14.report.json",
+      "median": {
+        "perf": 0.94,
+        "ttfb": 119.94,
+        "fcp": 1788.5839999999998,
+        "lcp": 2995.3135,
+        "tbt": 0,
+        "cls": 0,
+        "si": 1861.9091237027571,
+        "tti": 2995.3135,
+        "bytesTotal": 225048,
+        "bytesScript": 142089,
+        "bytesDocument": 1271
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "home",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app--2026_10_13_03_24_10.report.json",
+      "median": {
+        "perf": 0.9,
+        "ttfb": 120.149,
+        "fcp": 2862.914,
+        "lcp": 2881.534999999999,
+        "tbt": 0,
+        "cls": 0,
+        "si": 3043.5212000123497,
+        "tti": 2881.534999999999,
+        "bytesTotal": 223030,
+        "bytesScript": 140090,
+        "bytesDocument": 1264
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "resume",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-resume-2026_10_13_03_30_02.report.json",
+      "median": {
+        "perf": 0.84,
+        "ttfb": 100.945,
+        "fcp": 1759.5949999999998,
+        "lcp": 4363.684,
+        "tbt": 0,
+        "cls": 0.003213880357894079,
+        "si": 2429.94638429098,
+        "tti": 4364.984,
+        "bytesTotal": 495221,
+        "bytesScript": 412297,
+        "bytesDocument": 1264
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "summary",
+      "runs": 5,
+      "representativeRun": "sccc_netlify_app-summary-2026_10_13_03_28_13.report.json",
+      "median": {
+        "perf": 0.94,
+        "ttfb": 98.59499999999998,
+        "fcp": 1780.7205,
+        "lcp": 2868.2404999999994,
+        "tbt": 0,
+        "cls": 0,
+        "si": 1780.7205,
+        "tti": 2868.2405,
+        "bytesTotal": 222243,
+        "bytesScript": 139435,
+        "bytesDocument": 1263
+      }
+    }
+  ],
+  "flows": [
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.99,
+        "fcp": 574.3157,
+        "lcp": 836.3922500000001,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 716.8577134102218
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 252.92299515991212,
+        "lcp": 489.53582548217776,
+        "tbt": 0,
+        "cls": 0.0444654583661676,
+        "inp": null,
+        "si": 478.84083183139074
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 26.569,
+        "si": null
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.79,
+        "fcp": 1630.0056,
+        "lcp": 3155.9260999999997,
+        "tbt": 0,
+        "cls": 0.24494539781881974,
+        "inp": null,
+        "si": 1630.0056
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.93,
+        "fcp": 804.6169,
+        "lcp": 2180.6169,
+        "tbt": 56,
+        "cls": 0.1481799289662721,
+        "inp": null,
+        "si": 1138.606264830817
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume typing in Lexical editor",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0.01272743407439333,
+        "inp": 21.161,
+        "si": null
+      }
+    }
+  ],
+  "bundle": {
+    "js": {
+      "bytes": 1801481,
+      "gzipBytes": 543286
+    },
+    "css": {
+      "bytes": 26231,
+      "gzipBytes": 5751
+    },
+    "fileCount": 72
+  },
+  "api": {
+    "localStub": {
+      "samples": 30,
+      "nonOk": 0,
+      "starttransferMs": {
+        "p50": 3,
+        "p95": 4,
+        "max": 4
+      }
+    },
+    "live": {
+      "samples": 5,
+      "nonOk": 0,
+      "colos": [
+        "MCI"
+      ],
+      "starttransferMs": {
+        "min": 5210,
+        "p50": 5510,
+        "max": 8481
+      }
+    }
+  }
+}

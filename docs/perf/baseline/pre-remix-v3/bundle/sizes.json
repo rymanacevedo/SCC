@@ -1,0 +1,376 @@
+{
+  "assetsDir": "packages/frontend/dist/client",
+  "fileCount": 72,
+  "files": [
+    {
+      "file": "dist/client/assets/resume-main-H01T8tR5.js",
+      "bytes": 928349,
+      "gzipBytes": 281936
+    },
+    {
+      "file": "dist/client/assets/html2canvas-Dcg9y5ox.js",
+      "bytes": 199566,
+      "gzipBytes": 45469
+    },
+    {
+      "file": "dist/client/assets/entry.client-BUZPaea6.js",
+      "bytes": 182460,
+      "gzipBytes": 56861
+    },
+    {
+      "file": "dist/client/assets/index.es-gMZmGm5-.js",
+      "bytes": 151215,
+      "gzipBytes": 48146
+    },
+    {
+      "file": "dist/client/assets/jsx-runtime-DVqohRYL.js",
+      "bytes": 95755,
+      "gzipBytes": 30470
+    },
+    {
+      "file": "dist/client/assets/errorReporting-Wptf7deV.js",
+      "bytes": 59197,
+      "gzipBytes": 15968
+    },
+    {
+      "file": "dist/client/assets/environment-CNzuZwKj.js",
+      "bytes": 56855,
+      "gzipBytes": 12976
+    },
+    {
+      "file": "dist/client/assets/root-C_Mz_5I1.css",
+      "bytes": 26231,
+      "gzipBytes": 5751
+    },
+    {
+      "file": "dist/client/assets/user-BLW0th9I.js",
+      "bytes": 23541,
+      "gzipBytes": 7430
+    },
+    {
+      "file": "dist/client/assets/utils-DMx3DtVc.js",
+      "bytes": 20675,
+      "gzipBytes": 8160
+    },
+    {
+      "file": "dist/client/assets/ErrorBoundaryContent-XypkH54M.js",
+      "bytes": 17890,
+      "gzipBytes": 6597
+    },
+    {
+      "file": "dist/client/assets/manifest-3629c483.js",
+      "bytes": 13161,
+      "gzipBytes": 1603
+    },
+    {
+      "file": "dist/client/assets/suggestions-DisS8l4l.js",
+      "bytes": 8269,
+      "gzipBytes": 3541
+    },
+    {
+      "file": "dist/client/assets/experienceEntry-main-BtWFGxpC.js",
+      "bytes": 6368,
+      "gzipBytes": 2471
+    },
+    {
+      "file": "dist/client/assets/finishup-main-CJ9t6bZb.js",
+      "bytes": 6242,
+      "gzipBytes": 1603
+    },
+    {
+      "file": "dist/client/assets/react-dom-DpjUdm9B.js",
+      "bytes": 3540,
+      "gzipBytes": 1358
+    },
+    {
+      "file": "dist/client/assets/education-Cq2Qd_SJ.js",
+      "bytes": 3138,
+      "gzipBytes": 1513
+    },
+    {
+      "file": "dist/client/assets/experience-main-zN2jFzPi.js",
+      "bytes": 2458,
+      "gzipBytes": 1125
+    },
+    {
+      "file": "dist/client/assets/educationSummary-main-B-SWlOlU.js",
+      "bytes": 2069,
+      "gzipBytes": 944
+    },
+    {
+      "file": "dist/client/assets/experienceSummary-main-dBIdkOcj.js",
+      "bytes": 2039,
+      "gzipBytes": 1010
+    },
+    {
+      "file": "dist/client/assets/experienceEntry-B5QgzsnO.js",
+      "bytes": 1859,
+      "gzipBytes": 1049
+    },
+    {
+      "file": "dist/client/assets/educationLevel-main-BL0hmPLW.js",
+      "bytes": 1669,
+      "gzipBytes": 936
+    },
+    {
+      "file": "dist/client/assets/root-8ChZWuEN.js",
+      "bytes": 1434,
+      "gzipBytes": 764
+    },
+    {
+      "file": "dist/client/assets/experience-client-action-RueUmuuU.js",
+      "bytes": 938,
+      "gzipBytes": 595
+    },
+    {
+      "file": "dist/client/assets/experienceEntry-client-action-DMXp6MzS.js",
+      "bytes": 889,
+      "gzipBytes": 588
+    },
+    {
+      "file": "dist/client/assets/home-IhyX3Cyq.js",
+      "bytes": 820,
+      "gzipBytes": 478
+    },
+    {
+      "file": "dist/client/assets/skills-main-CPlTSme8.js",
+      "bytes": 757,
+      "gzipBytes": 503
+    },
+    {
+      "file": "dist/client/assets/report-issue-client-action-R-eCDFVR.js",
+      "bytes": 748,
+      "gzipBytes": 496
+    },
+    {
+      "file": "dist/client/assets/educationSummary-client-action-rlqdFu1p.js",
+      "bytes": 697,
+      "gzipBytes": 506
+    },
+    {
+      "file": "dist/client/assets/errors-client-action-B-nSJ3q3.js",
+      "bytes": 649,
+      "gzipBytes": 437
+    },
+    {
+      "file": "dist/client/assets/summary-client-action-BguhVWKl.js",
+      "bytes": 647,
+      "gzipBytes": 448
+    },
+    {
+      "file": "dist/client/assets/id-D4waN3qX.js",
+      "bytes": 607,
+      "gzipBytes": 370
+    },
+    {
+      "file": "dist/client/assets/education-client-loader-DJMJbyzy.js",
+      "bytes": 547,
+      "gzipBytes": 356
+    },
+    {
+      "file": "dist/client/assets/filter-C1ivHsDz.js",
+      "bytes": 525,
+      "gzipBytes": 359
+    },
+    {
+      "file": "dist/client/assets/experienceEntry-client-loader-CFx82_Hs.js",
+      "bytes": 472,
+      "gzipBytes": 329
+    },
+    {
+      "file": "dist/client/assets/ButtonLink-DCO1CjnW.js",
+      "bytes": 452,
+      "gzipBytes": 332
+    },
+    {
+      "file": "dist/client/assets/experience-client-loader-CWSjTRxv.js",
+      "bytes": 427,
+      "gzipBytes": 298
+    },
+    {
+      "file": "dist/client/assets/educationSummary-client-loader-DMs3N3W2.js",
+      "bytes": 393,
+      "gzipBytes": 318
+    },
+    {
+      "file": "dist/client/assets/educationLevel-client-loader-FXzkqQ6D.js",
+      "bytes": 362,
+      "gzipBytes": 292
+    },
+    {
+      "file": "dist/client/assets/experienceSummary-client-loader-CMssnIF4.js",
+      "bytes": 291,
+      "gzipBytes": 264
+    },
+    {
+      "file": "dist/client/assets/typeof-B5XbjTb1.js",
+      "bytes": 271,
+      "gzipBytes": 188
+    },
+    {
+      "file": "dist/client/assets/education-BL-Djl3_.js",
+      "bytes": 243,
+      "gzipBytes": 180
+    },
+    {
+      "file": "dist/client/assets/educationEntry-main-BJ-oNu-x.js",
+      "bytes": 241,
+      "gzipBytes": 198
+    },
+    {
+      "file": "dist/client/assets/finishup-client-action-m99DoH1N.js",
+      "bytes": 175,
+      "gzipBytes": 199
+    },
+    {
+      "file": "dist/client/assets/experienceSummary-client-action-DPg9gRlL.js",
+      "bytes": 171,
+      "gzipBytes": 207
+    },
+    {
+      "file": "dist/client/assets/education-Jw_Mzw9u.js",
+      "bytes": 164,
+      "gzipBytes": 162
+    },
+    {
+      "file": "dist/client/assets/navigation-BxbZkArK.js",
+      "bytes": 160,
+      "gzipBytes": 176
+    },
+    {
+      "file": "dist/client/assets/info-D63mKqRB.js",
+      "bytes": 159,
+      "gzipBytes": 157
+    },
+    {
+      "file": "dist/client/assets/skills-BFKD_TZ-.js",
+      "bytes": 159,
+      "gzipBytes": 159
+    },
+    {
+      "file": "dist/client/assets/summary-6WvSEVmA.js",
+      "bytes": 159,
+      "gzipBytes": 160
+    },
+    {
+      "file": "dist/client/assets/resume-client-loader-XfWfKPIG.js",
+      "bytes": 132,
+      "gzipBytes": 163
+    },
+    {
+      "file": "dist/client/assets/educationEntry-client-loader-9toCe2xM.js",
+      "bytes": 127,
+      "gzipBytes": 149
+    },
+    {
+      "file": "dist/client/assets/summary-main-TOcgStMM.js",
+      "bytes": 90,
+      "gzipBytes": 132
+    },
+    {
+      "file": "dist/client/assets/finishup-client-loader-84QkEnTu.js",
+      "bytes": 89,
+      "gzipBytes": 139
+    },
+    {
+      "file": "dist/client/assets/experience-client-loader-C7hAl1dH.js",
+      "bytes": 86,
+      "gzipBytes": 138
+    },
+    {
+      "file": "dist/client/assets/report-issue-main-Bbb2bRAm.js",
+      "bytes": 86,
+      "gzipBytes": 121
+    },
+    {
+      "file": "dist/client/assets/skills-client-loader-C7hAl1dH.js",
+      "bytes": 86,
+      "gzipBytes": 134
+    },
+    {
+      "file": "dist/client/assets/errors-main-ClqhJMDI.js",
+      "bytes": 80,
+      "gzipBytes": 108
+    },
+    {
+      "file": "dist/client/assets/experience-D8oCn0nn.js",
+      "bytes": 79,
+      "gzipBytes": 118
+    },
+    {
+      "file": "dist/client/assets/educationEntry-client-action-m97Ka7gq.js",
+      "bytes": 70,
+      "gzipBytes": 124
+    },
+    {
+      "file": "dist/client/assets/experience-client-action-C0o7KduO.js",
+      "bytes": 65,
+      "gzipBytes": 117
+    },
+    {
+      "file": "dist/client/assets/info-D7oPXwwx.js",
+      "bytes": 65,
+      "gzipBytes": 97
+    },
+    {
+      "file": "dist/client/assets/skills-C4xKeg1H.js",
+      "bytes": 65,
+      "gzipBytes": 99
+    },
+    {
+      "file": "dist/client/assets/summary-1r8vMZJ-.js",
+      "bytes": 65,
+      "gzipBytes": 100
+    },
+    {
+      "file": "dist/client/assets/education-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 110
+    },
+    {
+      "file": "dist/client/assets/educationLevel-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 115
+    },
+    {
+      "file": "dist/client/assets/experienceEntry-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 116
+    },
+    {
+      "file": "dist/client/assets/info-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 105
+    },
+    {
+      "file": "dist/client/assets/skills-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 107
+    },
+    {
+      "file": "dist/client/assets/skills-client-action-DjsKJX0i.js",
+      "bytes": 54,
+      "gzipBytes": 107
+    },
+    {
+      "file": "dist/client/assets/summary-client-action-Com8zKW-.js",
+      "bytes": 54,
+      "gzipBytes": 108
+    },
+    {
+      "file": "dist/client/assets/experience-main-CtaHJ_Yo.js",
+      "bytes": 46,
+      "gzipBytes": 94
+    }
+  ],
+  "totals": {
+    "js": {
+      "bytes": 1801481,
+      "gzipBytes": 543286
+    },
+    "css": {
+      "bytes": 26231,
+      "gzipBytes": 5751
+    }
+  }
+}

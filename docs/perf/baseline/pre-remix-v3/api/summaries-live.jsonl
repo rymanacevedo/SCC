@@ -1,0 +1,5 @@
+{"i":1,"code":200,"namelookup":0.437323,"connect":0.456942,"appconnect":0.524276,"starttransfer":8.480914,"total":8.481038,"bytes":657,"ray":"a49b3ac39b072bd9-MCI"}
+{"i":2,"code":200,"namelookup":0.001014,"connect":0.023800,"appconnect":0.058490,"starttransfer":7.192461,"total":7.192579,"bytes":501,"ray":"a49b3af5bbcd6a1d-MCI"}
+{"i":3,"code":200,"namelookup":0.000901,"connect":0.019642,"appconnect":0.048142,"starttransfer":5.510106,"total":5.510254,"bytes":496,"ray":"a49b3b22ae4a5031-MCI"}
+{"i":4,"code":200,"namelookup":0.001336,"connect":0.020121,"appconnect":0.049024,"starttransfer":5.371101,"total":5.371332,"bytes":437,"ray":"a49b3b452c90e97e-MCI"}
+{"i":5,"code":200,"namelookup":0.001288,"connect":0.018343,"appconnect":0.056151,"starttransfer":5.210464,"total":5.210633,"bytes":516,"ray":"a49b3b66cafad873-MCI"}

@@ -1,0 +1,7 @@
+{ "userId": "perf-fixture",
+  "experience": [
+    { "jobId": "perf-1", "jobTitle": "Warehouse Associate", "employer": "Acme Logistics",
+      "city": "Denver", "state": "CO", "startDate": "2021-03-01", "endDate": "2024-06-30",
+      "currentlyEmployed": false,
+      "details": ["Picked and packed 300+ orders per shift", "Trained 4 new hires on safety procedures", "Operated forklift and pallet jack"] }
+  ] }
