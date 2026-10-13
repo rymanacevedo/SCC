@@ -1,7 +1,6 @@
 import * as sandcastle from '@ai-hero/sandcastle';
 import { z } from 'zod';
 import {
-  copyToWorktree,
   createDockerSandbox,
   hooks,
   MAX_CONCURRENT_ISSUES,
@@ -38,7 +37,6 @@ const batch = await sandcastle.createSandbox({
   baseBranch,
   sandbox: createDockerSandbox(),
   hooks,
-  copyToWorktree,
 });
 
 async function verify(
@@ -98,7 +96,6 @@ try {
           baseBranch,
           sandbox: createDockerSandbox(),
           hooks,
-          copyToWorktree,
         });
         try {
           const implement = await sandbox.run({

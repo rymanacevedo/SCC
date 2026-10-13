@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+# Runs inside the sandbox before each agent iteration (see config.ts hooks).
+# Installs dependencies fresh from the lockfile every time: a worktree never
+# inherits node_modules from the host, and a sandbox that already installed once
+# may have merged branches that changed the lockfile since. A frozen install on
+# top of an existing tree does not prune packages the lockfile no longer places
+# there (a stale nested copy of a package shadows the hoisted one for TypeScript
+# and Bun), so the tree is wiped first. The Bun cache is a shared host mount, so
+# the install is a copy from cache rather than a download; the lock below keeps
+# concurrent sandboxes from populating that cache at the same time.
 set -euo pipefail
 
 codex_mount=/mnt/host-codex
@@ -24,10 +33,6 @@ if [ "$skip_auth" = false ]; then
 fi
 
 verify_native_dependencies() {
-  if [ ! -d node_modules ]; then
-    return 1
-  fi
-
   node <<'NODE'
 const checks = [
   {
@@ -42,11 +47,6 @@ const checks = [
       }
     },
   },
-  {
-    name: '@rolldown/binding-linux-arm64-gnu',
-    optional: true,
-    run: () => undefined,
-  },
 ];
 
 for (const check of checks) {
@@ -54,7 +54,7 @@ for (const check of checks) {
   try {
     mod = require(check.name);
   } catch (error) {
-    if (check.optional || error?.code === 'MODULE_NOT_FOUND') {
+    if (error?.code === 'MODULE_NOT_FOUND') {
       continue;
     }
     throw error;
@@ -66,23 +66,11 @@ for (const check of checks) {
 NODE
 }
 
-reset_node_modules() {
-  echo "Resetting sandbox node_modules"
-  if [ -L node_modules ]; then
-    rm node_modules
-  else
-    rm -rf node_modules
-  fi
+remove_installed_dependencies() {
+  # Every node_modules directory in the worktree, including nested workspace
+  # and tooling copies, but never descending into one to look for more.
+  find . -name node_modules -type d -prune -exec rm -rf {} +
 }
-
-if [ -e node_modules ]; then
-  if verify_native_dependencies; then
-    echo "Sandbox dependencies valid"
-    exit 0
-  fi
-
-  reset_node_modules
-fi
 
 if [ -d "$install_lock_dir" ] && [ -z "$(find "$install_lock_dir" -mmin -20 -print -quit)" ]; then
   echo "Removing stale Bun install lock"
@@ -103,15 +91,7 @@ cleanup_lock() {
 }
 trap cleanup_lock EXIT
 
-if [ -e node_modules ]; then
-  if verify_native_dependencies; then
-    echo "Sandbox dependencies valid after waiting"
-    exit 0
-  fi
-
-  reset_node_modules
-fi
-
-echo "Installing sandbox dependencies"
+echo "Installing sandbox dependencies from the lockfile"
+remove_installed_dependencies
 bun install --frozen-lockfile --backend=copy
 verify_native_dependencies

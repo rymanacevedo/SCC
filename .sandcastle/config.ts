@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
@@ -30,6 +30,12 @@ const hostCodexHome = path.join(os.homedir(), '.codex');
 const sandboxCodexMount = '/mnt/host-codex';
 const sandboxCodexHome = '/home/agent/.codex';
 const sandboxTmpDir = '/home/agent/tmp';
+
+// Dependencies are installed fresh in every sandbox from the lockfile (see
+// setup-sandbox.sh) so the tree never carries stale packages from the host
+// checkout. The host Bun cache is mounted read-write so those installs are
+// warm; the setup script serialises concurrent sandboxes with a lock inside it.
+const hostBunCacheDir = path.join(os.homedir(), '.bun', 'install', 'cache');
 const sandboxBunCacheDir = '/home/agent/.bun-cache';
 
 const ensureHostCodexAuth = () => {
@@ -60,6 +66,10 @@ export const createDockerSandbox = () =>
         sandboxPath: sandboxCodexMount,
         readonly: true,
       },
+      {
+        hostPath: hostBunCacheDir,
+        sandboxPath: sandboxBunCacheDir,
+      },
     ],
   });
 
@@ -70,7 +80,7 @@ export const MAX_CONCURRENT_ISSUES = 3;
 export const SANDCASTLE_MODEL = 'gpt-6.1-sol';
 
 // Hooks run inside the sandbox before the agent starts each iteration.
-// Install Linux-native dependencies there, not in the host checkout.
+// Dependencies are installed there from the lockfile, never in the host checkout.
 export const hooks = {
   sandbox: {
     onSandboxReady: [
@@ -91,14 +101,14 @@ export const hooks = {
   },
 };
 
-// Copy node_modules from the host into the worktree before each sandbox
-// starts. The setup hook verifies Linux-native packages and reinstalls with Bun
-// if the copied host dependencies are not usable in the container.
-export const copyToWorktree = ['node_modules'];
+const ensureHostBunCache = () => {
+  mkdirSync(hostBunCacheDir, { recursive: true });
+};
 
 export function prepareEnvironment(): string {
   loadSandcastleEnv();
   ensureHostCodexAuth();
+  ensureHostBunCache();
   if (!process.env.GH_TOKEN) {
     throw new Error(
       'Set GH_TOKEN in .sandcastle/.env before starting Sandcastle.',
