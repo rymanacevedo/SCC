@@ -1,1 +1,0 @@
-As a developer, I would like telemetry and analytics about how long it takes users to typically complete a resume.

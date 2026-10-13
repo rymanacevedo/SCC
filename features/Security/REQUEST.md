@@ -1,1 +1,0 @@
-As a developer, I would like to secure my web app using best practices centered around react-router/remix. Review the docs around this page: https://app.studyraid.com/en/read/5717/124610/secure-your-remix-application

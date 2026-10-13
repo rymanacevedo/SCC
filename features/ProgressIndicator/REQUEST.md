@@ -1,1 +1,0 @@
-As a user, I would like to know how much progress I have left to make. This should be displayed as a percentage in an easily visible location. It should update as I fill out the form.
