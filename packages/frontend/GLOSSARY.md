@@ -16,6 +16,14 @@ _Avoid_: form page, wizard step
 The per-session record of everything the user has answered so far, written by the builder pages and read by the Outline.
 _Avoid_: profile, session data, resume data
 
+**Draft**:
+An entry for a Section the user is still answering, not yet part of the User.
+_Avoid_: queued entry, pending entry, work in progress
+
+**Start over**:
+The user's action that discards the User and every Draft and returns to the beginning of the builder.
+_Avoid_: reset, clear, new resume
+
 ## Resume
 
 **Resume**:
