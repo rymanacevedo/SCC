@@ -1,6 +1,0 @@
-ALLOWED_ORIGIN=http://localhost:5173
-ALLOWED_COUNTRIES=US
-GITHUB_REPO=rymanacevedo/SCC
-GITHUB_TOKEN=replace-with-github-token
-OPENAI_API_KEY=replace-with-openai-api-key
-GEMINI_API_KEY=replace-with-gemini-api-key

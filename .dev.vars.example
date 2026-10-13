@@ -1,0 +1,6 @@
+# Copy to .dev.vars and supply local secrets. Never commit .dev.vars.
+OPENAI_API_KEY=replace-me
+GITHUB_TOKEN=replace-me
+# OPENAI_BASE_URL=http://localhost:11434/v1
+# OPENAI_MODEL=gpt-5-nano
+# GEMINI_API_KEY=replace-me (evals only)

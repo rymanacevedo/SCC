@@ -1,17 +1,16 @@
 # Glossary Map
 
-SCC is split into packages, each with its own bounded vocabulary. This map points to the per-package glossary (`GLOSSARY.md`). Before exploring a package's code, read its glossary and use those terms exactly — prefer them over synonyms.
+SCC is split into contexts, each with its own bounded vocabulary. This map points to the per-context glossary (`GLOSSARY.md`). Before exploring a context's code, read its glossary and use those terms exactly — prefer them over synonyms.
 
 | Context | Glossary | What lives here |
 |---------|----------|-----------------|
 | System | [`GLOSSARY.md`](GLOSSARY.md) | Terms spanning every context: the kinds of Test, Eval, Bake-off |
-| Backend | [`packages/backend/GLOSSARY.md`](packages/backend/GLOSSARY.md) | Cloudflare Workers + Hono API: AI resume generation, GitHub issue reporting, environment validation |
-| Frontend | [`packages/frontend/GLOSSARY.md`](packages/frontend/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
-| Shared | _not yet documented_ | Schemas both contexts import: Section schemas, the generation request and output contracts, error reporting |
+| Worker | [`worker/GLOSSARY.md`](worker/GLOSSARY.md) | Cloudflare Worker API: AI resume generation, GitHub issue reporting, environment validation |
+| App | [`app/GLOSSARY.md`](app/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
 
 ## Architectural decisions
 
 - **System-wide** decisions live in `docs/adr/` at the repo root.
-- **Context-specific** decisions live under each package, e.g. [`packages/backend/docs/adr/`](packages/backend/docs/adr/) and [`packages/frontend/docs/adr/`](packages/frontend/docs/adr/).
+- **Context-specific** decisions live beside each context, e.g. [`worker/docs/adr/`](worker/docs/adr/) and [`app/docs/adr/`](app/docs/adr/).
 
 Read the ADRs that touch the area you're about to work in before proposing changes there.

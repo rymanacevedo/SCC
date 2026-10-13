@@ -1,35 +1,54 @@
 {
   "name": "scc",
-  "module": "index.ts",
-  "workspaces": [
-    "packages/*"
-  ],
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "node": ">=24.3.0"
+  },
   "scripts": {
-    "dev": "turbo run dev --filter=@scc/frontend...",
-    "build": "turbo run build",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "bun run types && tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
+    "test": "bun test",
+    "test:e2e": "bun test/flow-placeholder.ts",
+    "evals": "bun evals/run.eval.ts",
+    "check": "biome check .",
     "lint": "biome lint .",
     "format": "biome format . --write",
-    "check": "biome check .",
     "sandcastle": "bun .sandcastle/main.ts",
-    "typecheck": "bun run --cwd packages/frontend typecheck && bun run --cwd packages/backend typecheck",
-    "test": "bun test",
-    "prepare": "husky && bun run --cwd packages/backend types"
-  },
-  "type": "module",
-  "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@types/bun": "^1.4",
-    "turbo": "^2.11.0",
-    "puppeteer": "24"
-  },
-  "peerDependencies": {
-    "typescript": "^7.0.2"
+    "prepare": "husky && bun run types"
   },
   "dependencies": {
-    "@ai-hero/sandcastle": "^0.12.0",
+    "remix": "3.0.0",
+    "@ai-sdk/openai": "^4",
+    "ai": "^7",
+    "bad-words": "^4.1.5",
+    "docx": "^9.10",
+    "jspdf": "^4.2.1"
+  },
+  "devDependencies": {
+    "@ai-hero/sandcastle": "^0.12",
+    "@ai-sdk/google": "^4",
+    "@biomejs/biome": "2.5.15",
+    "@cloudflare/vite-plugin": "^1.63.1",
+    "@cloudflare/workers-types": "^5",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bun": "^1.4",
+    "@types/node": "^24",
+    "happy-dom": "^20",
     "husky": "^9.1.7",
     "lint-staged": "^17",
-    "zod": "^4.4.3"
-  },
-  "packageManager": "bun@1.4.3"
+    "puppeteer": "^24",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "wrangler": "^4.149.0",
+    "zod": "^4.6.7",
+    "@happy-dom/global-registrator": "^20",
+    "lighthouse": "^13.5.0"
+  }
 }
