@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-export const baseEnvironmentSchema = z.object({});
-
 export const geoEnvironmentSchema = z.object({
   ALLOWED_COUNTRIES: z.string().min(1),
 });
@@ -17,12 +15,10 @@ export const openAiEnvironmentSchema = z.object({
   OPENAI_MODEL: z.string().min(1).optional(),
 });
 
-export const environmentSchema = baseEnvironmentSchema
-  .extend(geoEnvironmentSchema.shape)
+export const environmentSchema = geoEnvironmentSchema
   .extend(githubEnvironmentSchema.shape)
   .extend(openAiEnvironmentSchema.shape);
 
-export type BaseEnvSchema = z.infer<typeof baseEnvironmentSchema>;
 export type GeoEnvSchema = {
   allowedCountries: string[];
 };
@@ -30,7 +26,7 @@ export type GithubEnvSchema = z.infer<typeof githubEnvironmentSchema>;
 export type OpenAiEnvSchema = z.infer<typeof openAiEnvironmentSchema>;
 export type EnvSchema = z.infer<typeof environmentSchema>;
 
-export type EnvScope = 'base' | 'geo' | 'github' | 'openai' | 'all';
+export type EnvScope = 'geo' | 'github' | 'openai' | 'all';
 
 export class EnvironmentValidationError extends Error {
   scope: EnvScope;
@@ -44,7 +40,7 @@ export class EnvironmentValidationError extends Error {
 
 function parseEnvironment<T extends z.ZodRawShape>(
   schema: z.ZodObject<T>,
-  envFromContext: Record<string, string>,
+  envFromContext: object,
   scope: EnvScope,
 ): z.infer<z.ZodObject<T>> {
   try {
@@ -52,12 +48,6 @@ function parseEnvironment<T extends z.ZodRawShape>(
   } catch (error) {
     throw new EnvironmentValidationError(scope, error);
   }
-}
-
-export function validateBaseEnvironment(
-  envFromContext: Record<string, string>,
-): BaseEnvSchema {
-  return parseEnvironment(baseEnvironmentSchema, envFromContext, 'base');
 }
 
 export function parseAllowedCountries(allowedCountries: string): string[] {
@@ -75,9 +65,7 @@ export function parseAllowedCountries(allowedCountries: string): string[] {
   return [...new Set(countryCodes)];
 }
 
-export function validateGeoEnvironment(
-  envFromContext: Record<string, string>,
-): GeoEnvSchema {
+export function validateGeoEnvironment(envFromContext: object): GeoEnvSchema {
   try {
     const { ALLOWED_COUNTRIES } = geoEnvironmentSchema.parse(envFromContext);
 
@@ -90,19 +78,17 @@ export function validateGeoEnvironment(
 }
 
 export function validateGithubEnvironment(
-  envFromContext: Record<string, string>,
+  envFromContext: object,
 ): GithubEnvSchema {
   return parseEnvironment(githubEnvironmentSchema, envFromContext, 'github');
 }
 
 export function validateOpenAiEnvironment(
-  envFromContext: Record<string, string>,
+  envFromContext: object,
 ): OpenAiEnvSchema {
   return parseEnvironment(openAiEnvironmentSchema, envFromContext, 'openai');
 }
 
-export function validateEnvironment(
-  envFromContext: Record<string, string>,
-): EnvSchema {
+export function validateEnvironment(envFromContext: object): EnvSchema {
   return parseEnvironment(environmentSchema, envFromContext, 'all');
 }
