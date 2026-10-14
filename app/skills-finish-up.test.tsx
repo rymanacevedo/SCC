@@ -187,6 +187,9 @@ test('Skills markup carries values and errors; finish-up lists completed Section
     />,
   );
   expect(finish).toContain('Start over');
+  expect(finish).toMatch(
+    /<button[^>]*type="submit"[^>]*>Preview Resume<\/button>/,
+  );
   for (const label of ['Info', 'Experience', 'Education', 'Skills', 'Summary'])
     expect(finish).toContain(`Edit ${label}`);
   expect(finish).not.toContain('name="confirm"');

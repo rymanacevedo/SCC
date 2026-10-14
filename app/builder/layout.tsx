@@ -44,10 +44,9 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
       });
     }
     const nav = builderNav(step, url);
-    let submitLabel =
-      step.endsWith('-summary') || step === 'finish-up'
-        ? 'Continue'
-        : 'Next Step';
+    let submitLabel = 'Next Step';
+    if (step === 'finish-up') submitLabel = 'Preview Resume';
+    else if (step.endsWith('-summary')) submitLabel = 'Continue';
     if (pending.pending) {
       submitLabel = 'Saving…';
     } else if (nav.returnUrl) {
