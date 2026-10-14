@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev/",
+    "isRepresentativeRun": false,
+    "htmlPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_44_44.report.html",
+    "jsonPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_44_44.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev/",
+    "isRepresentativeRun": false,
+    "htmlPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_44_55.report.html",
+    "jsonPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_44_55.report.json",
+    "summary": {
+      "performance": 0.95
+    }
+  },
+  {
+    "url": "https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev/",
+    "isRepresentativeRun": false,
+    "htmlPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_06.report.html",
+    "jsonPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_06.report.json",
+    "summary": {
+      "performance": 0.95
+    }
+  },
+  {
+    "url": "https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev/",
+    "isRepresentativeRun": false,
+    "htmlPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_16.report.html",
+    "jsonPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_16.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev/",
+    "isRepresentativeRun": true,
+    "htmlPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_27.report.html",
+    "jsonPath": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_27.report.json",
+    "summary": {
+      "performance": 0.96
+    }
+  }
+]

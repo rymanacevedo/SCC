@@ -1,0 +1,56 @@
+{
+  "assetsDir": "dist/client",
+  "fileCount": 8,
+  "files": [
+    {
+      "file": "dist/client/assets/docx-D0gTG6qN.js",
+      "bytes": 416891,
+      "gzipBytes": 119138
+    },
+    {
+      "file": "dist/client/assets/html2canvas-BPBoh1FK.js",
+      "bytes": 199468,
+      "gzipBytes": 45455
+    },
+    {
+      "file": "dist/client/assets/index-CpcS5oyI.css",
+      "bytes": 25404,
+      "gzipBytes": 5765
+    },
+    {
+      "file": "dist/client/assets/index-Dposyw7_.js",
+      "bytes": 282139,
+      "gzipBytes": 84127
+    },
+    {
+      "file": "dist/client/assets/index.es-BBdVCwqh.js",
+      "bytes": 151078,
+      "gzipBytes": 48107
+    },
+    {
+      "file": "dist/client/assets/pdf-zoyrggGc.js",
+      "bytes": 399852,
+      "gzipBytes": 127323
+    },
+    {
+      "file": "dist/client/assets/purify.es-B9yC1gcw.js",
+      "bytes": 26044,
+      "gzipBytes": 10192
+    },
+    {
+      "file": "dist/client/assets/rolldown-runtime-W7wSyTde.js",
+      "bytes": 979,
+      "gzipBytes": 597
+    }
+  ],
+  "totals": {
+    "js": {
+      "bytes": 1476451,
+      "gzipBytes": 434939
+    },
+    "css": {
+      "bytes": 25404,
+      "gzipBytes": 5765
+    }
+  }
+}

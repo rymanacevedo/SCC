@@ -1,0 +1,290 @@
+{
+  "lighthouse": [
+    {
+      "formFactor": "desktop",
+      "page": "experience",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-experience-2026_10_14_05_47_48.report.json",
+      "median": {
+        "perf": 0.99,
+        "ttfb": 264.698,
+        "fcp": 717.4300000000001,
+        "lcp": 717.4300000000001,
+        "tbt": 0,
+        "cls": 0,
+        "si": 717.4300000000001,
+        "tti": 717.4300000000001,
+        "bytesTotal": 158122,
+        "bytesScript": 88671,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1012
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "home",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_59.report.json",
+      "median": {
+        "perf": 1,
+        "ttfb": 258.394,
+        "fcp": 675.816,
+        "lcp": 692.808,
+        "tbt": 0,
+        "cls": 0,
+        "si": 675.816,
+        "tti": 692.808,
+        "bytesTotal": 158073,
+        "bytesScript": 88670,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1018
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "resume",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-resume-2026_10_14_05_51_02.report.json",
+      "median": {
+        "perf": 0.99,
+        "ttfb": 234.36100000000002,
+        "fcp": 754.03,
+        "lcp": 754.03,
+        "tbt": 0,
+        "cls": 0,
+        "si": 754.03,
+        "tti": 754.03,
+        "bytesTotal": 158111,
+        "bytesScript": 88680,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1015
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "page": "summary",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-summary-2026_10_14_05_49_26.report.json",
+      "median": {
+        "perf": 1,
+        "ttfb": 235.46200000000002,
+        "fcp": 674.348,
+        "lcp": 674.348,
+        "tbt": 0,
+        "cls": 0,
+        "si": 674.348,
+        "tti": 674.348,
+        "bytesTotal": 158071,
+        "bytesScript": 88671,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1018
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "experience",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-experience-2026_10_14_05_46_42.report.json",
+      "median": {
+        "perf": 0.93,
+        "ttfb": 234.561,
+        "fcp": 2082.1969999999997,
+        "lcp": 2531.5299999999997,
+        "tbt": 125,
+        "cls": 0,
+        "si": 2850.8300499870656,
+        "tti": 2818.057,
+        "bytesTotal": 158087,
+        "bytesScript": 88683,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1018
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "home",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev--2026_10_14_05_45_27.report.json",
+      "median": {
+        "perf": 0.96,
+        "ttfb": 265.346,
+        "fcp": 2016.4269999999997,
+        "lcp": 2377.7209999999995,
+        "tbt": 49,
+        "cls": 0,
+        "si": 2016.4269999999997,
+        "tti": 2606.3770000000004,
+        "bytesTotal": 158090,
+        "bytesScript": 88674,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1016
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "resume",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-resume-2026_10_14_05_50_30.report.json",
+      "median": {
+        "perf": 0.96,
+        "ttfb": 239.42900000000003,
+        "fcp": 2023.443,
+        "lcp": 2393.0969999999998,
+        "tbt": 50,
+        "cls": 0,
+        "si": 2023.443,
+        "tti": 2676.924,
+        "bytesTotal": 158077,
+        "bytesScript": 88670,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1020
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "page": "summary",
+      "runs": 5,
+      "representativeRun": "604bdccf_scc_ryan_avocado_6a07yrtc_workers_dev-summary-2026_10_14_05_48_52.report.json",
+      "median": {
+        "perf": 0.96,
+        "ttfb": 298.6,
+        "fcp": 2150.2799999999997,
+        "lcp": 2332.8579999999997,
+        "tbt": 62,
+        "cls": 0,
+        "si": 2187.3300000000004,
+        "tti": 2663.2660000000005,
+        "bytesTotal": 158076,
+        "bytesScript": 88671,
+        "bytesScriptThirdParty": 10438,
+        "bytesDocument": 1018
+      }
+    }
+  ],
+  "flows": [
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 458.1428,
+        "lcp": 678.2142000000001,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 458.1428
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 377.2496,
+        "lcp": 377.2496,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 377.2496
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume Preview Revisit interaction",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0.01480851063829787,
+        "inp": 27.003,
+        "si": null
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.96,
+        "fcp": 1717.0813,
+        "lcp": 2472.6219499999997,
+        "tbt": 72,
+        "cls": 0,
+        "inp": null,
+        "si": 1717.0813
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.99,
+        "fcp": 1285.5596,
+        "lcp": 1285.5596,
+        "tbt": 71,
+        "cls": 0,
+        "inp": null,
+        "si": 1285.5596
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume Preview Revisit interaction",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 22.336,
+        "si": null
+      }
+    }
+  ],
+  "bundle": {
+    "js": {
+      "bytes": 1476451,
+      "gzipBytes": 434939
+    },
+    "css": {
+      "bytes": 25404,
+      "gzipBytes": 5765
+    },
+    "fileCount": 8
+  },
+  "api": {
+    "localStub": {
+      "samples": 30,
+      "nonOk": 0,
+      "starttransferMs": {
+        "p50": 4,
+        "p95": 5,
+        "max": 5
+      }
+    }
+  }
+}

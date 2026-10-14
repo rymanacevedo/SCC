@@ -1,0 +1,106 @@
+{
+  "flows": [
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 458.1428,
+        "lcp": 678.2142000000001,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 458.1428
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": 377.2496,
+        "lcp": 377.2496,
+        "tbt": 0,
+        "cls": 0,
+        "inp": null,
+        "si": 377.2496
+      }
+    },
+    {
+      "formFactor": "desktop",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume Preview Revisit interaction",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0.01480851063829787,
+        "inp": 27.003,
+        "si": null
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 0,
+      "name": "/summary seeded, ai=mock",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.96,
+        "fcp": 1717.0813,
+        "lcp": 2472.6219499999997,
+        "tbt": 72,
+        "cls": 0,
+        "inp": null,
+        "si": 1717.0813
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 1,
+      "name": "/resume seeded (warm: storage not reset)",
+      "mode": "navigation",
+      "runs": 3,
+      "median": {
+        "perf": 0.99,
+        "fcp": 1285.5596,
+        "lcp": 1285.5596,
+        "tbt": 71,
+        "cls": 0,
+        "inp": null,
+        "si": 1285.5596
+      }
+    },
+    {
+      "formFactor": "mobile",
+      "ai": "mock",
+      "step": 2,
+      "name": "/resume Preview Revisit interaction",
+      "mode": "timespan",
+      "runs": 3,
+      "median": {
+        "perf": 1,
+        "fcp": null,
+        "lcp": null,
+        "tbt": 0,
+        "cls": 0,
+        "inp": 22.336,
+        "si": null
+      }
+    }
+  ]
+}
