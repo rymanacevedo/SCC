@@ -158,7 +158,10 @@ Confirm the first build of each trigger goes green: Workers & Pages → `scc` �
 either fails, fix the trigger before Phase 2; the gate needs non-production builds working (or
 uses the 1.6 fallback).
 
-### 1.4 Web Analytics for the new hostname
+### 1.4 Web Analytics for the new hostname (done 2026-10-14)
+
+Done through the Cloudflare API: site tag `9899ff2ec4ac4b7296721a2d49b9ea43`, token in the
+`index.html` beacon tag.
 
 Cloudflare dashboard → Analytics & Logs → Web Analytics → Add a site → hostname
 `scc.ryan-avocado-6a07yrtc.workers.dev` (JS snippet, not proxied). Put the token into the shell
@@ -542,7 +545,7 @@ handled defensively above. Confirm each the first time you hit it and strike it 
 - Whether `wrangler deployments list` names the commit SHA of a Workers Builds deployment
   (3.1 reads it from the dashboard if not).
 - Whether `wrangler delete` prompts for confirmation (3.5 runs it in a terminal).
-- Whether Web Analytics accepts a `workers.dev` hostname (1.4 has the fallback).
+- ~~Whether Web Analytics accepts a `workers.dev` hostname~~: it does (site created 2026-10-14).
 - Whether a Netlify deploy with no `index.html` is accepted (3.3 ships one).
 - ~~Netlify's behaviour when the configured base directory is missing on the production
   branch~~: moot, builds were stopped before it could apply (1.5, 2026-10-14).
