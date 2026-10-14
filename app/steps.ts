@@ -140,6 +140,7 @@ export function guardStep(
   user: User,
   drafts: Drafts = {},
 ): string | undefined {
+  if (id === 'resume') return Object.keys(user).length ? undefined : '/';
   const step: Step = steps.find((step) => step.id === id)!;
   for (const prerequisite of step.prerequisites) {
     if (prerequisite === 'experienceDraft') {
