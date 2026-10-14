@@ -40,6 +40,10 @@ _Avoid_: resubmit, return URL, edit flow
 An example the generator offers beside a Builder page for one Section; it becomes resume content only when the user picks it.
 _Avoid_: example, recommendation, AI result
 
+**Suggestion failure**:
+Why a Builder page could not offer Suggestions: unavailable in the user's region, no connection, or the generator failing. The user can always still write their own answer, and can retry unless the region rules it out.
+_Avoid_: suggestion error, fallback, unavailable
+
 **Field error**:
 A validation message attached to one answer on a Builder page.
 _Avoid_: input error, validation error
