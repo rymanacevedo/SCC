@@ -47,10 +47,18 @@ export async function waitPath(page: Page, path: string) {
     path,
   );
 }
-export async function submit(page: Page, path: string) {
-  await page.click('nav button[type="submit"]');
+export async function submit(
+  page: Page,
+  path: string,
+  button = 'nav button[type="submit"]',
+) {
+  await page.waitForSelector(button);
+  await page.click(button);
   await waitPath(page, path);
 }
+/** The education level page submits through one button per level. */
+export const levelButton = (level: string) =>
+  `button[name="educationLevel"][value="${level}"]`;
 export async function type(page: Page, name: string, value: string) {
   await page.waitForSelector(`[name="${name}"]`);
   await page.$eval(

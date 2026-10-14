@@ -1,47 +1,52 @@
 import { type Handle, on } from 'remix/component';
 import { EducationLevelSchema } from '../../shared/schemas/education.ts';
-import { formValues } from '../builder/form.ts';
+import { formValues, isChecked } from '../builder/form.ts';
 import {
   BuilderField,
   BuilderLayout,
   type BuilderPageProps,
 } from '../builder/layout.tsx';
 import { normalizeEducationEntry } from '../education.ts';
+import { Alert } from '../ui/alert.tsx';
+import { Button } from '../ui/button.tsx';
+import { Checkbox } from '../ui/checkbox.tsx';
 
 export function EducationLevelPage(handle: Handle<BuilderPageProps>) {
-  return () => (
-    <BuilderLayout
-      {...handle.props}
-      step="education-level"
-      title="What best describes your level of education?"
-    >
-      <label htmlFor="educationLevel">Education level</label>
-      <select
-        id="educationLevel"
-        name="educationLevel"
-        aria-invalid={handle.props.errors?.educationLevel ? 'true' : undefined}
-        aria-describedby="educationLevel-error"
+  return () => {
+    const { values, errors } = handle.props;
+    return (
+      <BuilderLayout
+        {...handle.props}
+        step="education-level"
+        title="What best describes your level of education?"
+        subtitle="Select the best option and we'll help you structure your education section."
+        hideSubmit
       >
-        <option value="" selected={!handle.props.values.educationLevel}>
-          Select a level
-        </option>
-        {EducationLevelSchema.options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            selected={handle.props.values.educationLevel === option.value}
-          >
-            {option.value}
-          </option>
-        ))}
-      </select>
-      {handle.props.errors?.educationLevel?.map((message) => (
-        <p id="educationLevel-error" role="alert">
-          {message}
-        </p>
-      ))}
-    </BuilderLayout>
-  );
+        {/* Each level submits the form, as in the old app; the saved one is primary. */}
+        <fieldset className="mx-auto flex max-w-xs flex-col justify-center gap-4 md:max-w-4xl md:flex-row md:flex-wrap">
+          <legend className="sr-only">Education level</legend>
+          {EducationLevelSchema.options.map(({ value }) => {
+            const saved = values.educationLevel === value;
+            return (
+              <Button
+                key={value}
+                type="submit"
+                name="educationLevel"
+                value={value}
+                variant={saved ? 'primary' : 'secondary'}
+                aria-current={saved ? 'true' : undefined}
+              >
+                {value}
+              </Button>
+            );
+          })}
+        </fieldset>
+        {errors?.educationLevel ? (
+          <Alert tone="error">{errors.educationLevel.join(' ')}</Alert>
+        ) : null}
+      </BuilderLayout>
+    );
+  };
 }
 export function EducationPage(handle: Handle<BuilderPageProps>) {
   return educationFields(handle, false);
@@ -67,9 +72,11 @@ function educationFields(handle: Handle<BuilderPageProps>, details: boolean) {
           : handle.props.errors
       }
       step={details ? 'education-entry' : 'education'}
-      title={details ? 'Tell us about your education' : 'Where did you study?'}
+      title="Tell us about your education"
+      subtitle="Enter your education experience so far, even if you are a current student or did not graduate."
     >
       <div
+        className="space-y-6"
         mix={on('input', (event) => {
           const form = (event.target as HTMLElement).closest('form');
           if (form) {
@@ -87,9 +94,12 @@ function educationFields(handle: Handle<BuilderPageProps>, details: boolean) {
         />
         {details ? (
           <>
-            {handle.props.errors?.schoolName?.map((message) => (
-              <p role="alert">{message}</p>
-            ))}
+            {/* The school cap is reported against schoolName, asked on the previous Step. */}
+            {handle.props.errors?.schoolName ? (
+              <Alert tone="error">
+                {handle.props.errors.schoolName.join(' ')}
+              </Alert>
+            ) : null}
             {fixedDegree ? (
               <input type="hidden" name="degree" value={fixedDegree} />
             ) : (
@@ -109,16 +119,11 @@ function educationFields(handle: Handle<BuilderPageProps>, details: boolean) {
               label="Graduation Year"
               {...handle.props}
             />
-            <label>
-              <input
-                type="checkbox"
-                name="currentlyEnrolled"
-                defaultChecked={
-                  handle.props.values.currentlyEnrolled === 'true'
-                }
-              />{' '}
-              I am currently studying here
-            </label>
+            <Checkbox
+              name="currentlyEnrolled"
+              label="I am currently studying here"
+              defaultChecked={isChecked(handle.props.values.currentlyEnrolled)}
+            />
           </>
         ) : (
           <BuilderField

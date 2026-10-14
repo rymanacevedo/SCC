@@ -9,7 +9,7 @@ import {
 } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
 import { completedSections } from './builder/finish-up.tsx';
-import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from './builder/suggestions.ts';
 import { FinishUpPage } from './pages/finish-up.tsx';
 import { SkillsPage } from './pages/skills.tsx';
 import { builderPageIds, createAppRouter } from './router.tsx';
@@ -43,6 +43,11 @@ test('Skills factory GET/400/303 preserves User on invalid submit and supports z
       .status,
   ).toBe(400);
   expect(mock.getItem(STORAGE_KEY)).toBe(before);
+  // A blank typed entry submits alongside the chips and is dropped.
+  expect(
+    (await router.fetch(skillsRequest(['1', '2', '3', '4', '5', '6', ''])))
+      .status,
+  ).toBe(303);
   for (const skills of [[], ['TypeScript'], ['TypeScript', 'Communication']]) {
     const result = await router.fetch(skillsRequest(skills));
     expect(result.status).toBe(303);
@@ -163,19 +168,55 @@ test('Skills markup carries values and errors; finish-up lists completed Section
     />,
   );
   expect(html).toContain('value="Typed skill"');
+  expect(html).toContain('aria-label="Remove Typed skill"');
   expect(html).toContain('Field error');
   expect(html).toContain('Form error');
+  expect(html).not.toContain('No skills added yet.');
+  const empty = await renderToString(
+    <SkillsPage url={new URL('https://scc.example/skills')} values={{}} />,
+  );
+  expect(empty).toContain('No skills added yet.');
+  expect(empty).toContain('6 of 6 remaining');
+  const reviewed = { ...summaryUser, summary: { summary } };
   const finish = await renderToString(
     <FinishUpPage
       url={new URL('https://scc.example/finish-up')}
       values={{}}
-      completed={completedSections({ ...summaryUser, summary: { summary } })}
+      completed={completedSections(reviewed)}
+      user={reviewed}
     />,
   );
   expect(finish).toContain('Start over');
+  expect(finish).toMatch(
+    /<button[^>]*type="submit"[^>]*>Preview Resume<\/button>/,
+  );
   for (const label of ['Info', 'Experience', 'Education', 'Skills', 'Summary'])
     expect(finish).toContain(`Edit ${label}`);
   expect(finish).not.toContain('name="confirm"');
+  // The review card shows each Section's answers in the old order.
+  const doc = new DOMParser().parseFromString(finish, 'text/html');
+  expect(
+    Array.from(doc.querySelectorAll('section[aria-label] h2')).map(
+      (node) => node.textContent,
+    ),
+  ).toEqual([
+    'Personal Information',
+    'Professional Summary',
+    'Job Experience',
+    'Education',
+    'Skills',
+  ]);
+  expect(
+    doc.querySelector('a[aria-label="Edit Summary"]')?.getAttribute('href'),
+  ).toBe('/summary?returnUrl=%2Ffinish-up');
+  for (const text of [
+    info.email,
+    summary,
+    reviewed.experience![0]!.jobTitle,
+    'College',
+    'TypeScript',
+  ])
+    expect(doc.body.textContent).toContain(text);
 });
 test('Skills Suggestions call the API client and become selected only on click; manual add/remove and cap work', async () => {
   let calls = 0;
@@ -218,11 +259,19 @@ test('Skills Suggestions call the API client and become selected only on click; 
     );
   }
   expect(view.$$('input[type="hidden"]')).toHaveLength(6);
+  expect(view.container.textContent).toContain('0 of 6 remaining');
+  expect(view.$('[role="status"]')?.textContent).toContain(
+    'maximum of 6 skills',
+  );
+  expect(view.$('#manual-skill')).toBeNull();
   expect((view.$('aside button') as HTMLButtonElement).disabled).toBe(true);
   await view.act(() =>
     (view.$('[aria-label="Remove TypeScript"]') as HTMLButtonElement).click(),
   );
   expect(view.$$('input[type="hidden"]')).toHaveLength(5);
+  expect(view.$('[role="status"]')).toBeNull();
+  expect(view.$('#manual-skill')).not.toBeNull();
+  expect((view.$('aside button') as HTMLButtonElement).disabled).toBe(false);
   expect(calls).toBe(1);
 });
 test('Skills failed Suggestions show fixed unavailable copy and still allow answers', async () => {
@@ -242,7 +291,9 @@ test('Skills failed Suggestions show fixed unavailable copy and still allow answ
   await view.act(async () => {
     await new Promise((done) => setTimeout(done, 0));
   });
-  expect(view.container.textContent).toContain(SUGGESTIONS_UNAVAILABLE);
+  expect(view.container.textContent).toContain(
+    SUGGESTION_FAILURE_MESSAGES.generator,
+  );
   expect(view.container.textContent).not.toContain('private provider error');
   expect(view.$('#manual-skill')).not.toBeNull();
 });
@@ -252,6 +303,7 @@ test('Start over click only opens confirmation; cancel leaves no destructive for
       url={new URL('https://scc.example/finish-up')}
       values={{}}
       completed={[]}
+      user={{}}
     />,
   );
   cleanups.push(view.cleanup);

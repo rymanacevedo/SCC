@@ -3,7 +3,7 @@ import type { Result } from '../shared/result.ts';
 import { reportError } from './api.ts';
 
 export const ERROR_MODAL_MESSAGE =
-  'An error has occurred. Please click the Report an issue button in the footer to report this error.';
+  'An error has occurred. Please click Report an issue to report this error.';
 
 export function isNotFoundResponse(error: unknown): boolean {
   return error instanceof Response && error.status === 404;

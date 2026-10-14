@@ -18,6 +18,7 @@ import {
 import { EducationSummaryPage } from './pages/education-summary.tsx';
 import { createAppRouter } from './router.tsx';
 import { builderNav, guardInitialUrl } from './steps.ts';
+import { buttonClass } from './ui/button.tsx';
 import { createUserStorage, STORAGE_KEY } from './user.ts';
 
 test('education-flow regression #150 reaches the next Step with the school stored', async () => {
@@ -276,6 +277,21 @@ test('stored User with four schools parses, reloads and renders, while Hub clear
   expect(html).toContain(
     'educationId=school-3&amp;returnUrl=%2Feducation-summary',
   );
+  const hub = new DOMParser().parseFromString(html, 'text/html');
+  expect(
+    Array.from(hub.querySelectorAll('article > span')).map(
+      (badge) => badge.textContent,
+    ),
+  ).toEqual(entries.map((_, index) => String(index + 1)));
+  expect(
+    hub
+      .querySelector('article input[name="educationId"]')
+      ?.getAttribute('value'),
+  ).toBe('school-3');
+  expect(html).toContain('+ Add another education entry');
+  expect(
+    hub.querySelector('nav button[type="submit"]')?.textContent?.trim(),
+  ).toBe('Continue to Skills');
 });
 test('education helpers normalize degrees, trim certificate location, sort without mutation and keep ids', () => {
   expect(
@@ -319,6 +335,7 @@ test('education Component tests render inline year and cap errors and retain typ
         educationId: 'id',
         graduationDate: '98',
         degree: 'Typed degree',
+        currentlyEnrolled: 'on',
       }}
       errors={{
         graduationDate: ['Graduation Year must be a four-digit year.'],
@@ -328,6 +345,8 @@ test('education Component tests render inline year and cap errors and retain typ
   expect(html).toContain('Graduation Year must be a four-digit year.');
   expect(html).toContain('value="98"');
   expect(html).toContain('aria-invalid="true"');
+  // A typed tick survives the invalid re-render.
+  expect(html).toMatch(/id="currentlyEnrolled"[^>]*checked/);
   const cap = await renderToString(
     <EducationPage
       url={new URL('https://scc.example/education')}
@@ -385,14 +404,39 @@ test('typing a half-finished school persists its Draft through the real page cal
   }
 });
 
-test('Education level Component preloads the saved choice for Revisit', async () => {
+test('Education level offers each level as a submit button and marks the saved choice for Revisit', async () => {
   const html = await renderToString(
     <EducationLevelPage
       url={new URL('https://scc.example/education-level')}
       values={{ educationLevel: 'Certificate' }}
     />,
   );
-  expect(html).toContain(
-    '<option value="Certificate" selected>Certificate</option>',
-  );
+  const buttons = [
+    ...html.matchAll(
+      /<button[^>]*name="educationLevel"[^>]*>([^<]*)<\/button>/g,
+    ),
+  ];
+  expect(buttons.map((match) => match[1])).toEqual([
+    'GED',
+    'High School',
+    'Associates',
+    'Bachelors',
+    'Masters',
+    'PhD',
+    'Some College',
+    'Vocational',
+    'Certificate',
+  ]);
+  for (const [button, level] of buttons) {
+    expect(button).toContain('type="submit"');
+    expect(button).toContain(`value="${level}"`);
+    expect(button).toContain(
+      buttonClass(level === 'Certificate' ? 'primary' : 'secondary'),
+    );
+    if (level === 'Certificate')
+      expect(button).toContain('aria-current="true"');
+    else expect(button).not.toContain('aria-current');
+  }
+  // The level buttons submit the form; there is no separate nav submit.
+  expect(html).not.toContain('Next Step');
 });

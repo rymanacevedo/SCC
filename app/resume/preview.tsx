@@ -1,4 +1,5 @@
 import type { Handle } from 'remix/component';
+import { TextLink } from '../ui/link.tsx';
 import type { Block, Outline } from './outline.ts';
 
 const editPaths = {
@@ -54,13 +55,15 @@ export function Preview(handle: Handle<{ outline: Outline }>) {
       {handle.props.outline.map((block, index, blocks) => (
         <div>
           {blocks[index - 1]?.section !== block.section && (
-            <a href={editPaths[block.section]}>
-              Edit{' '}
-              {block.section === 'info'
-                ? 'Info'
-                : block.section.charAt(0).toUpperCase() +
-                  block.section.slice(1)}
-            </a>
+            <div className="flex justify-end">
+              <TextLink href={editPaths[block.section]}>
+                Edit{' '}
+                {block.section === 'info'
+                  ? 'Info'
+                  : block.section.charAt(0).toUpperCase() +
+                    block.section.slice(1)}
+              </TextLink>
+            </div>
           )}
           <PreviewBlock block={block} />
         </div>

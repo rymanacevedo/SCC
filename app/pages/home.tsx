@@ -1,16 +1,17 @@
+import { ButtonLink } from '../ui/button.tsx';
+
 export function HomePage() {
   return () => (
-    <section className="space-y-6">
-      <h1 className="text-4xl font-bold">Build your resume</h1>
-      <p>
-        Answer simple questions and write your resume one section at a time.
+    <section className="py-24 text-center">
+      <h1 className="mb-6 text-5xl font-bold text-gray-900">
+        Create Your Professional Resume
+      </h1>
+      <p className="mb-8 text-lg text-gray-600">
+        Get started with our easy-to-use resume builder.
       </p>
-      <a
-        href="/info"
-        className="inline-block rounded bg-blue-700 px-6 py-3 text-white"
-      >
-        Start your resume
-      </a>
+      <ButtonLink href="/info" size="lg">
+        Create My Resume
+      </ButtonLink>
     </section>
   );
 }

@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
+import { render } from 'remix/component/test';
 import {
   builderRequest,
   summary,
   summaryUser,
 } from '../../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../../test/storage.ts';
+import { ResumePage } from '../pages/resume.tsx';
 import { builderPageIds, createAppRouter } from '../router.tsx';
 import { guardInitialUrl } from '../steps.ts';
 import { createUserStorage } from '../user.ts';
@@ -102,6 +104,51 @@ test('Preview contains every Block in order and one ordinary Edit link per Secti
   expect(partial).toContain('&lt;script&gt;');
   expect(partial).not.toContain('<script>');
   expect(partial.match(/href=/g)?.length).toBe(1);
+});
+test('Preview toolbar offers primary Export buttons, blue Edit links and an outline Start over', async () => {
+  const html = await renderToString(<ResumePage outline={outline} />);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const buttons = Array.from(doc.querySelectorAll('button'));
+  for (const label of ['Export PDF', 'Export DOCX']) {
+    const button = buttons.find((node) => node.textContent === label)!;
+    expect(button.className).toContain('bg-blue-600');
+    expect(button.hasAttribute('disabled')).toBe(false);
+  }
+  expect(
+    buttons.find((node) => node.textContent === 'Start over')!.className,
+  ).toContain('border-slate-300');
+  for (const link of doc.querySelectorAll('article a'))
+    expect(link.className).toContain('text-blue-600');
+  const empty = new DOMParser().parseFromString(
+    await renderToString(<ResumePage outline={[]} />),
+    'text/html',
+  );
+  expect(empty.querySelectorAll('button[disabled]').length).toBe(2);
+});
+test('an Export failure shows a red alert and leaves the Export buttons usable', async () => {
+  const createObjectURL = URL.createObjectURL;
+  URL.createObjectURL = () => {
+    throw new Error('blocked');
+  };
+  const view = render(<ResumePage outline={outline} />);
+  try {
+    const exportPdf = Array.from(view.$$('button')).find(
+      (node) => node.textContent === 'Export PDF',
+    ) as HTMLButtonElement;
+    await view.act(async () => {
+      exportPdf.click();
+      await new Promise((done) => setTimeout(done, 0));
+    });
+    const alert = view.$('[role="alert"]') as HTMLElement;
+    expect(alert.textContent).toBe(
+      'The Export could not be created. Please try again.',
+    );
+    expect(alert.className).toContain('text-rose-700');
+    expect(exportPdf.disabled).toBe(false);
+  } finally {
+    URL.createObjectURL = createObjectURL;
+    view.cleanup();
+  }
 });
 test('PDF and DOCX render the same Outline into non-empty documents, including long content', async () => {
   expect(renderPdf(outline).size).toBeGreaterThan(0);

@@ -20,24 +20,27 @@ export function Shell(handle: Handle<{ children?: RemixNode }>) {
   });
 
   return () => (
-    <div className="min-h-screen font-sans text-gray-900">
-      <header className="border-b px-6 py-4">
-        <a href="/" className="font-bold">
-          SCC
-        </a>
-      </header>
+    <div className="flex min-h-screen flex-col font-sans text-gray-900">
       {loading ? (
         <div
           role="progressbar"
           aria-label="Loading page"
-          className="h-1 animate-pulse bg-blue-700"
+          className="h-1 animate-pulse bg-blue-600"
         />
       ) : null}
-      <main aria-busy={loading} className="mx-auto max-w-4xl px-6 py-12">
+      <main
+        aria-busy={loading}
+        className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8"
+      >
         {handle.props.children}
       </main>
-      <footer className="border-t px-6 py-4">
-        <ReportIssue />
+      <footer className="border-t border-slate-200">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <p className="text-sm text-slate-700">
+            Need help? Click the report issue button to submit a report.
+          </p>
+          <ReportIssue />
+        </div>
       </footer>
     </div>
   );

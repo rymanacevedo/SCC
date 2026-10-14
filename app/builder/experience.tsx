@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { BaseExperienceSchema } from '../../shared/schemas/experience.ts';
 import { draftSchemas } from '../../shared/schemas/user.ts';
 import { ExperiencePage } from '../pages/experience.tsx';
@@ -7,11 +6,12 @@ import { ExperienceSummaryPage } from '../pages/experience-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import { type Envelope, serializePrompt, type UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
+import { detailsFormSchema } from './details.ts';
 import {
   checkbox,
   entryFormValues,
   type FormValues,
-  repeatedStrings,
+  isChecked,
 } from './form.ts';
 import { createEntryHub } from './hub.tsx';
 
@@ -45,9 +45,7 @@ export function experienceControllers(storage: UserStorage) {
       const draft = draftSchemas.experience.safeParse({
         ...previous,
         ...typed,
-        currentlyEmployed:
-          typed.currentlyEmployed === 'true' ||
-          typed.currentlyEmployed === 'on',
+        currentlyEmployed: isChecked(typed.currentlyEmployed),
         details:
           typeof typed.details === 'string'
             ? [typed.details]
@@ -95,10 +93,7 @@ export function experienceControllers(storage: UserStorage) {
   });
   const entry = createBuilderController({
     route: 'experience-entry',
-    schema: z.object({
-      jobId: z.string().min(1),
-      details: repeatedStrings(),
-    }),
+    schema: detailsFormSchema,
     page: ExperienceEntryPage,
     read: () => storage.read(),
     prepare,

@@ -1,7 +1,11 @@
 import { type Handle, on, ref } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
 import type { FieldErrors } from '../../shared/fieldErrors.ts';
-import { builderNav, type StepId } from '../steps.ts';
+import { builderNav, type StepId, steps } from '../steps.ts';
+import { Alert } from '../ui/alert.tsx';
+import { Button, ButtonLink } from '../ui/button.tsx';
+import { Field, type FieldProps as UiFieldProps } from '../ui/field.tsx';
+import { PageHeading } from '../ui/heading.tsx';
 import { type FormValues, formPending } from './form.ts';
 export interface BuilderPageProps {
   url: URL;
@@ -13,16 +17,22 @@ export interface BuilderPageProps {
 interface LayoutProps extends BuilderPageProps {
   step: StepId;
   title: string;
+  subtitle?: string;
   children: RemixNode;
   suggestions?: RemixNode;
+  /** From md up, show Suggestions in the left column; the form stays first in DOM order. */
+  suggestionsFirst?: boolean;
   beforeForm?: RemixNode;
+  /** Pages whose own buttons submit the form (education level) drop the nav submit. */
+  hideSubmit?: boolean;
 }
 export function BuilderLayout(handle: Handle<LayoutProps>) {
   const pending = formPending(handle);
   let form: HTMLFormElement | undefined;
   let focusedErrors: FieldErrors | undefined;
   return () => {
-    const { step, title, url, errors, children, suggestions } = handle.props;
+    const { step, title, subtitle, url, errors, children, suggestions } =
+      handle.props;
     if (errors && errors !== focusedErrors) {
       focusedErrors = errors;
       handle.queueTask(() => {
@@ -34,20 +44,29 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
       });
     }
     const nav = builderNav(step, url);
-    let submitLabel =
-      step.endsWith('-summary') || step === 'finish-up'
-        ? 'Continue'
-        : 'Next Step';
+    let submitLabel = 'Next Step';
+    if (step === 'finish-up') submitLabel = 'Preview Resume';
+    else if (step.endsWith('-summary')) {
+      // The old Hubs named the next section: "Continue to Education".
+      const section = steps.find(({ path }) => path === nav.next)?.section;
+      submitLabel = section
+        ? `Continue to ${section[0].toUpperCase()}${section.slice(1)}`
+        : 'Continue';
+    }
     if (pending.pending) {
       submitLabel = 'Saving…';
     } else if (nav.returnUrl) {
       submitLabel = 'Resubmit';
     }
     return (
-      <section>
-        <h1 className="mb-6 text-3xl font-bold">{title}</h1>
+      <section className="mx-auto max-w-4xl">
+        <PageHeading title={title} subtitle={subtitle} />
         {handle.props.beforeForm}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div
+          className={
+            suggestions ? 'grid grid-cols-1 gap-8 md:grid-cols-2' : undefined
+          }
+        >
           <form
             method="post"
             action={`${url.pathname}${url.search}`}
@@ -66,21 +85,33 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
           >
             {children}
             {errors?._form?.map((message) => (
-              <p role="alert">{message}</p>
+              <Alert tone="error">{message}</Alert>
             ))}
-            <nav className="flex justify-between">
-              {!nav.returnUrl ? <a href={nav.previous}>Previous</a> : null}
-              <button
-                type="submit"
-                disabled={pending.pending}
-                className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
-              >
-                {submitLabel}
-              </button>
+            <nav className="flex items-center justify-between gap-4 pt-4">
+              {!nav.returnUrl ? (
+                <ButtonLink href={nav.previous} variant="secondary">
+                  Previous
+                </ButtonLink>
+              ) : null}
+              {handle.props.hideSubmit ? null : (
+                <Button
+                  type="submit"
+                  disabled={pending.pending}
+                  className="ml-auto"
+                >
+                  {submitLabel}
+                </Button>
+              )}
             </nav>
           </form>
           {suggestions ? (
-            <aside aria-label="Suggestions" style={{ minHeight: '24rem' }}>
+            <aside
+              aria-label="Suggestions"
+              className={
+                handle.props.suggestionsFirst ? 'md:order-first' : undefined
+              }
+              style={{ minHeight: '24rem' }}
+            >
               {suggestions}
             </aside>
           ) : null}
@@ -89,62 +120,22 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     );
   };
 }
-interface FieldProps {
-  name: string;
-  label: string;
+interface FieldProps extends Omit<UiFieldProps, 'value' | 'errors'> {
   values: FormValues;
   errors?: FieldErrors;
-  type?: 'text' | 'tel' | 'email';
-  textarea?: boolean;
-  capture?: (element: HTMLTextAreaElement) => void;
 }
+/** A Field bound to a builder page's form values and Field errors. */
 export function BuilderField(handle: Handle<FieldProps>) {
   return () => {
-    const {
-      name,
-      label,
-      values,
-      errors,
-      type = 'text',
-      textarea,
-      capture,
-    } = handle.props;
+    const { name, values, errors, ...field } = handle.props;
     const value = values[name];
-    const text = typeof value === 'string' ? value : '';
-    const messages = errors?.[name];
-    const attributes = {
-      id: name,
-      name,
-      'aria-invalid': messages?.length ? ('true' as const) : undefined,
-      'aria-describedby': messages?.length ? `${name}-error` : undefined,
-      className: 'block w-full rounded border p-3',
-    };
     return (
-      <div>
-        <label htmlFor={name}>{label}</label>
-        {textarea ? (
-          <textarea
-            {...attributes}
-            rows={8}
-            defaultValue={text}
-            mix={ref((node) => {
-              capture?.(node);
-            })}
-          />
-        ) : (
-          <input
-            {...attributes}
-            type={type}
-            list={undefined}
-            defaultValue={text}
-          />
-        )}
-        {messages?.length ? (
-          <p id={`${name}-error`} role="alert">
-            {messages.join(' ')}
-          </p>
-        ) : null}
-      </div>
+      <Field
+        {...field}
+        name={name}
+        value={typeof value === 'string' ? value : ''}
+        errors={errors?.[name]}
+      />
     );
   };
 }

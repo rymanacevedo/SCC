@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
+import { usStates } from '../shared/usStates.ts';
 import { builderRequest, experience, info } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
-import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from './builder/suggestions.ts';
 import { ExperiencePage } from './pages/experience.tsx';
 import { ExperienceEntryPage } from './pages/experience-entry.tsx';
 import { ExperienceSummaryPage } from './pages/experience-summary.tsx';
@@ -197,20 +198,25 @@ test('detail rows preserve identity, DOM nodes and focus while typing, adding an
   });
   expect(view.$$('textarea')[0]).toBe(first);
   expect(document.activeElement).toBe(first);
+  const manual = view.$('#manual-detail') as HTMLInputElement;
+  manual.value = 'Third';
   await view.act(() => {
-    (
-      Array.from(view.$$('button')).find(
-        (button) => button.textContent === 'Add detail',
-      ) as HTMLButtonElement
-    ).click();
+    manual.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   });
+  expect(manual.value).toBe('');
   expect(
     Array.from(view.$$('textarea'))
       .slice(0, 2)
       .map((node) => node.id),
   ).toEqual(ids);
   await view.act(() => {
-    (view.$('button') as HTMLButtonElement).click();
+    (view.$('[aria-label="Remove detail 1"]') as HTMLButtonElement).click();
   });
   expect(view.$$('textarea')[0]).toBe(second);
   expect(second!.id).toBe(ids[1]!);
@@ -219,7 +225,7 @@ test('detail rows preserve identity, DOM nodes and focus while typing, adding an
     () => {},
   );
   expect(reloaded.read()).toMatchObject({
-    value: { drafts: { experience: { details: ['Second', ''] } } },
+    value: { drafts: { experience: { details: ['Second', 'Third'] } } },
   });
   expect(JSON.parse(String(request?.body))).toEqual({ prompt: 'job' });
 });
@@ -239,7 +245,9 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   await view.act(async () => {
     await new Promise((done) => setTimeout(done, 0));
   });
-  expect(view.container.textContent).toContain(SUGGESTIONS_UNAVAILABLE);
+  expect(view.container.textContent).toContain(
+    SUGGESTION_FAILURE_MESSAGES.region,
+  );
   expect((view.$('textarea') as HTMLTextAreaElement).value).toBe('Typed');
   expect(view.$('nav a')?.getAttribute('href')).toBe('/experience?jobId=job-1');
   const html = await renderToString(
@@ -252,6 +260,27 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   expect(html).toContain(
     '/experience?jobId=job-1&amp;returnUrl=%2Fexperience-summary',
   );
+  // Numbered entry cards with Edit / Delete, then a full-width "add another".
+  const hub = new DOMParser().parseFromString(html, 'text/html');
+  const card = hub.querySelector('article')!;
+  expect(card.querySelector('span')!.textContent).toBe('1');
+  expect(card.querySelector('h2')!.textContent).toBe('Developer');
+  expect(card.textContent).toContain('Company • Boston, MA | 2020 - Present');
+  expect(card.querySelector('li')!.textContent).toBe('Built reliable software');
+  expect(card.querySelector('a')!.getAttribute('aria-label')).toBe(
+    'Edit Developer',
+  );
+  expect(card.querySelector('input[name="jobId"]')!.getAttribute('value')).toBe(
+    'job-1',
+  );
+  const add = Array.from(hub.querySelectorAll('a')).find(
+    (link) => link.textContent === '+ Add another position',
+  )!;
+  expect(add.getAttribute('href')).toBe('/experience');
+  expect(add.className).toContain('w-full');
+  expect(
+    hub.querySelector('nav button[type="submit"]')!.textContent?.trim(),
+  ).toBe('Continue to Education');
 });
 
 test('partially answered Experience fields survive reload through the Draft envelope', async () => {
@@ -287,5 +316,166 @@ test('partially answered Experience fields survive reload through the Draft enve
         experience: { jobId: 'partial-job', jobTitle: 'Half answered job' },
       },
     },
+  });
+});
+test('Experience lays out month dates and a State select, with stored values preloaded', async () => {
+  const html = await renderToString(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience?jobId=job-1')}
+      values={{
+        jobId: 'job-1',
+        state: 'MA',
+        startDate: '2020-01-01T00:00:00.000Z',
+        endDate: '2024-06-30T00:00:00.000Z',
+        currentlyEmployed: 'false',
+      }}
+    />,
+  );
+  expect(html).toContain('Tell us about your most recent job');
+  expect(html).toContain('start there and work backwards.');
+  expect(html).toMatch(/id="startDate"[^>]*type="month"[^>]*value="2020-01"/);
+  expect(html).toMatch(/id="endDate"[^>]*type="month"[^>]*value="2024-06"/);
+  expect(html).not.toMatch(/id="endDate"[^>]*\sdisabled[\s=/>]/);
+  expect(html).toContain('<option value="">Select a state</option>');
+  expect(html).toMatch(
+    /<option value="MA" selected[^>]*>Massachusetts<\/option>/,
+  );
+  expect(html.match(/<option value="[A-Z]{2}"/g)).toHaveLength(usStates.length);
+});
+test('"I currently work here" disables End date, and unticking enables it again', async () => {
+  const stored = await renderToString(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience')}
+      values={{ jobId: 'job-1', currentlyEmployed: 'true' }}
+    />,
+  );
+  expect(stored).toMatch(/id="endDate"[^>]*\sdisabled[\s=/>]/);
+  expect(stored).toMatch(/id="currentlyEmployed"[^>]*checked/);
+  const view = render(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience')}
+      values={{ jobId: 'job-1' }}
+    />,
+  );
+  cleanups.push(view.cleanup);
+  const endDate = () => view.$('#endDate') as HTMLInputElement;
+  const box = view.$('#currentlyEmployed') as HTMLInputElement;
+  expect(endDate().disabled).toBe(false);
+  await view.act(() => box.click());
+  expect(box.checked).toBe(true);
+  expect(endDate().disabled).toBe(true);
+  // A disabled End date is left out of the submission.
+  expect(new FormData(box.form!).has('endDate')).toBe(false);
+  await view.act(() => box.click());
+  expect(box.checked).toBe(false);
+  expect(endDate().disabled).toBe(false);
+});
+
+function suggestionButton(view: ReturnType<typeof render>, text: string) {
+  return Array.from(view.$$('aside button')).find(
+    (button) => button.textContent === `+ ${text}`,
+  ) as HTMLButtonElement;
+}
+
+test('a picked Suggestion becomes a detail row; six details show the cap notice, never an alert, until one is removed', async () => {
+  globalThis.fetch = (async () =>
+    Response.json({
+      expertRecommended: ['Suggested'],
+      other: ['Other example'],
+    })) as unknown as typeof fetch;
+  const alerts: unknown[] = [];
+  const originalAlert = globalThis.alert;
+  globalThis.alert = (message) => alerts.push(message);
+  cleanups.push(() => {
+    globalThis.alert = originalAlert;
+  });
+  const view = render(
+    <ExperienceEntryPage
+      url={new URL('https://scc.example/experience-entry?jobId=job-1')}
+      values={{
+        jobId: 'job-1',
+        jobTitle: 'Developer',
+        details: ['One', 'Two', 'Three', 'Four', 'Five'],
+        prompt: 'job',
+      }}
+    />,
+  );
+  cleanups.push(view.cleanup);
+  await view.act(async () => {
+    await new Promise((done) => setTimeout(done, 0));
+  });
+  expect(view.$('h1')?.textContent).toBe('What did you do as a Developer?');
+  expect(view.container.textContent).toContain('Writing Tips');
+  expect(view.container.textContent).toContain('Recommended Experience');
+  expect(view.container.textContent).toContain('Other Examples');
+  expect(view.$('[role="status"]')).toBeNull();
+  await view.act(() => suggestionButton(view, 'Suggested').click());
+  const details = () =>
+    Array.from(view.$$('textarea')).map(
+      (node) => (node as HTMLTextAreaElement).value,
+    );
+  expect(details()).toEqual([
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Suggested',
+  ]);
+  expect(view.$('[role="status"]')?.textContent).toContain(
+    'maximum of 6 details',
+  );
+  expect(view.$('#manual-detail')).toBeNull();
+  expect(suggestionButton(view, 'Other example').disabled).toBe(true);
+  await view.act(() => suggestionButton(view, 'Other example').click());
+  expect(details()).toHaveLength(6);
+  await view.act(() =>
+    (view.$('[aria-label="Remove detail 1"]') as HTMLButtonElement).click(),
+  );
+  expect(details()).toEqual(['Two', 'Three', 'Four', 'Five', 'Suggested']);
+  expect(view.$('[role="status"]')).toBeNull();
+  expect(view.$('#manual-detail')).not.toBeNull();
+  expect(suggestionButton(view, 'Other example').disabled).toBe(false);
+  expect(suggestionButton(view, 'Suggested').disabled).toBe(true);
+  expect(alerts).toEqual([]);
+});
+
+test('an Experience entry without details shows the empty state and asks with the right article', async () => {
+  const html = await renderToString(
+    <ExperienceEntryPage
+      url={new URL('https://scc.example/experience-entry?jobId=job-1')}
+      values={{ jobId: 'job-1', jobTitle: 'Engineer' }}
+      errors={{ details: ['You can add up to six details.'] }}
+    />,
+  );
+  expect(html).toContain('You can add up to six details.');
+  expect(html).toContain('aria-describedby="details-error"');
+  expect(html).toContain('What did you do as an Engineer?');
+  expect(html).toContain(
+    'Click on suggested experiences or write your own to get started.',
+  );
+  expect(html).not.toContain('<textarea');
+  expect(html).toContain('name="details"');
+});
+
+test('submitted details drop blanks and duplicates and refuse more than six', async () => {
+  const { storage, router } = setup();
+  storage.writeEntry('experience', experience[0]);
+  const post = (details: string[]) => {
+    const body = new URLSearchParams({ jobId: 'job-1' });
+    for (const detail of details) body.append('details', detail);
+    return router.fetch(
+      new Request('https://scc.example/experience-entry?jobId=job-1', {
+        method: 'POST',
+        body,
+      }),
+    );
+  };
+  const tooMany = await post(['1', '2', '3', '4', '5', '6', '7']);
+  expect(tooMany.status).toBe(400);
+  const saved = await post(['Kept', '', '  ', 'Kept', 'Typed']);
+  expect(saved.headers.get('Location')).toBe('/experience-summary');
+  expect(storage.read()).toMatchObject({
+    value: { user: { experience: [{ details: ['Kept', 'Typed'] }] } },
   });
 });

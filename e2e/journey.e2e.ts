@@ -2,7 +2,14 @@ import { expect, test } from 'bun:test';
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { info } from '../test/builder-fixtures.ts';
-import { openBrowser, stored, submit, type, waitPath } from './support.ts';
+import {
+  levelButton,
+  openBrowser,
+  stored,
+  submit,
+  type,
+  waitPath,
+} from './support.ts';
 
 test('User walks every Step, persists answers and creates both Exports', async () => {
   const { browser, page } = await openBrowser();
@@ -20,7 +27,7 @@ test('User walks every Step, persists answers and creates both Exports', async (
       employer: 'Company',
       city: 'Boston',
       state: 'MA',
-      startDate: '2020-01-01',
+      startDate: '2020-01',
     }))
       await type(page, name, value);
     await page.click('[name="currentlyEmployed"]');
@@ -32,8 +39,7 @@ test('User walks every Step, persists answers and creates both Exports', async (
       'Built reliable software',
     ]);
     await submit(page, '/education-level');
-    await page.select('select', 'Certificate');
-    await submit(page, '/education');
+    await submit(page, '/education', levelButton('Certificate'));
     expect((await stored(page)).drafts.education.educationLevel).toBe(
       'Certificate',
     );
