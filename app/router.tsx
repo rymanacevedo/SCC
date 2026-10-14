@@ -65,7 +65,7 @@ export function createAppRouter(storage: UserStorage = userStorage) {
     next: '/experience',
   });
   const skills = createBuilderController({
-    route: 'skills',
+    route: builderPageIds.skills,
     schema: skillsFormSchema,
     page: SkillsPage,
     read: () => storage.read(),

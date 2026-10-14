@@ -1,5 +1,6 @@
 import { type Handle, on, ref } from 'remix/component';
 import { createSkills } from '../api.ts';
+import type { FormValues } from '../builder/form.ts';
 import { BuilderLayout, type BuilderPageProps } from '../builder/layout.tsx';
 import { MAX_SKILLS } from '../builder/skills.ts';
 import {
@@ -9,26 +10,24 @@ import {
 
 const categories = ['expertRecommended', 'other'] as const;
 type Category = (typeof categories)[number];
+function selectedValues(value: FormValues[string] | undefined): string[] {
+  if (Array.isArray(value)) return [...value];
+  if (value) return [value];
+  return [];
+}
+
 export function SkillsPage(handle: Handle<BuilderPageProps>) {
-  const selected = Object.fromEntries(
-    categories.map((category) => {
-      const value = handle.props.values[category];
-      return [
-        category,
-        Array.isArray(value) ? [...value] : value ? [value] : [],
-      ];
-    }),
-  ) as Record<Category, string[]>;
+  const selected: Record<Category, string[]> = {
+    expertRecommended: selectedValues(handle.props.values.expertRecommended),
+    other: selectedValues(handle.props.values.other),
+  };
   let input: HTMLInputElement | undefined;
   const total = () => selected.expertRecommended.length + selected.other.length;
+  const isSelected = (skill: string) =>
+    categories.some((category) => selected[category].includes(skill));
   function add(text: string, category: Category) {
     const skill = text.trim();
-    if (
-      !skill ||
-      total() >= MAX_SKILLS ||
-      categories.some((key) => selected[key].includes(skill))
-    )
-      return;
+    if (!skill || total() >= MAX_SKILLS || isSelected(skill)) return;
     selected[category].push(skill);
     void handle.update();
   }
@@ -70,10 +69,7 @@ export function SkillsPage(handle: Handle<BuilderPageProps>) {
                   <button
                     key={text}
                     type="button"
-                    disabled={
-                      total() >= MAX_SKILLS ||
-                      categories.some((key) => selected[key].includes(text))
-                    }
+                    disabled={total() >= MAX_SKILLS || isSelected(text)}
                     mix={on('click', () => add(text, category))}
                   >
                     {text}

@@ -9,20 +9,22 @@ import { SAVE_ERROR } from './controller.tsx';
 export function completedSections(user: User) {
   return steps.flatMap((step) => {
     if (!step.section || user[step.section] === undefined) return [];
+    let label: string = step.label;
     // Entry Sections are edited through their Hub page.
-    if (step.section === 'experience' && step.id !== 'experience-summary')
-      return [];
-    if (step.section === 'education' && step.id !== 'education-summary')
-      return [];
+    switch (step.section) {
+      case 'experience':
+        if (step.id !== 'experience-summary') return [];
+        label = 'Experience';
+        break;
+      case 'education':
+        if (step.id !== 'education-summary') return [];
+        label = 'Education';
+        break;
+    }
     return [
       {
         section: step.section,
-        label:
-          step.section === 'experience'
-            ? 'Experience'
-            : step.section === 'education'
-              ? 'Education'
-              : step.label,
+        label,
         path: step.path,
       },
     ];
