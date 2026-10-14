@@ -27,7 +27,8 @@ Carried-bug evidence:
 - #173: root package contains no React Router; no React, React Router, Hono or
   Lexical package entries remain in the lockfile.
 - #149: storage and API client use shared typed Results; storage failure and abort
-  tests pass; home and finish-up disclose tab-scoped persistence.
+  tests pass; home and finish-up disclose tab-scoped persistence (disclosure
+  removed 2026-10-14 at the dev's request; storage is still tab-scoped).
 
 ## Dependency audit decision
 
