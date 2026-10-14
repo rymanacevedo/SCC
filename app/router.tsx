@@ -1,6 +1,8 @@
+import { spaResponse } from 'remix/component';
 import {
   createController,
   createRouter,
+  type Middleware,
   type RouterContext,
 } from 'remix/router';
 import { get, route } from 'remix/routes';
@@ -12,7 +14,8 @@ import { educationControllers } from './builder/education.tsx';
 import { experienceControllers } from './builder/experience.tsx';
 import { createFinishUpController } from './builder/finish-up.tsx';
 import { skillsFormSchema } from './builder/skills.ts';
-import { ComingSoon } from './pages/coming-soon.tsx';
+import { reportErrorTelemetry } from './error-reporting.ts';
+import { ErrorPage, NotFoundPage } from './pages/error.tsx';
 import { HomePage } from './pages/home.tsx';
 import { InfoPage } from './pages/info.tsx';
 import { Shell } from './pages/shell.tsx';
@@ -36,12 +39,29 @@ export const builderPageIds = {
   educationHub: 'education-summary',
 } as const;
 
+const applicationErrors: Middleware = async (context, next) => {
+  try {
+    return await next();
+  } catch (error) {
+    if (context.request.signal.aborted) throw error;
+    void reportErrorTelemetry(error, context.url.href);
+    const notFound = error instanceof Response && error.status === 404;
+    return spaResponse.create(
+      <Shell>{notFound ? <NotFoundPage /> : <ErrorPage />}</Shell>,
+      { status: notFound ? 404 : 500 },
+    );
+  }
+};
+
 // Importing this module constructs routes only; browser startup lives in main.
 export function createAppRouter(storage: UserStorage = userStorage) {
   const router = createRouter({
-    middleware: [render((content) => <Shell>{content}</Shell>)],
+    middleware: [
+      applicationErrors,
+      render((content) => <Shell>{content}</Shell>),
+    ],
     defaultHandler({ render }) {
-      return render(<ComingSoon />, { status: 404 });
+      return render(<NotFoundPage />, { status: 404 });
     },
   });
 

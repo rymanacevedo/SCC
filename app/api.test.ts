@@ -116,3 +116,59 @@ test('aborting an in-flight request resolves to a failed Result', async () => {
   controller.abort();
   expect(await result).toEqual({ ok: false, error: 'aborted' });
 });
+
+for (const [name, send] of [
+  [
+    'reportError',
+    (signal?: AbortSignal) =>
+      reportError(
+        {
+          url: 'https://scc.example/info',
+          message: 'Failed',
+          timestamp: new Date().toISOString(),
+        },
+        signal,
+      ),
+  ],
+  [
+    'reportIssue',
+    (signal?: AbortSignal) =>
+      reportIssue(
+        {
+          url: 'https://scc.example/info',
+          description: 'Failed',
+          timestamp: new Date().toISOString(),
+        },
+        signal,
+      ),
+  ],
+] as const) {
+  test(`${name} returns Results for success, non-2xx, malformed acknowledgement, network and abort`, async () => {
+    mockFetch(async () => Response.json({ ok: true }));
+    expect(await send()).toEqual({ ok: true, value: { ok: true } });
+    mockFetch(async () =>
+      Response.json({ error: 'GitHub failed' }, { status: 502 }),
+    );
+    expect(await send()).toEqual({ ok: false, error: 'server', status: 502 });
+    mockFetch(async () => Response.json({ ok: false }));
+    expect(await send()).toEqual({ ok: false, error: 'validation' });
+    mockFetch(async () => {
+      throw new Error('offline');
+    });
+    expect(await send()).toEqual({ ok: false, error: 'network' });
+    mockFetch(
+      (_path, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          );
+        }),
+    );
+    const controller = new AbortController();
+    const result = send(controller.signal);
+    controller.abort();
+    expect(await result).toEqual({ ok: false, error: 'aborted' });
+  });
+}
