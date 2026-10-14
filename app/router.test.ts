@@ -106,3 +106,53 @@ test('invalid Info POST keeps Drafts; landing on Info clears them', async () => 
   expect((await router.fetch(builderRequest('/info'))).status).toBe(200);
   expect(storage.read()).toMatchObject({ value: { drafts: {} } });
 });
+
+test('unknown paths and thrown 404 Responses return 404 without reporting', async () => {
+  const { router } = setup();
+  router.get('/missing-response', () => {
+    throw new Response(null, { status: 404 });
+  });
+  const original = globalThis.fetch;
+  let reports = 0;
+  globalThis.fetch = (async () => {
+    reports++;
+    return Response.json({ ok: true });
+  }) as unknown as typeof fetch;
+  try {
+    expect((await router.fetch(builderRequest('/unknown'))).status).toBe(404);
+    expect(
+      (await router.fetch(builderRequest('/missing-response'))).status,
+    ).toBe(404);
+    expect(reports).toBe(0);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('router errors return 500 and auto-report once without waiting for reporting', async () => {
+  const { router } = setup();
+  const error = Object.assign(new Error('Controller failed'), { user: info });
+  router.get('/throw', () => {
+    throw error;
+  });
+  const original = globalThis.fetch;
+  const reports: unknown[] = [];
+  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
+    reports.push(JSON.parse(String(init?.body)));
+    return new Promise<Response>(() => {});
+  }) as unknown as typeof fetch;
+  try {
+    expect((await router.fetch(builderRequest('/throw'))).status).toBe(500);
+    expect((await router.fetch(builderRequest('/throw'))).status).toBe(500);
+    expect(reports).toEqual([
+      {
+        url: 'https://scc.example/throw',
+        message: error.message,
+        timestamp: expect.any(String),
+        stackTrace: error.stack,
+      },
+    ]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

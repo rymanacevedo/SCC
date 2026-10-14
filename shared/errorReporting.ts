@@ -37,3 +37,29 @@ export function buildTelemetryFingerprint(
     stackTrace: normalizeTelemetryFingerprintValue(telemetry.stackTrace ?? ''),
   });
 }
+
+const TELEMETRY_DEDUPLICATION_WINDOW_MS = 1_000;
+const recentlyReportedErrors = new Map<string, number>();
+
+export function shouldSkipDuplicateTelemetryReport(
+  telemetry: ErrorTelemetryPayload,
+  now = Date.now(),
+): boolean {
+  for (const [fingerprint, timestamp] of recentlyReportedErrors) {
+    if (now - timestamp > TELEMETRY_DEDUPLICATION_WINDOW_MS)
+      recentlyReportedErrors.delete(fingerprint);
+  }
+  const fingerprint = buildTelemetryFingerprint(telemetry);
+  const previous = recentlyReportedErrors.get(fingerprint);
+  if (
+    previous !== undefined &&
+    now - previous <= TELEMETRY_DEDUPLICATION_WINDOW_MS
+  )
+    return true;
+  recentlyReportedErrors.set(fingerprint, now);
+  return false;
+}
+
+export function resetReportedTelemetryForTests() {
+  recentlyReportedErrors.clear();
+}

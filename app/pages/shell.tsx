@@ -1,5 +1,6 @@
 import type { Handle } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
+import { ReportIssue } from './report-issue.tsx';
 
 export function Shell(handle: Handle<{ children?: RemixNode }>) {
   let loading = false;
@@ -35,6 +36,9 @@ export function Shell(handle: Handle<{ children?: RemixNode }>) {
       <main aria-busy={loading} className="mx-auto max-w-4xl px-6 py-12">
         {handle.props.children}
       </main>
+      <footer className="border-t px-6 py-4">
+        <ReportIssue />
+      </footer>
     </div>
   );
 }

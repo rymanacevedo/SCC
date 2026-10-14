@@ -1,4 +1,5 @@
 import { run } from 'remix/spa';
+import { installErrorReporting } from './error-runtime.tsx';
 import './app.css';
 import { builderPageIds, router } from './router.tsx';
 import { guardInitialUrl } from './steps.ts';
@@ -18,6 +19,4 @@ if (stored.ok) {
 }
 
 const app = run(router, { fallback: <p role="status">Loading…</p> });
-app.addEventListener('error', (event) =>
-  console.error('Application error', event.error),
-);
+installErrorReporting(app);
