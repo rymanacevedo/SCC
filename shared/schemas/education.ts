@@ -19,20 +19,20 @@ export const BaseEducationSchema = z.object({
   location: z.string().prefault(''),
   graduationDate: z
     .string()
-    .transform((val) => {
-      if (!val) return undefined;
-      const year = Number.parseInt(val, 10);
-      if (Number.isNaN(year)) return undefined;
-      return year;
-    })
-    .pipe(
-      z
-        .number()
-        .min(1900, { message: 'Graduation Year must be 1900 or later.' })
-        .max(2099, { message: 'Graduation Year must be 2099 or earlier.' })
-        .transform((year) => year.toString())
-        .optional(),
-    ),
+    .prefault('')
+    .refine(
+      (value) => value === '' || /^\d{4}$/.test(value),
+      'Graduation Year must be a four-digit year.',
+    )
+    .refine(
+      (value) => !value || Number(value) >= 1900,
+      'Graduation Year must be 1900 or later.',
+    )
+    .refine(
+      (value) => !value || Number(value) <= 2099,
+      'Graduation Year must be 2099 or earlier.',
+    )
+    .transform((value) => value || undefined),
   currentlyEnrolled: z.boolean().prefault(false),
 });
 

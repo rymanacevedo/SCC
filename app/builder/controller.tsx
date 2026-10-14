@@ -25,7 +25,7 @@ export function createBuilderController<T>({
   pageProps,
 }: {
   route: StepId;
-  schema: z.ZodType<T>;
+  schema: z.ZodType<T> | ((envelope: Envelope, url: URL) => z.ZodType<T>);
   page: (handle: Handle<BuilderPageProps>) => () => RemixNode;
   read: () => Result<Envelope>;
   write: (value: T, url: URL, envelope: Envelope) => Result<unknown>;
@@ -91,14 +91,21 @@ export function createBuilderController<T>({
           );
         const target = guardEnvelope(stored.value, url);
         if (target) return redirect(target, 303);
+        const selected = select ? selectValues(stored.value, url) : undefined;
+        const renderedValues =
+          selected && typeof selected === 'object'
+            ? ({ ...selected, ...values } as FormValues)
+            : values;
         const prompt = serializePrompt(stored.value.user);
-        const parsed = schema.safeParse(values);
+        const formSchema =
+          typeof schema === 'function' ? schema(stored.value, url) : schema;
+        const parsed = formSchema.safeParse(values);
         if (!parsed.success)
           return render(
             <Page
               {...pageProps}
               url={url}
-              values={values}
+              values={renderedValues}
               errors={fieldErrors(parsed.error)}
               prompt={prompt}
             />,
@@ -110,7 +117,7 @@ export function createBuilderController<T>({
             <Page
               {...pageProps}
               url={url}
-              values={values}
+              values={renderedValues}
               errors={{ _form: [SAVE_ERROR] }}
               prompt={prompt}
             />,

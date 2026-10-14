@@ -1,6 +1,3 @@
-import { redirect } from 'remix/response/redirect';
-import { createController } from 'remix/router';
-import { get, post, route } from 'remix/routes';
 import { z } from 'zod';
 import { BaseExperienceSchema } from '../../shared/schemas/experience.ts';
 import { draftSchemas } from '../../shared/schemas/user.ts';
@@ -11,6 +8,7 @@ import { guardStep, validatedReturnUrl } from '../steps.ts';
 import { type Envelope, serializePrompt, type UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
 import { checkbox, type FormValues } from './form.ts';
+import { createEntryHub } from './hub.tsx';
 
 const experienceHubPath = '/experience-summary';
 function findExperience(envelope: Envelope, id: string | null) {
@@ -146,68 +144,12 @@ export function experienceControllers(storage: UserStorage) {
     },
     next: () => experienceHubPath,
   });
-  const routes = route({
-    index: get(experienceHubPath),
-    action: post(experienceHubPath),
-  });
-  const controller = createController(routes, {
-    actions: {
-      index({ url, render }) {
-        const stored = storage.clearDrafts('experience');
-        if (!stored.ok)
-          return render(
-            <ExperienceSummaryPage
-              url={url}
-              values={{}}
-              entries={[]}
-              errors={{ _form: [SAVE_ERROR] }}
-            />,
-            { status: 500 },
-          );
-        const target = guardStep('experience-summary', stored.value.user);
-        if (target) return redirect(target, 303);
-        return render(
-          <ExperienceSummaryPage
-            url={url}
-            values={{}}
-            entries={stored.value.user.experience ?? []}
-          />,
-        );
-      },
-      async action({ url, request, render }) {
-        const stored = storage.read();
-        if (!stored.ok)
-          return render(
-            <ExperienceSummaryPage
-              url={url}
-              values={{}}
-              entries={[]}
-              errors={{ _form: [SAVE_ERROR] }}
-            />,
-            { status: 500 },
-          );
-        const target = guardStep('experience-summary', stored.value.user);
-        if (target) return redirect(target, 303);
-        const data = await request.formData();
-        const id =
-          data.get('deleteId') ??
-          (data.get('intent') === 'delete' ? data.get('jobId') : null);
-        if (typeof id === 'string') {
-          if (!storage.deleteEntry('experience', id).ok)
-            return render(
-              <ExperienceSummaryPage
-                url={url}
-                values={{}}
-                entries={stored.value.user.experience ?? []}
-                errors={{ _form: [SAVE_ERROR] }}
-              />,
-              { status: 500 },
-            );
-          return redirect(experienceHubPath, 303);
-        }
-        return redirect(validatedReturnUrl(url) ?? '/education-level', 303);
-      },
-    },
-  });
-  return [experience, entry, { routes, controller }];
+  const hub = createEntryHub(
+    storage,
+    'experience',
+    'experience-summary',
+    'jobId',
+    ExperienceSummaryPage,
+  );
+  return [experience, entry, hub];
 }

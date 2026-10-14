@@ -162,3 +162,44 @@ test('a failed entry commit preserves both the User and its Draft', () => {
   ).toBe(false);
   expect(mock.getItem(STORAGE_KEY)).toBe(before);
 });
+
+test('education Draft survives reload, keeps its identity on edit, and clears only on a successful commit', () => {
+  const { mock, storage } = setup();
+  const educationId = crypto.randomUUID();
+  storage.writeDraft('education', {
+    educationId,
+    educationLevel: 'Certificate',
+    schoolName: 'Half finished',
+  });
+  const reloaded = createUserStorage(
+    () => mock,
+    () => {},
+  );
+  expect(reloaded.read()).toMatchObject({
+    value: {
+      drafts: { education: { educationId, schoolName: 'Half finished' } },
+    },
+  });
+  storage.writeEntry('education', { educationId, schoolName: 'Committed' });
+  let saved = storage.read();
+  if (!saved.ok) throw Error('read');
+  expect(saved.value.drafts.education).toBeUndefined();
+  expect(storage.seedDraft('education', educationId).ok).toBe(true);
+  expect(
+    storage.writeEntry('education', { educationId, schoolName: 'Edited' }).ok,
+  ).toBe(true);
+  saved = storage.read();
+  if (!saved.ok) throw Error('read');
+  expect(saved.value.user.education).toEqual([
+    { educationId, schoolName: 'Edited' },
+  ]);
+  storage.seedDraft('education', educationId);
+  const before = mock.getItem(STORAGE_KEY);
+  mock.setItem = () => {
+    throw Error('quota');
+  };
+  expect(
+    storage.writeEntry('education', { educationId, schoolName: 'Unsaved' }).ok,
+  ).toBe(false);
+  expect(mock.getItem(STORAGE_KEY)).toBe(before);
+});

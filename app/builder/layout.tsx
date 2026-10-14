@@ -15,6 +15,7 @@ interface LayoutProps extends BuilderPageProps {
   title: string;
   children: RemixNode;
   suggestions?: RemixNode;
+  beforeForm?: RemixNode;
 }
 export function BuilderLayout(handle: Handle<LayoutProps>) {
   const pending = formPending(handle);
@@ -33,7 +34,10 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
       });
     }
     const nav = builderNav(step, url);
-    let submitLabel = 'Next Step';
+    let submitLabel =
+      step.endsWith('-summary') || step === 'finish-up'
+        ? 'Continue'
+        : 'Next Step';
     if (pending.pending) {
       submitLabel = 'Saving…';
     } else if (nav.returnUrl) {
@@ -42,6 +46,7 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     return (
       <section>
         <h1 className="mb-6 text-3xl font-bold">{title}</h1>
+        {handle.props.beforeForm}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <form
             method="post"

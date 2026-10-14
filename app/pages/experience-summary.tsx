@@ -10,8 +10,7 @@ export function ExperienceSummaryPage(handle: Handle<ExperienceHubProps>) {
       {...handle.props}
       step="experience-summary"
       title="Your experience"
-    >
-      {handle.props.entries.map((entry) => (
+      beforeForm={handle.props.entries.map((entry) => (
         <article key={entry.jobId}>
           <h2>
             {entry.jobTitle} at {entry.employer}
@@ -21,11 +20,17 @@ export function ExperienceSummaryPage(handle: Handle<ExperienceHubProps>) {
           >
             Edit
           </a>
-          <button type="submit" name="deleteId" value={entry.jobId}>
-            Delete
-          </button>
+          <form
+            method="post"
+            action={`${handle.props.url.pathname}${handle.props.url.search}`}
+          >
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="jobId" value={entry.jobId} />
+            <button type="submit">Delete</button>
+          </form>
         </article>
       ))}
+    >
       <a href="/experience">Add another job</a>
     </BuilderLayout>
   );
