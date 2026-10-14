@@ -2,6 +2,10 @@ import { type Handle, on, ref } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
 import type { FieldErrors } from '../../shared/fieldErrors.ts';
 import { builderNav, type StepId } from '../steps.ts';
+import { Alert } from '../ui/alert.tsx';
+import { Button, ButtonLink } from '../ui/button.tsx';
+import { Field, type FieldOption } from '../ui/field.tsx';
+import { PageHeading } from '../ui/heading.tsx';
 import { type FormValues, formPending } from './form.ts';
 export interface BuilderPageProps {
   url: URL;
@@ -13,6 +17,7 @@ export interface BuilderPageProps {
 interface LayoutProps extends BuilderPageProps {
   step: StepId;
   title: string;
+  subtitle?: string;
   children: RemixNode;
   suggestions?: RemixNode;
   beforeForm?: RemixNode;
@@ -22,7 +27,8 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
   let form: HTMLFormElement | undefined;
   let focusedErrors: FieldErrors | undefined;
   return () => {
-    const { step, title, url, errors, children, suggestions } = handle.props;
+    const { step, title, subtitle, url, errors, children, suggestions } =
+      handle.props;
     if (errors && errors !== focusedErrors) {
       focusedErrors = errors;
       handle.queueTask(() => {
@@ -44,10 +50,14 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
       submitLabel = 'Resubmit';
     }
     return (
-      <section>
-        <h1 className="mb-6 text-3xl font-bold">{title}</h1>
+      <section className="mx-auto max-w-4xl">
+        <PageHeading title={title} subtitle={subtitle} />
         {handle.props.beforeForm}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div
+          className={
+            suggestions ? 'grid grid-cols-1 gap-8 md:grid-cols-2' : undefined
+          }
+        >
           <form
             method="post"
             action={`${url.pathname}${url.search}`}
@@ -66,17 +76,21 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
           >
             {children}
             {errors?._form?.map((message) => (
-              <p role="alert">{message}</p>
+              <Alert tone="error">{message}</Alert>
             ))}
-            <nav className="flex justify-between">
-              {!nav.returnUrl ? <a href={nav.previous}>Previous</a> : null}
-              <button
+            <nav className="flex items-center justify-between gap-4 pt-4">
+              {!nav.returnUrl ? (
+                <ButtonLink href={nav.previous} variant="secondary">
+                  Previous
+                </ButtonLink>
+              ) : null}
+              <Button
                 type="submit"
                 disabled={pending.pending}
-                className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
+                className="ml-auto"
               >
                 {submitLabel}
-              </button>
+              </Button>
             </nav>
           </form>
           {suggestions ? (
@@ -95,56 +109,23 @@ interface FieldProps {
   values: FormValues;
   errors?: FieldErrors;
   type?: 'text' | 'tel' | 'email';
+  options?: readonly FieldOption[];
+  placeholder?: string;
   textarea?: boolean;
   capture?: (element: HTMLTextAreaElement) => void;
 }
+/** A Field bound to a builder page's form values and Field errors. */
 export function BuilderField(handle: Handle<FieldProps>) {
   return () => {
-    const {
-      name,
-      label,
-      values,
-      errors,
-      type = 'text',
-      textarea,
-      capture,
-    } = handle.props;
+    const { name, values, errors, ...field } = handle.props;
     const value = values[name];
-    const text = typeof value === 'string' ? value : '';
-    const messages = errors?.[name];
-    const attributes = {
-      id: name,
-      name,
-      'aria-invalid': messages?.length ? ('true' as const) : undefined,
-      'aria-describedby': messages?.length ? `${name}-error` : undefined,
-      className: 'block w-full rounded border p-3',
-    };
     return (
-      <div>
-        <label htmlFor={name}>{label}</label>
-        {textarea ? (
-          <textarea
-            {...attributes}
-            rows={8}
-            defaultValue={text}
-            mix={ref((node) => {
-              capture?.(node);
-            })}
-          />
-        ) : (
-          <input
-            {...attributes}
-            type={type}
-            list={undefined}
-            defaultValue={text}
-          />
-        )}
-        {messages?.length ? (
-          <p id={`${name}-error`} role="alert">
-            {messages.join(' ')}
-          </p>
-        ) : null}
-      </div>
+      <Field
+        {...field}
+        name={name}
+        value={typeof value === 'string' ? value : ''}
+        errors={errors?.[name]}
+      />
     );
   };
 }

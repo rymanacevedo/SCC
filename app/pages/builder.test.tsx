@@ -3,6 +3,7 @@ import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
 import { info, summary } from '../../test/builder-fixtures.ts';
 import { SUGGESTIONS_UNAVAILABLE } from '../builder/suggestions.ts';
+import { buttonClass } from '../ui/button.tsx';
 import { InfoPage } from './info.tsx';
 import { Shell } from './shell.tsx';
 import { SummaryPage } from './summary.tsx';
@@ -184,4 +185,22 @@ test('navigation aborts pending Suggestions and ignores a late response', async 
   resolve(Response.json([{ title: 'Late', text: summary }]));
   await response;
   await new Promise((done) => setTimeout(done, 0));
+});
+test('builder navigation uses secondary Previous and primary submit, one column without Suggestions', async () => {
+  const view = render(
+    <InfoPage url={new URL('https://scc.example/info')} values={info} />,
+  );
+  cleanups.push(view.cleanup);
+  const previous = view.$('nav a') as HTMLAnchorElement;
+  expect(previous.textContent).toBe('Previous');
+  expect(previous.className).toBe(buttonClass('secondary'));
+  const submit = view.$('nav button[type="submit"]') as HTMLButtonElement;
+  expect(submit.className).toBe(buttonClass('primary', 'ml-auto'));
+  expect(view.$('form')?.parentElement?.className ?? '').not.toContain(
+    'grid-cols-2',
+  );
+  const withSuggestions = await renderToString(
+    <SummaryPage url={new URL('https://scc.example/summary')} values={{}} />,
+  );
+  expect(withSuggestions).toContain('md:grid-cols-2');
 });

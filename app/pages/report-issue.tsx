@@ -1,6 +1,9 @@
 import { type Handle, on, ref } from 'remix/component';
 import { userIssueReportSchema } from '../../shared/errorReporting.ts';
 import { reportIssue } from '../api.ts';
+import { Alert } from '../ui/alert.tsx';
+import { Button } from '../ui/button.tsx';
+import { controlClass } from '../ui/field.tsx';
 
 const REPORT_FAILURE_MESSAGE =
   'Your issue could not be reported. Please try again.';
@@ -60,9 +63,8 @@ export function ReportIssue(handle: Handle) {
 
   return () => (
     <>
-      <button
-        type="button"
-        className="underline"
+      <Button
+        variant="outline"
         mix={[
           ref((node) => {
             opener = node;
@@ -71,23 +73,27 @@ export function ReportIssue(handle: Handle) {
         ]}
       >
         Report an issue
-      </button>
+      </Button>
       <dialog
         aria-labelledby={`${handle.id}-title`}
         aria-describedby={`${handle.id}-help`}
-        className="m-auto w-full max-w-lg rounded-lg p-6 shadow-xl backdrop:bg-black/40"
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] space-y-4 rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl backdrop:bg-slate-900/50"
         mix={ref((node) => {
           dialog = node;
         })}
       >
-        <h2 id={`${handle.id}-title`} className="text-2xl font-bold">
+        <h2 id={`${handle.id}-title`} className="text-2xl font-semibold">
           Report an issue
         </h2>
-        <p id={`${handle.id}-help`} className="my-4">
+        <p
+          id={`${handle.id}-help`}
+          className="text-sm leading-6 text-slate-600"
+        >
           Describe what happened and we'll send the report to support.
         </p>
         <form
           novalidate
+          className="space-y-4"
           mix={[
             ref((node) => {
               form = node;
@@ -95,22 +101,32 @@ export function ReportIssue(handle: Handle) {
             on<HTMLFormElement>('submit', submit),
           ]}
         >
-          <label htmlFor={`${handle.id}-description`}>What happened?</label>
+          <label
+            htmlFor={`${handle.id}-description`}
+            className="block text-sm font-medium text-gray-700"
+          >
+            What happened?
+          </label>
           <textarea
             id={`${handle.id}-description`}
             name="description"
             required
             rows={6}
-            className="my-2 block w-full rounded border p-3"
+            className={controlClass('textarea', false)}
           />
-          {message && <p role={success ? 'status' : 'alert'}>{message}</p>}
-          <div className="mt-4 flex gap-4">
-            <button type="submit" disabled={pending || success}>
-              {pending ? 'Submitting…' : 'Submit'}
-            </button>
-            <button type="button" mix={on('click', close)}>
+          {message && success ? (
+            <p role="status" className="text-sm text-slate-700">
+              {message}
+            </p>
+          ) : null}
+          {message && !success ? <Alert tone="error">{message}</Alert> : null}
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button variant="outline" mix={on('click', close)}>
               {success ? 'Close' : 'Cancel'}
-            </button>
+            </Button>
+            <Button type="submit" variant="dark" disabled={pending || success}>
+              {pending ? 'Submitting…' : 'Submit'}
+            </Button>
           </div>
         </form>
       </dialog>

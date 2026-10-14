@@ -2,6 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
 import { ERROR_MODAL_MESSAGE } from '../error-reporting.ts';
+import { buttonClass } from '../ui/button.tsx';
 import { ErrorPage, NotFoundPage } from './error.tsx';
 import { Shell } from './shell.tsx';
 
@@ -49,9 +50,7 @@ test('report modal validates, submits only explicit description, and shows failu
   // happy-dom has no native modal implementation; real browser coverage exercises it.
   dialog.showModal = () => dialog.setAttribute('open', '');
   dialog.close = () => dialog.removeAttribute('open');
-  await view.act(() =>
-    (view.$('footer > button') as HTMLButtonElement).click(),
-  );
+  await view.act(() => (view.$('footer button') as HTMLButtonElement).click());
   expect(dialog.open).toBe(true);
   const form = view.$('dialog form') as HTMLFormElement;
   const textarea = view.$('textarea') as HTMLTextAreaElement;
@@ -121,4 +120,15 @@ test('a network failure shows plain failure copy and leaves the modal usable', a
   });
   expect(view.$('[role="alert"]')?.textContent).toContain('Please try again');
   expect(view.$('button[type="submit"]')?.hasAttribute('disabled')).toBe(false);
+});
+
+test('the Shell has no header bar and a footer with help copy and an outline report button', async () => {
+  const html = await renderToString(<Shell />);
+  expect(html).not.toContain('<header');
+  expect(html).toContain(
+    'Need help? Click the report issue button to submit a report.',
+  );
+  const view = render(<Shell />);
+  cleanups.push(view.cleanup);
+  expect(view.$('footer button')?.className).toBe(buttonClass('outline'));
 });
