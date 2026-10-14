@@ -94,6 +94,8 @@ test('Preview contains every Block in order and one ordinary Edit link per Secti
   expect(doc.querySelector('h1')!.textContent).toBe('Ada Lovelace');
   expect(doc.querySelectorAll('h2').length).toBe(4);
   expect(doc.querySelector('[contenteditable]')).toBeNull();
+  // The Resume card is always white; dark-mode text would vanish on it.
+  expect(html).not.toContain('dark:');
   const partial = await renderToString(
     <Preview
       outline={createOutline({

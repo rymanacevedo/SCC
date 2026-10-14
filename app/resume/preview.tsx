@@ -15,22 +15,14 @@ function PreviewBlock(handle: Handle<{ block: Block }>) {
     switch (kind) {
       case 'person-name':
         return (
-          <h1 className="text-2xl font-bold text-center my-4 dark:text-white text-gray-900">
+          <h1 className="text-2xl font-bold text-center my-4 text-gray-900">
             {text}
           </h1>
         );
       case 'section-title':
-        return (
-          <h2 className="text-xl font-semibold dark:text-white text-gray-900">
-            {text}
-          </h2>
-        );
+        return <h2 className="text-xl font-semibold text-gray-900">{text}</h2>;
       case 'job-heading':
-        return (
-          <h3 className="text-lg font-semibold dark:text-white text-gray-900">
-            {text}
-          </h3>
-        );
+        return <h3 className="text-lg font-semibold text-gray-900">{text}</h3>;
       case 'contact-line':
         return <p className="text-center my-2 leading-normal">{text}</p>;
       case 'spacer':
