@@ -1,3 +1,4 @@
+import { TAB_DISCLOSURE } from '../builder/disclosure.ts';
 export function HomePage() {
   return () => (
     <section className="space-y-6">
@@ -11,9 +12,7 @@ export function HomePage() {
       >
         Start your resume
       </a>
-      <p>
-        Your answers live in this browser tab only; closing the tab clears them.
-      </p>
+      <p>{TAB_DISCLOSURE}</p>
     </section>
   );
 }

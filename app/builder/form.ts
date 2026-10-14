@@ -56,3 +56,11 @@ export function formPending<P>(handle: Handle<P>) {
     },
   };
 }
+
+/** Normalize zero, one, or many repeated string fields before page validation. */
+export function repeatedStrings() {
+  return z.preprocess((value) => {
+    if (value === undefined) return [];
+    return typeof value === 'string' ? [value] : value;
+  }, z.array(z.string()));
+}
