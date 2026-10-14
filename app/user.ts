@@ -156,6 +156,15 @@ export function createUserStorage(
       delete envelope.drafts[section];
     });
   }
+  function deleteEntry(section: keyof Drafts, id: string): Result<Envelope> {
+    return change((envelope) => {
+      Object.assign(envelope.user, {
+        [section]: (envelope.user[section] ?? []).filter(
+          (entry) => entryId(entry) !== id,
+        ),
+      });
+    });
+  }
   function seedDraft<K extends keyof Drafts>(
     section: K,
     id: string,
@@ -196,6 +205,7 @@ export function createUserStorage(
     writeDraft,
     writeEntry,
     seedDraft,
+    deleteEntry,
     clearDrafts,
     startOver,
   };

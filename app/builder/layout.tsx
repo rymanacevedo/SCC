@@ -8,6 +8,7 @@ export interface BuilderPageProps {
   values: FormValues;
   errors?: FieldErrors;
   prompt?: string;
+  saveDraft?: (values: FormValues) => string | undefined;
 }
 interface LayoutProps extends BuilderPageProps {
   step: StepId;
@@ -63,7 +64,7 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
               <p role="alert">{message}</p>
             ))}
             <nav className="flex justify-between">
-              <a href={nav.previous}>Previous</a>
+              {!nav.returnUrl ? <a href={nav.previous}>Previous</a> : null}
               <button
                 type="submit"
                 disabled={pending.pending}

@@ -8,6 +8,7 @@ import { render } from 'remix/spa';
 import { PersonalInfoSchema } from '../shared/schemas/info.ts';
 import { SummarySchema } from '../shared/schemas/summary.ts';
 import { createBuilderController } from './builder/controller.tsx';
+import { experienceControllers } from './builder/experience.tsx';
 import { ComingSoon } from './pages/coming-soon.tsx';
 import { HomePage } from './pages/home.tsx';
 import { InfoPage } from './pages/info.tsx';
@@ -15,7 +16,13 @@ import { Shell } from './pages/shell.tsx';
 import { SummaryPage } from './pages/summary.tsx';
 import { type UserStorage, userStorage } from './user.ts';
 
-export const builderPageIds = { info: 'info', summary: 'summary' } as const;
+export const builderPageIds = {
+  info: 'info',
+  summary: 'summary',
+  experience: 'experience',
+  entry: 'experience-entry',
+  hub: 'experience-summary',
+} as const;
 
 // Importing this module constructs routes only; browser startup lives in main.
 export function createAppRouter(storage: UserStorage = userStorage) {
@@ -55,6 +62,8 @@ export function createAppRouter(storage: UserStorage = userStorage) {
     write: (value) => storage.write('summary', value),
     next: '/finish-up',
   });
+  for (const item of experienceControllers(storage))
+    router.map(item.routes, item.controller);
   router.map(info.routes, info.controller);
   router.map(summary.routes, summary.controller);
   return router;
