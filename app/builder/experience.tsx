@@ -7,7 +7,12 @@ import { ExperienceSummaryPage } from '../pages/experience-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import { type Envelope, serializePrompt, type UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
-import { checkbox, entryFormValues, type FormValues } from './form.ts';
+import {
+  checkbox,
+  entryFormValues,
+  type FormValues,
+  repeatedStrings,
+} from './form.ts';
 import { createEntryHub } from './hub.tsx';
 
 const experienceHubPath = '/experience-summary';
@@ -92,11 +97,7 @@ export function experienceControllers(storage: UserStorage) {
     route: 'experience-entry',
     schema: z.object({
       jobId: z.string().min(1),
-      details: z.preprocess((value) => {
-        if (value === undefined) return [];
-        if (typeof value === 'string') return [value];
-        return value;
-      }, z.array(z.string())),
+      details: repeatedStrings(),
     }),
     page: ExperienceEntryPage,
     read: () => storage.read(),

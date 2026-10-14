@@ -1,7 +1,7 @@
 // Explicit Flow test: bun run build && bun test/education-flow.ts
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
-import { experience, info } from './builder-fixtures.ts';
+import { info, summary } from './builder-fixtures.ts';
 
 const server = Bun.serve({
   port: 0,
@@ -23,34 +23,34 @@ try {
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
   await page.setRequestInterception(true);
   page.on('request', (request) => {
+    // Keep the browser demo offline, including third-party analytics.
+    if (new URL(request.url()).hostname.endsWith('cloudflareinsights.com')) {
+      void request.respond({
+        status: 200,
+        contentType: 'application/javascript',
+        body: '',
+      });
+      return;
+    }
     if (new URL(request.url()).pathname.startsWith('/api/'))
       void request.respond({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          expertRecommended: ['Stub suggestion'],
-          other: [],
-        }),
+        body: JSON.stringify(
+          new URL(request.url()).pathname === '/api/summaries'
+            ? [{ title: 'Stub summary', text: summary }]
+            : { expertRecommended: ['Stub suggestion'], other: [] },
+        ),
       });
     else void request.continue();
   });
   const base = `http://localhost:${server.port}`;
   await page.goto(base);
-  await page.evaluate(
-    (user) =>
-      sessionStorage.setItem(
-        'scc:user',
-        JSON.stringify({
-          version: 1,
-          timestamp: new Date().toISOString(),
-          user,
-          drafts: {},
-        }),
-      ),
-    { info, experience },
-  );
   async function waitPath(path: string) {
     await page.waitForFunction(
       (path) =>
@@ -92,6 +92,23 @@ try {
     await submit('/education');
     await type('schoolName', name);
   }
+  await page.click('a[href="/info"]');
+  await waitPath('/info');
+  for (const [name, value] of Object.entries(info)) await type(name, value);
+  await submit('/experience');
+  for (const [name, value] of Object.entries({
+    jobTitle: 'Developer',
+    employer: 'Company',
+    city: 'Boston',
+    state: 'MA',
+    startDate: '2020-01-01',
+  }))
+    await type(name, value);
+  await page.click('[name="currentlyEmployed"]');
+  await submit('/experience-entry');
+  await type('details', 'Built reliable software');
+  await submit('/experience-summary');
+  await submit('/education-level');
   for (const [name, year] of [
     ['Old School', '2020'],
     ['New School', '2024'],
@@ -151,14 +168,47 @@ try {
     () => document.querySelectorAll('article').length === 2,
   );
   await submit('/skills');
+  await page.waitForSelector('aside button');
+  await page.click('aside button');
+  await submit('/summary');
+  await page.waitForSelector('aside button');
+  await page.click('aside button');
+  await submit('/finish-up');
+  assert.ok(
+    (await page.$eval('body', (node) => node.textContent))?.includes(
+      'Your answers live in this browser tab only',
+    ),
+  );
   const stored = await page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('scc:user')!),
   );
   assert.equal(stored.user.education.length, 2);
+  assert.deepEqual(Object.keys(stored.user).sort(), [
+    'education',
+    'experience',
+    'info',
+    'skills',
+    'summary',
+  ]);
+  assert.equal(stored.user.skills.expertRecommended[0], 'Stub suggestion');
+  assert.equal(stored.user.summary.summary, summary);
+  await page.evaluate(() =>
+    [...document.querySelectorAll('button')]
+      .find((button) => button.textContent === 'Start over')!
+      .click(),
+  );
+  await page.waitForSelector('[name="confirm"]');
+  assert.ok(await page.evaluate(() => sessionStorage.getItem('scc:user')));
+  await page.click('[name="confirm"]');
+  await waitPath('/');
+  assert.equal(
+    await page.evaluate(() => sessionStorage.getItem('scc:user')),
+    null,
+  );
   assert.equal(stored.drafts.education, undefined);
   assert.deepEqual(errors, []);
   console.log(
-    'PASS education Flow: three schools, sorted Hub, cap, Revisit, inline year recovery, delete, reload Draft and Continue',
+    'PASS full builder Flow: home through finish-up, Suggestions, confirmed Start over; education: three schools, sorted Hub, cap, Revisit, inline year recovery, delete, reload Draft and Continue',
   );
 } finally {
   await browser.close();

@@ -10,15 +10,20 @@ import { SummarySchema } from '../shared/schemas/summary.ts';
 import { createBuilderController } from './builder/controller.tsx';
 import { educationControllers } from './builder/education.tsx';
 import { experienceControllers } from './builder/experience.tsx';
+import { createFinishUpController } from './builder/finish-up.tsx';
+import { skillsFormSchema } from './builder/skills.ts';
 import { ComingSoon } from './pages/coming-soon.tsx';
 import { HomePage } from './pages/home.tsx';
 import { InfoPage } from './pages/info.tsx';
 import { Shell } from './pages/shell.tsx';
+import { SkillsPage } from './pages/skills.tsx';
 import { SummaryPage } from './pages/summary.tsx';
 import { type UserStorage, userStorage } from './user.ts';
 
 export const builderPageIds = {
   info: 'info',
+  skills: 'skills',
+  finishUp: 'finish-up',
   summary: 'summary',
   experience: 'experience',
   entry: 'experience-entry',
@@ -59,6 +64,17 @@ export function createAppRouter(storage: UserStorage = userStorage) {
     write: (value) => storage.write('info', value),
     next: '/experience',
   });
+  const skills = createBuilderController({
+    route: builderPageIds.skills,
+    schema: skillsFormSchema,
+    page: SkillsPage,
+    read: () => storage.read(),
+    write: (value) => storage.write('skills', value),
+    next: '/summary',
+  });
+  const finishUp = createFinishUpController(storage);
+  router.map(skills.routes, skills.controller);
+  router.map(finishUp.routes, finishUp.controller);
   const summary = createBuilderController({
     route: builderPageIds.summary,
     schema: SummarySchema,
