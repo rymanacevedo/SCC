@@ -1,9 +1,9 @@
 import { SkillsSchema } from '../../shared/schemas/skills.ts';
-import { repeatedStrings } from './form.ts';
+import { filledStrings } from './form.ts';
 export const MAX_SKILLS = 6;
 export const skillsFormSchema = SkillsSchema.extend({
-  expertRecommended: repeatedStrings(),
-  other: repeatedStrings(),
+  expertRecommended: filledStrings(),
+  other: filledStrings(),
 }).refine(
   (value) => value.expertRecommended.length + value.other.length <= MAX_SKILLS,
   {

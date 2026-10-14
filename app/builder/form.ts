@@ -69,3 +69,10 @@ export function repeatedStrings() {
     return typeof value === 'string' ? [value] : value;
   }, z.array(z.string()));
 }
+
+/** Repeated strings with blank and duplicate answers dropped: a list builder's pending typed entry submits alongside the picked items. */
+export function filledStrings() {
+  return repeatedStrings().transform((items) =>
+    Array.from(new Set(items.filter((item) => item.trim()))),
+  );
+}

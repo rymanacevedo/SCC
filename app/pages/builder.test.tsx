@@ -51,6 +51,8 @@ test('Info and Summary string render typed values, Field errors and Form errors'
   expect(summaryHtml).toContain(summary);
   expect(summaryHtml).toContain('Summary Field error');
   expect(summaryHtml).toContain('Summary Form error');
+  expect(summaryHtml).toContain('Writing Tips');
+  expect(summaryHtml).toContain('Example Summaries');
   expect(summaryHtml.indexOf('</form>')).toBeLessThan(
     summaryHtml.indexOf('<aside'),
   );

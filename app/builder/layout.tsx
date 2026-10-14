@@ -20,6 +20,8 @@ interface LayoutProps extends BuilderPageProps {
   subtitle?: string;
   children: RemixNode;
   suggestions?: RemixNode;
+  /** From md up, show Suggestions in the left column; the form stays first in DOM order. */
+  suggestionsFirst?: boolean;
   beforeForm?: RemixNode;
   /** Pages whose own buttons submit the form (education level) drop the nav submit. */
   hideSubmit?: boolean;
@@ -98,7 +100,13 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
             </nav>
           </form>
           {suggestions ? (
-            <aside aria-label="Suggestions" style={{ minHeight: '24rem' }}>
+            <aside
+              aria-label="Suggestions"
+              className={
+                handle.props.suggestionsFirst ? 'md:order-first' : undefined
+              }
+              style={{ minHeight: '24rem' }}
+            >
               {suggestions}
             </aside>
           ) : null}

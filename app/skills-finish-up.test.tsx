@@ -43,6 +43,11 @@ test('Skills factory GET/400/303 preserves User on invalid submit and supports z
       .status,
   ).toBe(400);
   expect(mock.getItem(STORAGE_KEY)).toBe(before);
+  // A blank typed entry submits alongside the chips and is dropped.
+  expect(
+    (await router.fetch(skillsRequest(['1', '2', '3', '4', '5', '6', ''])))
+      .status,
+  ).toBe(303);
   for (const skills of [[], ['TypeScript'], ['TypeScript', 'Communication']]) {
     const result = await router.fetch(skillsRequest(skills));
     expect(result.status).toBe(303);
@@ -163,8 +168,15 @@ test('Skills markup carries values and errors; finish-up lists completed Section
     />,
   );
   expect(html).toContain('value="Typed skill"');
+  expect(html).toContain('aria-label="Remove Typed skill"');
   expect(html).toContain('Field error');
   expect(html).toContain('Form error');
+  expect(html).not.toContain('No skills added yet.');
+  const empty = await renderToString(
+    <SkillsPage url={new URL('https://scc.example/skills')} values={{}} />,
+  );
+  expect(empty).toContain('No skills added yet.');
+  expect(empty).toContain('6 of 6 remaining');
   const reviewed = { ...summaryUser, summary: { summary } };
   const finish = await renderToString(
     <FinishUpPage
@@ -244,11 +256,19 @@ test('Skills Suggestions call the API client and become selected only on click; 
     );
   }
   expect(view.$$('input[type="hidden"]')).toHaveLength(6);
+  expect(view.container.textContent).toContain('0 of 6 remaining');
+  expect(view.$('[role="status"]')?.textContent).toContain(
+    'maximum of 6 skills',
+  );
+  expect(view.$('#manual-skill')).toBeNull();
   expect((view.$('aside button') as HTMLButtonElement).disabled).toBe(true);
   await view.act(() =>
     (view.$('[aria-label="Remove TypeScript"]') as HTMLButtonElement).click(),
   );
   expect(view.$$('input[type="hidden"]')).toHaveLength(5);
+  expect(view.$('[role="status"]')).toBeNull();
+  expect(view.$('#manual-skill')).not.toBeNull();
+  expect((view.$('aside button') as HTMLButtonElement).disabled).toBe(false);
   expect(calls).toBe(1);
 });
 test('Skills failed Suggestions show fixed unavailable copy and still allow answers', async () => {

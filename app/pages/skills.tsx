@@ -1,18 +1,23 @@
-import { type Handle, on, ref } from 'remix/component';
+import type { Handle } from 'remix/component';
 import { createSkills } from '../api.ts';
 import type { FormValues } from '../builder/form.ts';
 import { BuilderLayout, type BuilderPageProps } from '../builder/layout.tsx';
 import { MAX_SKILLS } from '../builder/skills.ts';
 import {
-  loadSuggestions,
-  SUGGESTIONS_UNAVAILABLE,
-} from '../builder/suggestions.ts';
+  LimitNotice,
+  ManualEntry,
+  PickedBox,
+  SuggestionGroups,
+  SuggestionPanel,
+} from '../builder/suggestion-list.tsx';
+import { loadSuggestions } from '../builder/suggestions.ts';
+import { Chip } from '../ui/chip.tsx';
 
 const categories = ['expertRecommended', 'other'] as const;
 type Category = (typeof categories)[number];
 function selectedValues(value: FormValues[string] | undefined): string[] {
-  if (Array.isArray(value)) return [...value];
-  if (value) return [value];
+  if (Array.isArray(value)) return value.filter((skill) => skill.trim());
+  if (value?.trim()) return [value];
   return [];
 }
 
@@ -21,132 +26,104 @@ export function SkillsPage(handle: Handle<BuilderPageProps>) {
     expertRecommended: selectedValues(handle.props.values.expertRecommended),
     other: selectedValues(handle.props.values.other),
   };
-  let input: HTMLInputElement | undefined;
   const total = () => selected.expertRecommended.length + selected.other.length;
   const isSelected = (skill: string) =>
     categories.some((category) => selected[category].includes(skill));
   function add(text: string, category: Category) {
     const skill = text.trim();
-    if (!skill || total() >= MAX_SKILLS || isSelected(skill)) return;
+    if (!skill || total() >= MAX_SKILLS || isSelected(skill)) return false;
     selected[category].push(skill);
     void handle.update();
+    return true;
   }
-  function addManual() {
-    if (input) {
-      add(input.value, 'other');
-      input.value = '';
-      input.focus();
-    }
+  function remove(skill: string) {
+    for (const category of categories)
+      selected[category] = selected[category].filter(
+        (value) => value !== skill,
+      );
+    void handle.update();
   }
   const suggestions = loadSuggestions(handle, (signal) =>
     createSkills({ prompt: handle.props.prompt ?? '' }, signal),
   );
-  return () => (
-    <BuilderLayout
-      {...handle.props}
-      step="skills"
-      title="What skills would you like to highlight?"
-      suggestions={
-        <div>
-          <h2>Suggestions</h2>
-          {suggestions.state === 'idle' || suggestions.state === 'loading' ? (
-            <div role="status" style={{ height: '20rem' }}>
-              Loading Suggestions…
-            </div>
-          ) : null}
-          {suggestions.state === 'error' ? (
-            <p role="status">{SUGGESTIONS_UNAVAILABLE}</p>
-          ) : null}
-          {categories.map((category) => (
-            <div key={category}>
-              <h3>
-                {category === 'expertRecommended'
-                  ? 'Expert Skills'
-                  : 'Other Skills'}
-              </h3>
-              {Array.from(new Set(suggestions.value?.[category] ?? [])).map(
-                (text) => (
-                  <button
+  return () => {
+    const errored = categories.filter(
+      (category) => handle.props.errors?.[category]?.length,
+    );
+    const full = total() >= MAX_SKILLS;
+    return (
+      <BuilderLayout
+        {...handle.props}
+        step="skills"
+        title="What skills would you like to highlight?"
+        subtitle="Add skills that are relevant to your experience and the job you want."
+        suggestionsFirst
+        suggestions={
+          <SuggestionPanel title="Suggested Skills" state={suggestions.state}>
+            <SuggestionGroups
+              groups={categories.map((category) => ({
+                title:
+                  category === 'expertRecommended'
+                    ? 'Expert Skills'
+                    : 'Other Skills',
+                items: suggestions.value?.[category] ?? [],
+                pick: (text) => add(text, category),
+              }))}
+              disabled={(text) => full || isSelected(text)}
+            />
+          </SuggestionPanel>
+        }
+      >
+        <PickedBox
+          title="Your Skills"
+          note={`${MAX_SKILLS - total()} of ${MAX_SKILLS} remaining`}
+          empty={total() === 0}
+          emptyText="No skills added yet. Pick skills from the suggestions, or add your own below."
+          className="min-h-50"
+        >
+          {total() > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {categories.flatMap((category) =>
+                selected[category].map((text) => (
+                  <Chip
                     key={text}
-                    type="button"
-                    disabled={total() >= MAX_SKILLS || isSelected(text)}
-                    mix={on('click', () => add(text, category))}
+                    removeLabel={`Remove ${text}`}
+                    onRemove={() => remove(text)}
                   >
                     {text}
-                  </button>
-                ),
+                    <input type="hidden" name={category} value={text} />
+                  </Chip>
+                )),
               )}
             </div>
-          ))}
-        </div>
-      }
-    >
-      <h2>Your Skills</h2>
-      <p>
-        {MAX_SKILLS - total()} of {MAX_SKILLS} remaining
-      </p>
-      {categories.map((category) => (
-        <div key={category}>
-          {selected[category].map((text) => (
-            <div key={text}>
-              {text}
-              <input type="hidden" name={category} value={text} />
-              <button
-                type="button"
-                aria-label={`Remove ${text}`}
-                mix={on('click', () => {
-                  selected[category] = selected[category].filter(
-                    (value) => value !== text,
-                  );
-                  void handle.update();
-                })}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          {handle.props.errors?.[category]?.map((message) => (
-            <p id={`${category}-error`} role="alert">
-              {message}
-            </p>
-          ))}
-        </div>
-      ))}
-      <label htmlFor="manual-skill">Add your own skill</label>
-      <input
-        id="manual-skill"
-        aria-invalid={
-          categories.some((category) => handle.props.errors?.[category]?.length)
-            ? 'true'
-            : undefined
-        }
-        aria-describedby={
-          categories
-            .filter((category) => handle.props.errors?.[category]?.length)
-            .map((category) => `${category}-error`)
-            .join(' ') || undefined
-        }
-        type="text"
-        className="block w-full rounded border p-3"
-        mix={[
-          ref((node) => {
-            input = node;
-          }),
-          on('keydown', (event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              addManual();
+          ) : null}
+        </PickedBox>
+        {errored.map((category) => (
+          <p
+            id={`${category}-error`}
+            role="alert"
+            className="mt-1 text-sm text-red-600"
+          >
+            {handle.props.errors?.[category]?.join(' ')}
+          </p>
+        ))}
+        {full ? (
+          <LimitNotice max={MAX_SKILLS} noun="skills" />
+        ) : (
+          <ManualEntry
+            id="manual-skill"
+            name="other"
+            label="Add your own skill"
+            placeholder="Type a skill and press Enter"
+            invalid={errored.length > 0}
+            describedBy={
+              errored.map((category) => `${category}-error`).join(' ') ||
+              undefined
             }
-          }),
-        ]}
-      />
-      <button
-        type="button"
-        disabled={total() >= MAX_SKILLS}
-        mix={on('click', addManual)}
-      >
-        Add skill
-      </button>
-    </BuilderLayout>
-  );
+            onAdd={(text) => add(text, 'other')}
+          />
+        )}
+      </BuilderLayout>
+    );
+  };
 }
