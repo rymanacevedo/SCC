@@ -3,9 +3,9 @@ import type { RemixNode } from 'remix/component/jsx-runtime';
 import { redirect } from 'remix/response/redirect';
 import { createController } from 'remix/router';
 import { route as defineRoute, get, post } from 'remix/routes';
-import type { z } from 'zod';
 import { fieldErrors } from '../../shared/fieldErrors.ts';
 import type { Result } from '../../shared/result.ts';
+import type { z } from '../../shared/zod.ts';
 import { builderNav, guardStep, type StepId, steps } from '../steps.ts';
 import { type Envelope, serializePrompt } from '../user.ts';
 import { type FormValues, formValues } from './form.ts';
@@ -25,7 +25,9 @@ export function createBuilderController<T>({
   pageProps,
 }: {
   route: StepId;
-  schema: z.ZodType<T> | ((envelope: Envelope, url: URL) => z.ZodType<T>);
+  schema:
+    | z.ZodMiniType<T>
+    | ((envelope: Envelope, url: URL) => z.ZodMiniType<T>);
   page: (handle: Handle<BuilderPageProps>) => () => RemixNode;
   read: () => Result<Envelope>;
   write: (value: T, url: URL, envelope: Envelope) => Result<unknown>;

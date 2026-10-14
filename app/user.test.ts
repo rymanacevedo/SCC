@@ -58,6 +58,70 @@ test('salvage drops only invalid Sections and Drafts and reports once across rep
   storage.read();
   expect(events).toHaveLength(1);
 });
+test('a valid stored User and Drafts read back unchanged without a report', () => {
+  const { mock, storage, events } = setup();
+  const timestamp = '2026-10-14T05:44:41.000Z';
+  const user = {
+    ...summaryUser,
+    education: [
+      {
+        educationId: 'school-1',
+        schoolName: 'College',
+        educationLevel: 'Bachelors' as const,
+        degree: 'BA',
+        location: 'Austin',
+        graduationDate: '2020',
+        currentlyEnrolled: false,
+      },
+    ],
+    skills: { expertRecommended: ['Typing'], other: [] },
+  };
+  const drafts = {
+    experience: { jobId: 'job-2', jobTitle: 'typed' },
+    education: { educationId: 'school-2', educationLevel: 'GED' as const },
+  };
+  const raw = JSON.stringify({ version: 1, timestamp, user, drafts });
+  mock.setItem(STORAGE_KEY, raw);
+  expect(storage.read()).toEqual({
+    ok: true,
+    value: { version: 1, timestamp, user, drafts },
+  });
+  expect(mock.getItem(STORAGE_KEY)).toBe(raw);
+  expect(events).toHaveLength(0);
+});
+test('salvage drops a stored education with an unknown level', () => {
+  const { mock, storage, events } = setup();
+  mock.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      timestamp: new Date().toISOString(),
+      user: {
+        info,
+        education: [{ educationId: 'school-1', educationLevel: 'Nope' }],
+      },
+      drafts: {},
+    }),
+  );
+  expect(storage.read()).toMatchObject({ value: { user: { info } } });
+  expect(storage.read()).not.toMatchObject({
+    value: { user: { education: expect.anything() } },
+  });
+  expect(events).toHaveLength(1);
+});
+test('an envelope without an ISO timestamp is backed up and replaced', () => {
+  const { mock, storage, events } = setup();
+  const raw = JSON.stringify({
+    version: 1,
+    timestamp: 'yesterday',
+    user: { info },
+    drafts: {},
+  });
+  mock.setItem(STORAGE_KEY, raw);
+  expect(storage.read()).toMatchObject({ value: { user: {}, drafts: {} } });
+  expect(mock.getItem(BACKUP_KEY)).toBe(raw);
+  expect(events).toHaveLength(1);
+});
 test('unparseable envelope is backed up, replaced by a fresh User, and reported once without content', () => {
   const { mock, storage, events } = setup();
   const raw = '{private content';

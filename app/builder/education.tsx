@@ -1,8 +1,8 @@
-import { z } from 'zod';
 import {
   BaseEducationSchema,
   EducationLevelSchema,
 } from '../../shared/schemas/education.ts';
+import { z } from '../../shared/zod.ts';
 import { findEducationEntry, normalizeEducationEntry } from '../education.ts';
 import {
   EducationEntryPage,
@@ -74,13 +74,14 @@ export function educationControllers(storage: UserStorage) {
     route: 'education-level',
     schema: (envelope, url) => {
       const entry = findEducation(envelope, url);
-      return z
-        .object({ educationLevel: EducationLevelSchema })
-        .transform((typed) => ({
+      return z.pipe(
+        z.object({ educationLevel: EducationLevelSchema }),
+        z.transform((typed) => ({
           ...entry,
           ...typed,
           educationId: entry?.educationId ?? crypto.randomUUID(),
-        }));
+        })),
+      );
     },
     page: EducationLevelPage,
     read: storage.read,
@@ -97,36 +98,39 @@ export function educationControllers(storage: UserStorage) {
     const entry = findEducation(envelope, url);
     if (!entry?.educationLevel || !entry.educationId) return '/education-level';
   };
-  function withEducationCap<T extends z.ZodType>(
+  function withEducationCap<T extends z.ZodMiniType>(
     schema: T,
     envelope: Envelope,
     url: URL,
   ) {
     const id = findEducation(envelope, url)?.educationId;
-    return schema.superRefine((_value, ctx) => {
-      if (
-        (envelope.user.education?.length ?? 0) >= 3 &&
-        !envelope.user.education?.some((entry) => entry.educationId === id)
-      )
-        ctx.addIssue({
-          code: 'custom',
-          path: ['schoolName'],
-          message: EDUCATION_CAP_ERROR,
-        });
-    });
+    return schema.check(
+      z.superRefine((_value, ctx) => {
+        if (
+          (envelope.user.education?.length ?? 0) >= 3 &&
+          !envelope.user.education?.some((entry) => entry.educationId === id)
+        )
+          ctx.addIssue({
+            code: 'custom',
+            path: ['schoolName'],
+            message: EDUCATION_CAP_ERROR,
+          });
+      }),
+    );
   }
   const education = createBuilderController({
     route: 'education',
     schema: (envelope, url) => {
       const entry = findEducation(envelope, url)!;
       return withEducationCap(
-        z
-          .object({ schoolName: BaseEducationSchema.shape.schoolName })
-          .transform((typed) => ({
+        z.pipe(
+          z.object({ schoolName: BaseEducationSchema.shape.schoolName }),
+          z.transform((typed) => ({
             ...entry,
             ...typed,
             educationId: entry.educationId!,
           })),
+        ),
         envelope,
         url,
       );
@@ -144,8 +148,8 @@ export function educationControllers(storage: UserStorage) {
     route: 'education-entry',
     schema: (envelope, url) =>
       withEducationCap(
-        z.preprocess(
-          (typed) =>
+        z.pipe(
+          z.transform((typed: unknown): unknown =>
             normalizeEducationEntry({
               ...findEducation(envelope, url),
               ...(typed as object),
@@ -153,25 +157,28 @@ export function educationControllers(storage: UserStorage) {
                 (typed as FormValues).currentlyEnrolled,
               ),
             }),
-          BaseEducationSchema.extend({
-            currentlyEnrolled: checkbox(),
-          }).superRefine((value, ctx) => {
-            if (!value.degree.trim())
-              ctx.addIssue({
-                code: 'custom',
-                path: ['degree'],
-                message: 'Degree is required.',
-              });
-            if (
-              value.educationLevel !== 'Certificate' &&
-              !value.location.trim()
-            )
-              ctx.addIssue({
-                code: 'custom',
-                path: ['location'],
-                message: 'Location is required.',
-              });
-          }),
+          ),
+          z
+            .extend(BaseEducationSchema, { currentlyEnrolled: checkbox() })
+            .check(
+              z.superRefine((value, ctx) => {
+                if (!value.degree.trim())
+                  ctx.addIssue({
+                    code: 'custom',
+                    path: ['degree'],
+                    message: 'Degree is required.',
+                  });
+                if (
+                  value.educationLevel !== 'Certificate' &&
+                  !value.location.trim()
+                )
+                  ctx.addIssue({
+                    code: 'custom',
+                    path: ['location'],
+                    message: 'Location is required.',
+                  });
+              }),
+            ),
         ),
         envelope,
         url,

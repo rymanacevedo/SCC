@@ -49,7 +49,7 @@ export function createGeoRestrictionMiddleware({
   };
 }
 
-export function bodyValidation<T>(schema: z.ZodType<T>) {
+export function bodyValidation<T>(schema: z.core.$ZodType<T>) {
   const key = createContextKey<T>();
   const middleware: Middleware = async (context, next) => {
     let body: unknown;
@@ -61,7 +61,7 @@ export function bodyValidation<T>(schema: z.ZodType<T>) {
         fieldErrors: {},
       });
     }
-    const parsed = schema.safeParse(body);
+    const parsed = z.safeParse(schema, body);
     if (!parsed.success)
       return apiError(
         400,
