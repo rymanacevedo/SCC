@@ -5,6 +5,7 @@ import { render } from 'remix/component/test';
 import { Alert } from './alert.tsx';
 import { Button, ButtonLink, buttonClass } from './button.tsx';
 import { Card } from './card.tsx';
+import { Checkbox } from './checkbox.tsx';
 import { Chip } from './chip.tsx';
 import { Field } from './field.tsx';
 import { PageHeading } from './heading.tsx';
@@ -104,6 +105,44 @@ test('a select Field marks the current value and offers a placeholder', async ()
   expect(html).toContain('<option value="CA">California</option>');
   expect(html).toMatch(/<option value="TX" selected[^>]*>Texas<\/option>/);
   expect(html).toContain('for="state"');
+});
+
+test('a month Field can be disabled and is then greyed out', async () => {
+  const html = await renderToString(
+    <Field
+      name="endDate"
+      label="End Date"
+      type="month"
+      value="2024-06"
+      disabled
+    />,
+  );
+  expect(html).toMatch(/<input id="endDate"[^>]*\sdisabled[\s=/>]/);
+  expect(html).toContain('type="month"');
+  expect(html).toContain('value="2024-06"');
+  expect(html).toContain('disabled:bg-gray-100');
+  expect(
+    await renderToString(<Field name="city" label="City" value="" />),
+  ).not.toMatch(/\sdisabled[\s=/>]/);
+});
+
+test('a Checkbox keeps its label wired and reports each toggle', async () => {
+  const toggles: boolean[] = [];
+  const view = mount(
+    <Checkbox
+      name="currentlyEnrolled"
+      label="I am currently studying here"
+      defaultChecked
+      onToggle={(checked) => toggles.push(checked)}
+    />,
+  );
+  const box = view.$('#currentlyEnrolled') as HTMLInputElement;
+  expect(box.checked).toBe(true);
+  expect(view.$('label[for="currentlyEnrolled"]')?.textContent).toBe(
+    'I am currently studying here',
+  );
+  await view.act(() => box.click());
+  expect(toggles).toEqual([false]);
 });
 
 test('a textarea Field hands its element to capture', () => {

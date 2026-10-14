@@ -13,7 +13,12 @@ import { EducationSummaryPage } from '../pages/education-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import type { Envelope, UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
-import { checkbox, entryFormValues, type FormValues } from './form.ts';
+import {
+  checkbox,
+  entryFormValues,
+  type FormValues,
+  isChecked,
+} from './form.ts';
 import { createEntryHub } from './hub.tsx';
 
 export const EDUCATION_CAP_ERROR = 'You can add up to three schools.';
@@ -55,8 +60,7 @@ export function educationControllers(storage: UserStorage) {
         ...typed,
         currentlyEnrolled:
           'graduationDate' in typed
-            ? typed.currentlyEnrolled === 'on' ||
-              typed.currentlyEnrolled === 'true'
+            ? isChecked(typed.currentlyEnrolled)
             : previous.currentlyEnrolled,
       });
       return saved.ok ? undefined : SAVE_ERROR;
@@ -145,9 +149,9 @@ export function educationControllers(storage: UserStorage) {
             normalizeEducationEntry({
               ...findEducation(envelope, url),
               ...(typed as object),
-              currentlyEnrolled:
-                (typed as FormValues).currentlyEnrolled === 'on' ||
-                (typed as FormValues).currentlyEnrolled === 'true',
+              currentlyEnrolled: isChecked(
+                (typed as FormValues).currentlyEnrolled,
+              ),
             }),
           BaseEducationSchema.extend({
             currentlyEnrolled: checkbox(),

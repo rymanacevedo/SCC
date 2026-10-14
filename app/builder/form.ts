@@ -25,11 +25,16 @@ export function entryFormValues(entry: object): FormValues {
     ]),
   ) as FormValues;
 }
-export const checkbox = () =>
-  z.preprocess(
-    (value) => value === true || value === 'on' || value === 'true',
-    z.boolean(),
-  );
+/** A checkbox answer: "on" when typed, "true" when read back from the User. */
+export function isChecked(value: unknown): boolean {
+  return value === true || value === 'on' || value === 'true';
+}
+export const checkbox = () => z.preprocess(isChecked, z.boolean());
+/** A stored ISO date (or typed "YYYY-MM") as the value of a month input. */
+export function monthValue(value: FormValues[string] | undefined): string {
+  if (typeof value !== 'string') return '';
+  return /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : value;
+}
 export function formPending<P>(handle: Handle<P>) {
   let pending = false;
   handle.queueTask(() => {

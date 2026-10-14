@@ -11,6 +11,7 @@ import {
   checkbox,
   entryFormValues,
   type FormValues,
+  isChecked,
   repeatedStrings,
 } from './form.ts';
 import { createEntryHub } from './hub.tsx';
@@ -45,9 +46,7 @@ export function experienceControllers(storage: UserStorage) {
       const draft = draftSchemas.experience.safeParse({
         ...previous,
         ...typed,
-        currentlyEmployed:
-          typed.currentlyEmployed === 'true' ||
-          typed.currentlyEmployed === 'on',
+        currentlyEmployed: isChecked(typed.currentlyEmployed),
         details:
           typeof typed.details === 'string'
             ? [typed.details]

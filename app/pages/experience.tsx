@@ -1,75 +1,110 @@
 import { type Handle, on } from 'remix/component';
-import { formValues } from '../builder/form.ts';
+import { usStates } from '../../shared/usStates.ts';
+import {
+  type FormValues,
+  formValues,
+  isChecked,
+  monthValue,
+} from '../builder/form.ts';
 import {
   BuilderField,
   BuilderLayout,
   type BuilderPageProps,
 } from '../builder/layout.tsx';
+import { Checkbox } from '../ui/checkbox.tsx';
 
 export function ExperiencePage(handle: Handle<BuilderPageProps>) {
   let saveError: string | undefined;
-  return () => (
-    <BuilderLayout
-      {...handle.props}
-      errors={
-        saveError
-          ? { ...handle.props.errors, _form: [saveError] }
-          : handle.props.errors
-      }
-      step="experience"
-      title="Tell us about your job"
-    >
-      <div
-        mix={on('input', (event) => {
-          const form = (event.target as HTMLElement).closest('form');
-          if (form) {
-            saveError = handle.props.saveDraft?.(
-              formValues(new FormData(form)),
-            );
-            void handle.update();
-          }
-        })}
+  // The user's toggle wins until the page renders a new set of values.
+  let toggled: boolean | undefined;
+  let renderedValues: FormValues | undefined;
+  return () => {
+    const { values, errors } = handle.props;
+    if (values !== renderedValues) {
+      renderedValues = values;
+      toggled = undefined;
+    }
+    const currentlyEmployed = toggled ?? isChecked(values.currentlyEmployed);
+    return (
+      <BuilderLayout
+        {...handle.props}
+        errors={saveError ? { ...errors, _form: [saveError] } : errors}
+        step="experience"
+        title="Tell us about your most recent job"
+        subtitle="We'll start there and work backwards."
       >
-        <input
-          type="hidden"
-          name="jobId"
-          value={String(handle.props.values.jobId ?? '')}
-        />
-        {(
-          [
-            'jobTitle',
-            'employer',
-            'city',
-            'state',
-            'startDate',
-            'endDate',
-          ] as const
-        ).map((name) => (
-          <BuilderField
-            name={name}
-            label={
-              {
-                jobTitle: 'Job Title',
-                employer: 'Employer',
-                city: 'City',
-                state: 'State',
-                startDate: 'Start date',
-                endDate: 'End date',
-              }[name]
+        <div
+          className="space-y-6"
+          mix={on('input', (event) => {
+            const form = (event.target as HTMLElement).closest('form');
+            if (form) {
+              saveError = handle.props.saveDraft?.(
+                formValues(new FormData(form)),
+              );
+              void handle.update();
             }
-            values={handle.props.values}
-            errors={handle.props.errors}
-          />
-        ))}
-        <label>
+          })}
+        >
           <input
-            type="checkbox"
+            type="hidden"
+            name="jobId"
+            value={String(values.jobId ?? '')}
+          />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <BuilderField
+              name="jobTitle"
+              label="Job Title"
+              values={values}
+              errors={errors}
+            />
+            <BuilderField
+              name="employer"
+              label="Employer"
+              values={values}
+              errors={errors}
+            />
+            <BuilderField
+              name="city"
+              label="City"
+              placeholder="Denver"
+              values={values}
+              errors={errors}
+            />
+            <BuilderField
+              name="state"
+              label="State"
+              options={usStates}
+              placeholder="Select a state"
+              values={values}
+              errors={errors}
+            />
+            <BuilderField
+              name="startDate"
+              label="Start Date"
+              type="month"
+              values={{ startDate: monthValue(values.startDate) }}
+              errors={errors}
+            />
+            <BuilderField
+              name="endDate"
+              label="End Date"
+              type="month"
+              disabled={currentlyEmployed}
+              values={{ endDate: monthValue(values.endDate) }}
+              errors={errors}
+            />
+          </div>
+          <Checkbox
             name="currentlyEmployed"
-            defaultChecked={handle.props.values.currentlyEmployed === 'true'}
-          />{' '}
-          I currently work here
-        </label>
-      </div>
-    </BuilderLayout>
-  );
+            label="I currently work here"
+            defaultChecked={isChecked(values.currentlyEmployed)}
+            onToggle={(checked) => {
+              toggled = checked;
+              void handle.update();
+            }}
+          />
+        </div>
+      </BuilderLayout>
+    );
+  };
 }

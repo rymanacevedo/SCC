@@ -1,4 +1,5 @@
 import type { Handle } from 'remix/component';
+import { usStates } from '../../shared/usStates.ts';
 import {
   BuilderField,
   BuilderLayout,
@@ -10,9 +11,9 @@ const fields = [
   ['lastName', 'Last Name'],
   ['city', 'City'],
   ['state', 'State'],
-  ['zipCode', 'ZIP Code'],
-  ['phone', 'Phone Number', 'tel'],
-  ['email', 'Email Address', 'email'],
+  ['zipCode', 'Zip Code'],
+  ['phone', 'Phone', 'tel'],
+  ['email', 'Email', 'email'],
 ] as const;
 export function InfoPage(handle: Handle<BuilderPageProps>) {
   return () => (
@@ -20,16 +21,21 @@ export function InfoPage(handle: Handle<BuilderPageProps>) {
       {...handle.props}
       step="info"
       title="Tell us a bit about yourself"
+      subtitle="Let's start with your basic information."
     >
-      {fields.map(([name, label, type]) => (
-        <BuilderField
-          name={name}
-          label={label}
-          type={type}
-          values={handle.props.values}
-          errors={handle.props.errors}
-        />
-      ))}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {fields.map(([name, label, type]) => (
+          <BuilderField
+            name={name}
+            label={label}
+            type={type}
+            options={name === 'state' ? usStates : undefined}
+            placeholder={name === 'state' ? 'Select a state' : undefined}
+            values={handle.props.values}
+            errors={handle.props.errors}
+          />
+        ))}
+      </div>
     </BuilderLayout>
   );
 }

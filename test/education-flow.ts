@@ -60,8 +60,9 @@ try {
       path,
     );
   }
-  async function submit(path: string) {
-    await page.click('nav button[type="submit"]');
+  async function submit(path: string, button = 'nav button[type="submit"]') {
+    await page.waitForSelector(button);
+    await page.click(button);
     try {
       await waitPath(path);
     } catch (error) {
@@ -87,9 +88,10 @@ try {
   }
   async function startSchool(name: string) {
     await page.goto(`${base}/education-level`);
-    await page.waitForSelector('select');
-    await page.select('select', 'Certificate');
-    await submit('/education');
+    await submit(
+      '/education',
+      'button[name="educationLevel"][value="Certificate"]',
+    );
     await type('schoolName', name);
   }
   await page.click('a[href="/info"]');
@@ -101,7 +103,7 @@ try {
     employer: 'Company',
     city: 'Boston',
     state: 'MA',
-    startDate: '2020-01-01',
+    startDate: '2020-01',
   }))
     await type(name, value);
   await page.click('[name="currentlyEmployed"]');
@@ -146,7 +148,11 @@ try {
   await page.goto(`${base}/education-summary`);
   await page.click('article a');
   await waitPath('/education-level');
-  await submit('/education');
+  // Revisit marks the saved level as current.
+  await submit(
+    '/education',
+    'button[name="educationLevel"][aria-current="true"]',
+  );
   await type('schoolName', 'Edited School');
   await submit('/education-entry');
   await page.click('[name="currentlyEnrolled"]');

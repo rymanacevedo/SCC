@@ -31,6 +31,13 @@ test('Info and Summary string render typed values, Field errors and Form errors'
   expect(html).toContain('novalidate');
   expect(html).toContain('Resubmit');
   expect(html).toContain('/info?returnUrl=%2Ffinish-up');
+  expect(html).toContain('start with your basic information.');
+  expect(html).toContain('grid grid-cols-1 gap-6 sm:grid-cols-2');
+  expect(html).toContain('<select id="state" name="state"');
+  expect(html).toContain('<option value="">Select a state</option>');
+  expect(html).toMatch(
+    /<option value="MA" selected[^>]*>Massachusetts<\/option>/,
+  );
   const summaryHtml = await renderToString(
     <SummaryPage
       url={new URL('https://scc.example/summary')}

@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
+import { usStates } from '../shared/usStates.ts';
 import { builderRequest, experience, info } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
 import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
@@ -306,4 +307,56 @@ test('partially answered Experience fields survive reload through the Draft enve
       },
     },
   });
+});
+test('Experience lays out month dates and a State select, with stored values preloaded', async () => {
+  const html = await renderToString(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience?jobId=job-1')}
+      values={{
+        jobId: 'job-1',
+        state: 'MA',
+        startDate: '2020-01-01T00:00:00.000Z',
+        endDate: '2024-06-30T00:00:00.000Z',
+        currentlyEmployed: 'false',
+      }}
+    />,
+  );
+  expect(html).toContain('Tell us about your most recent job');
+  expect(html).toContain('start there and work backwards.');
+  expect(html).toMatch(/id="startDate"[^>]*type="month"[^>]*value="2020-01"/);
+  expect(html).toMatch(/id="endDate"[^>]*type="month"[^>]*value="2024-06"/);
+  expect(html).not.toMatch(/id="endDate"[^>]*\sdisabled[\s=/>]/);
+  expect(html).toContain('<option value="">Select a state</option>');
+  expect(html).toMatch(
+    /<option value="MA" selected[^>]*>Massachusetts<\/option>/,
+  );
+  expect(html.match(/<option value="[A-Z]{2}"/g)).toHaveLength(usStates.length);
+});
+test('"I currently work here" disables End date, and unticking enables it again', async () => {
+  const stored = await renderToString(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience')}
+      values={{ jobId: 'job-1', currentlyEmployed: 'true' }}
+    />,
+  );
+  expect(stored).toMatch(/id="endDate"[^>]*\sdisabled[\s=/>]/);
+  expect(stored).toMatch(/id="currentlyEmployed"[^>]*checked/);
+  const view = render(
+    <ExperiencePage
+      url={new URL('https://scc.example/experience')}
+      values={{ jobId: 'job-1' }}
+    />,
+  );
+  cleanups.push(view.cleanup);
+  const endDate = () => view.$('#endDate') as HTMLInputElement;
+  const box = view.$('#currentlyEmployed') as HTMLInputElement;
+  expect(endDate().disabled).toBe(false);
+  await view.act(() => box.click());
+  expect(box.checked).toBe(true);
+  expect(endDate().disabled).toBe(true);
+  // A disabled End date is left out of the submission.
+  expect(new FormData(box.form!).has('endDate')).toBe(false);
+  await view.act(() => box.click());
+  expect(box.checked).toBe(false);
+  expect(endDate().disabled).toBe(false);
 });

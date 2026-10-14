@@ -4,7 +4,7 @@ import type { FieldErrors } from '../../shared/fieldErrors.ts';
 import { builderNav, type StepId } from '../steps.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, ButtonLink } from '../ui/button.tsx';
-import { Field, type FieldOption } from '../ui/field.tsx';
+import { Field, type FieldProps as UiFieldProps } from '../ui/field.tsx';
 import { PageHeading } from '../ui/heading.tsx';
 import { type FormValues, formPending } from './form.ts';
 export interface BuilderPageProps {
@@ -21,6 +21,8 @@ interface LayoutProps extends BuilderPageProps {
   children: RemixNode;
   suggestions?: RemixNode;
   beforeForm?: RemixNode;
+  /** Pages whose own buttons submit the form (education level) drop the nav submit. */
+  hideSubmit?: boolean;
 }
 export function BuilderLayout(handle: Handle<LayoutProps>) {
   const pending = formPending(handle);
@@ -84,13 +86,15 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
                   Previous
                 </ButtonLink>
               ) : null}
-              <Button
-                type="submit"
-                disabled={pending.pending}
-                className="ml-auto"
-              >
-                {submitLabel}
-              </Button>
+              {handle.props.hideSubmit ? null : (
+                <Button
+                  type="submit"
+                  disabled={pending.pending}
+                  className="ml-auto"
+                >
+                  {submitLabel}
+                </Button>
+              )}
             </nav>
           </form>
           {suggestions ? (
@@ -103,16 +107,9 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     );
   };
 }
-interface FieldProps {
-  name: string;
-  label: string;
+interface FieldProps extends Omit<UiFieldProps, 'value' | 'errors'> {
   values: FormValues;
   errors?: FieldErrors;
-  type?: 'text' | 'tel' | 'email';
-  options?: readonly FieldOption[];
-  placeholder?: string;
-  textarea?: boolean;
-  capture?: (element: HTMLTextAreaElement) => void;
 }
 /** A Field bound to a builder page's form values and Field errors. */
 export function BuilderField(handle: Handle<FieldProps>) {

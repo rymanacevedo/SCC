@@ -7,12 +7,14 @@ export interface FieldOption {
   label: string;
 }
 
-interface FieldProps {
+export interface FieldProps {
   name: string;
   label: string;
   value?: string;
   errors?: readonly string[];
-  type?: 'text' | 'tel' | 'email';
+  type?: 'text' | 'tel' | 'email' | 'month';
+  /** Disabled controls are greyed out and left out of the form submission. */
+  disabled?: boolean;
   /** Renders a select with an empty placeholder option first. */
   options?: readonly FieldOption[];
   placeholder?: string;
@@ -21,6 +23,8 @@ interface FieldProps {
 }
 
 const control = 'mt-1 block w-full border px-3 py-3 text-lg shadow-sm';
+const disabledControl =
+  'disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50';
 
 export function controlClass(
   kind: 'input' | 'select' | 'textarea',
@@ -32,6 +36,7 @@ export function controlClass(
       : control;
   return classes(
     shape,
+    disabledControl,
     kind === 'select' && 'bg-white text-gray-900',
     invalid ? 'border-red-500' : kind === 'select' && 'border-gray-300',
   );
@@ -49,6 +54,7 @@ export function Field(handle: Handle<FieldProps>) {
       placeholder,
       textarea,
       capture,
+      disabled,
     } = handle.props;
     const invalid = Boolean(errors?.length);
     const attributes = {
@@ -56,6 +62,7 @@ export function Field(handle: Handle<FieldProps>) {
       name,
       'aria-invalid': invalid ? ('true' as const) : undefined,
       'aria-describedby': invalid ? `${name}-error` : undefined,
+      disabled,
     };
     let input: RemixNode;
     if (textarea) {
@@ -87,6 +94,15 @@ export function Field(handle: Handle<FieldProps>) {
             </option>
           ))}
         </select>
+      );
+    } else if (type === 'month') {
+      input = (
+        <input
+          {...attributes}
+          type="month"
+          defaultValue={value}
+          className={controlClass('input', invalid)}
+        />
       );
     } else {
       input = (
