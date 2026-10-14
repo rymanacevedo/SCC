@@ -1,8 +1,8 @@
-import type { z } from 'zod';
 import type {
   BaseEducationSchema,
   EducationLevelSchema,
 } from '../shared/schemas/education.ts';
+import type { z } from '../shared/zod.ts';
 import type { Drafts, User } from './user.ts';
 
 export type EducationEntry = z.infer<typeof BaseEducationSchema>;

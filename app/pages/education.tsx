@@ -1,5 +1,5 @@
 import { type Handle, on } from 'remix/component';
-import { EducationLevelSchema } from '../../shared/schemas/education.ts';
+import { educationLevels } from '../../shared/schemas/education.ts';
 import { formValues, isChecked } from '../builder/form.ts';
 import {
   BuilderField,
@@ -25,7 +25,7 @@ export function EducationLevelPage(handle: Handle<BuilderPageProps>) {
         {/* Each level submits the form, as in the old app; the saved one is primary. */}
         <fieldset className="mx-auto flex max-w-xs flex-col justify-center gap-4 md:max-w-4xl md:flex-row md:flex-wrap">
           <legend className="sr-only">Education level</legend>
-          {EducationLevelSchema.options.map(({ value }) => {
+          {educationLevels.map((value) => {
             const saved = values.educationLevel === value;
             return (
               <Button

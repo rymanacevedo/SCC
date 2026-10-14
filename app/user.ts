@@ -1,12 +1,13 @@
-import { z } from 'zod';
 import type { Result } from '../shared/result.ts';
 import {
   type Drafts,
   draftSchemas,
+  entrySchemas,
   type Section,
   sectionSchemas,
   type User,
 } from '../shared/schemas/user.ts';
+import { z } from '../shared/zod.ts';
 import { reportError } from './api.ts';
 
 export type { Drafts, Section, User } from '../shared/schemas/user.ts';
@@ -20,7 +21,7 @@ export interface Envelope {
   drafts: Drafts;
 }
 const envelopeSchema = z.object({
-  version: z.number().int(),
+  version: z.int(),
   timestamp: z.iso.datetime(),
   user: z.record(z.string(), z.unknown()),
   drafts: z.record(z.string(), z.unknown()),
@@ -143,7 +144,7 @@ export function createUserStorage(
     section: K,
     entry: NonNullable<User[K]>[number],
   ): Result<Envelope> {
-    const parsed = sectionSchemas[section].element.safeParse(entry);
+    const parsed = entrySchemas[section].safeParse(entry);
     if (!parsed.success) return { ok: false, error: 'validation' };
     return change((envelope) => {
       const entries: StoredEntry[] = [...(envelope.user[section] ?? [])];

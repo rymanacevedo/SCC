@@ -64,6 +64,25 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["app/**", "shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "zod": "Client code imports `z` from shared/zod.ts (zod/mini); full zod adds startup cost to every page."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

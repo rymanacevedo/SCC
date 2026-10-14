@@ -51,7 +51,7 @@ export function createApiRouter(
   };
   function register<T>(
     path: string,
-    schema: z.ZodType<T>,
+    schema: z.core.$ZodType<T>,
     handler: (payload: T) => Promise<Response>,
     errorPolicy: RouteErrorPolicy,
     guards: (

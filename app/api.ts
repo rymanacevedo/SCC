@@ -1,4 +1,3 @@
-import type { z } from 'zod';
 import {
   type ErrorTelemetryPayload,
   reportAcknowledgementSchema,
@@ -11,6 +10,7 @@ import {
   SkillsSchema,
   SummarySchema,
 } from '../shared/schemas/generation.ts';
+import type { z } from '../shared/zod.ts';
 
 const failureCodeByStatus: Record<number, FailureCode> = {
   400: 'validation',
@@ -22,7 +22,7 @@ const failureCodeByStatus: Record<number, FailureCode> = {
 async function post<T>(
   path: string,
   body: unknown,
-  schema: z.ZodType<T>,
+  schema: z.ZodMiniType<T>,
   signal?: AbortSignal,
 ): Promise<Result<T>> {
   try {

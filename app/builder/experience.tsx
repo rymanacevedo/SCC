@@ -1,5 +1,6 @@
 import { BaseExperienceSchema } from '../../shared/schemas/experience.ts';
 import { draftSchemas } from '../../shared/schemas/user.ts';
+import { z } from '../../shared/zod.ts';
 import { ExperiencePage } from '../pages/experience.tsx';
 import { ExperienceEntryPage } from '../pages/experience-entry.tsx';
 import { ExperienceSummaryPage } from '../pages/experience-summary.tsx';
@@ -56,13 +57,14 @@ export function experienceControllers(storage: UserStorage) {
         : SAVE_ERROR;
     },
   };
-  const experienceSchema = BaseExperienceSchema.extend({
-    currentlyEmployed: checkbox(),
-  }).transform((job) => ({
-    ...job,
-    startDate: job.startDate.toISOString(),
-    endDate: job.endDate?.toISOString(),
-  }));
+  const experienceSchema = z.pipe(
+    z.extend(BaseExperienceSchema, { currentlyEmployed: checkbox() }),
+    z.transform((job) => ({
+      ...job,
+      startDate: job.startDate.toISOString(),
+      endDate: job.endDate?.toISOString(),
+    })),
+  );
   const experience = createBuilderController({
     route: 'experience',
     schema: experienceSchema,

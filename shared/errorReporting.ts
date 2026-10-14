@@ -1,16 +1,16 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 
 export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
 
 export const errorTelemetrySchema = z.object({
   timestamp: z.iso.datetime(),
-  url: z.string().min(1),
-  message: z.string().min(1),
-  stackTrace: z.string().optional(),
+  url: z.string().check(z.minLength(1)),
+  message: z.string().check(z.minLength(1)),
+  stackTrace: z.optional(z.string()),
 });
 
 export const userIssueReportSchema = z.object({
-  description: z.string().trim().min(1),
+  description: z.string().check(z.trim(), z.minLength(1)),
   timestamp: z.iso.datetime(),
   url: z.url(),
 });
