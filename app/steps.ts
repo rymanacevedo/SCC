@@ -116,7 +116,12 @@ export function validatedReturnUrl(url: URL): string | undefined {
 export function builderNav(id: StepId, url: URL) {
   const index = steps.findIndex((step) => step.id === id);
   return {
-    previous: index > 0 ? steps[index - 1].path : '/',
+    previous:
+      id === 'experience-entry' && url.searchParams.has('jobId')
+        ? `/experience?${new URLSearchParams({ jobId: url.searchParams.get('jobId') ?? '' })}`
+        : index > 0
+          ? steps[index - 1].path
+          : '/',
     next: steps[index + 1]?.path ?? '/',
     returnUrl: validatedReturnUrl(url),
   };
@@ -149,5 +154,14 @@ export function guardInitialUrl(
   const step = steps.find(
     (step) => step.path === url.pathname && available.includes(step.id),
   );
+  if (step?.id === 'experience-entry') {
+    const missingInfo = guardStep('experience', user, drafts);
+    if (missingInfo) return missingInfo;
+    const id = url.searchParams.get('jobId');
+    return (drafts.experience?.jobId === id && id) ||
+      user.experience?.some((job) => job.jobId === id)
+      ? undefined
+      : '/experience-summary';
+  }
   return step ? guardStep(step.id, user, drafts) : undefined;
 }

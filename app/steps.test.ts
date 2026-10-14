@@ -61,3 +61,22 @@ test('initial deep links use the same prerequisite guard and leave non-builder U
     ]),
   ).toBeUndefined();
 });
+
+test('Experience entry reload resolves committed identity and unknown ids to the Hub', () => {
+  expect(
+    guardInitialUrl(
+      new URL('https://scc.example/experience-entry?jobId=job-1'),
+      summaryUser,
+      {},
+      ['experience-entry'],
+    ),
+  ).toBeUndefined();
+  expect(
+    guardInitialUrl(
+      new URL('https://scc.example/experience-entry?jobId=missing'),
+      summaryUser,
+      {},
+      ['experience-entry'],
+    ),
+  ).toBe('/experience-summary');
+});

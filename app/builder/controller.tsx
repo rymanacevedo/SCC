@@ -20,14 +20,20 @@ export function createBuilderController<T>({
   write,
   next,
   prepare,
+  select,
+  guard,
+  pageProps,
 }: {
   route: StepId;
   schema: z.ZodType<T>;
   page: (handle: Handle<BuilderPageProps>) => () => RemixNode;
   read: () => Result<Envelope>;
-  write: (value: T) => Result<unknown>;
-  next: string;
-  prepare?: () => Result<Envelope>;
+  write: (value: T, url: URL, envelope: Envelope) => Result<unknown>;
+  next: string | ((url: URL, value: T) => string);
+  prepare?: (url: URL) => Result<Envelope>;
+  select?: (envelope: Envelope, url: URL) => FormValues | string;
+  guard?: (envelope: Envelope, url: URL) => string | undefined;
+  pageProps?: Partial<BuilderPageProps>;
 }) {
   const step = steps.find((step) => step.id === route)!;
   const routes = defineRoute({
@@ -37,19 +43,30 @@ export function createBuilderController<T>({
   const controller = createController(routes, {
     actions: {
       index({ render, url }) {
-        const stored = prepare ? prepare() : read();
+        const stored = prepare ? prepare(url) : read();
         if (!stored.ok)
           return render(
-            <Page url={url} values={{}} errors={{ _form: [SAVE_ERROR] }} />,
+            <Page
+              {...pageProps}
+              url={url}
+              values={{}}
+              errors={{ _form: [SAVE_ERROR] }}
+            />,
             { status: 500 },
           );
-        const target = guardStep(route, stored.value.user, stored.value.drafts);
+        const target = guard
+          ? guard(stored.value, url)
+          : guardStep(route, stored.value.user, stored.value.drafts);
         if (target) return redirect(target, 303);
-        const values = step.section
-          ? stored.value.user[step.section]
-          : undefined;
+        const values = select
+          ? select(stored.value, url)
+          : step.section
+            ? stored.value.user[step.section]
+            : undefined;
+        if (typeof values === 'string') return redirect(values, 303);
         return render(
           <Page
+            {...pageProps}
             url={url}
             values={(values ?? {}) as FormValues}
             prompt={serializePrompt(stored.value.user)}
@@ -61,16 +78,24 @@ export function createBuilderController<T>({
         const values = formValues(await request.formData());
         if (!stored.ok)
           return render(
-            <Page url={url} values={values} errors={{ _form: [SAVE_ERROR] }} />,
+            <Page
+              {...pageProps}
+              url={url}
+              values={values}
+              errors={{ _form: [SAVE_ERROR] }}
+            />,
             { status: 500 },
           );
-        const target = guardStep(route, stored.value.user, stored.value.drafts);
+        const target = guard
+          ? guard(stored.value, url)
+          : guardStep(route, stored.value.user, stored.value.drafts);
         if (target) return redirect(target, 303);
         const prompt = serializePrompt(stored.value.user);
         const parsed = schema.safeParse(values);
         if (!parsed.success)
           return render(
             <Page
+              {...pageProps}
               url={url}
               values={values}
               errors={fieldErrors(parsed.error)}
@@ -78,10 +103,11 @@ export function createBuilderController<T>({
             />,
             { status: 400 },
           );
-        const saved = write(parsed.data);
+        const saved = write(parsed.data, url, stored.value);
         if (!saved.ok)
           return render(
             <Page
+              {...pageProps}
               url={url}
               values={values}
               errors={{ _form: [SAVE_ERROR] }}
@@ -89,7 +115,12 @@ export function createBuilderController<T>({
             />,
             { status: 500 },
           );
-        return redirect(builderNav(route, url).returnUrl ?? next, 303);
+        return redirect(
+          typeof next === 'function'
+            ? next(url, parsed.data)
+            : (builderNav(route, url).returnUrl ?? next),
+          303,
+        );
       },
     },
   });
