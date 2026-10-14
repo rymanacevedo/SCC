@@ -20,6 +20,18 @@ export interface Block {
 }
 export type Outline = readonly Block[];
 
+function formatExperienceDate(value?: string): string {
+  if (!value) return '';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+}
+
 /** The sole description of Resume content and ordering; no surface styling. */
 export function createOutline(user: User): Outline {
   const blocks: Block[] = [];
@@ -45,17 +57,6 @@ export function createOutline(user: User): Outline {
     if (skills.length) add('skills', 'paragraph', skills.join(', '));
     add('skills', 'spacer');
   }
-  const date = (value?: string) => {
-    if (!value) return '';
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime())
-      ? value
-      : parsed.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'UTC',
-        });
-  };
   if (user.experience?.length) {
     add('experience', 'section-title', 'EXPERIENCE');
     for (const job of user.experience) {
@@ -67,7 +68,7 @@ export function createOutline(user: User): Outline {
       add(
         'experience',
         'date-line',
-        `${date(job.startDate)} - ${job.currentlyEmployed ? 'Present' : date(job.endDate)}`,
+        `${formatExperienceDate(job.startDate)} - ${job.currentlyEmployed ? 'Present' : formatExperienceDate(job.endDate)}`,
       );
       for (const detail of job.details ?? [])
         add('experience', 'bullet', detail);
@@ -77,23 +78,16 @@ export function createOutline(user: User): Outline {
   if (user.education?.length) {
     add('education', 'section-title', 'EDUCATION');
     for (const entry of sortEducationEntries(user.education)) {
-      const credential =
-        entry.degree === entry.educationLevel
-          ? entry.educationLevel
-          : entry.degree;
-      const text =
-        entry.educationLevel === 'Certificate'
-          ? 'Certificate'
-          : [
-              credential,
-              entry.degree === entry.educationLevel
-                ? undefined
-                : entry.educationLevel,
-              entry.schoolName,
-              entry.location,
-            ]
-              .filter(Boolean)
-              .join(' | ');
+      let text = 'Certificate';
+      if (entry.educationLevel !== 'Certificate') {
+        const educationLevel =
+          entry.degree === entry.educationLevel
+            ? undefined
+            : entry.educationLevel;
+        text = [entry.degree, educationLevel, entry.schoolName, entry.location]
+          .filter(Boolean)
+          .join(' | ');
+      }
       add('education', 'paragraph', text);
       add(
         'education',

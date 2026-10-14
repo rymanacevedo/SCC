@@ -1,7 +1,7 @@
 import type { UserStorage } from '../user.ts';
 import { SAVE_ERROR } from './controller.tsx';
 
-/** Both Hub surfaces use the same explicit confirmation and storage failure rules. */
+/** Shared confirmation and storage failure rules for Start over. */
 export function startOverAction(
   data: FormData,
   storage: UserStorage,

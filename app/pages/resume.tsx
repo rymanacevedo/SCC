@@ -3,10 +3,12 @@ import { StartOver } from '../builder/start-over.tsx';
 import { downloadDocument } from '../resume/download.ts';
 import type { Outline } from '../resume/outline.ts';
 import { Preview } from '../resume/preview.tsx';
+
 export interface ResumeProps {
   outline: Outline;
   error?: string;
 }
+
 export function ResumePage(handle: Handle<ResumeProps>) {
   let pending = false;
   let exportError = '';
@@ -17,10 +19,14 @@ export function ResumePage(handle: Handle<ResumeProps>) {
     void handle.update();
     try {
       const outline = handle.props.outline;
-      const blob =
-        format === 'pdf'
-          ? (await import('../resume/pdf.ts')).renderPdf(outline)
-          : await (await import('../resume/docx.ts')).renderDocx(outline);
+      let blob: Blob;
+      if (format === 'pdf') {
+        const { renderPdf } = await import('../resume/pdf.ts');
+        blob = renderPdf(outline);
+      } else {
+        const { renderDocx } = await import('../resume/docx.ts');
+        blob = await renderDocx(outline);
+      }
       const name =
         outline
           .find((block) => block.kind === 'person-name')

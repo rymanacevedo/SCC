@@ -1,25 +1,36 @@
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph } from 'docx';
-import type { Outline } from './outline.ts';
+import type { Block, Outline } from './outline.ts';
+
+function paragraphOptions({ kind, text, section }: Block) {
+  switch (kind) {
+    case 'person-name':
+      return {
+        text,
+        alignment: AlignmentType.CENTER,
+        heading: HeadingLevel.HEADING_1,
+      };
+    case 'contact-line':
+      return { text, alignment: AlignmentType.CENTER };
+    case 'section-title':
+      return { text, heading: HeadingLevel.HEADING_2, thematicBreak: true };
+    case 'job-heading':
+      return { text, heading: HeadingLevel.HEADING_3 };
+    case 'paragraph':
+      if (section === 'education')
+        return { text, heading: HeadingLevel.HEADING_3 };
+      return { text };
+    case 'date-line':
+      return { text, italics: true };
+    case 'bullet':
+      return { text, bullet: { level: 0 } };
+    default:
+      return { text };
+  }
+}
 
 export function renderDocx(outline: Outline): Promise<Blob> {
   const children = outline.map(
-    ({ kind, text, section }) =>
-      new Paragraph({
-        text,
-        ...(kind === 'person-name' || kind === 'contact-line'
-          ? { alignment: AlignmentType.CENTER }
-          : {}),
-        ...(kind === 'person-name' ? { heading: HeadingLevel.HEADING_1 } : {}),
-        ...(kind === 'section-title'
-          ? { heading: HeadingLevel.HEADING_2, thematicBreak: true }
-          : {}),
-        ...(kind === 'job-heading' ||
-        (kind === 'paragraph' && section === 'education')
-          ? { heading: HeadingLevel.HEADING_3 }
-          : {}),
-        ...(kind === 'date-line' ? { italics: true } : {}),
-        ...(kind === 'bullet' ? { bullet: { level: 0 } } : {}),
-      }),
+    (block) => new Paragraph(paragraphOptions(block)),
   );
   return Packer.toBlob(
     new Document({
