@@ -1,8 +1,24 @@
 import { expect, test } from 'bun:test';
+import { renderToString } from 'remix/component/server';
+import { render } from 'remix/component/test';
+import { BaseEducationSchema } from '../shared/schemas/education.ts';
+import { UserSchema } from '../shared/schemas/user.ts';
 import { builderRequest, experience, info } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
+import {
+  EDUCATION_CAP_ERROR,
+  educationControllers,
+} from './builder/education.tsx';
+import { normalizeEducationEntry, sortEducationEntries } from './education.ts';
+import {
+  EducationEntryPage,
+  EducationLevelPage,
+  EducationPage,
+} from './pages/education.tsx';
+import { EducationSummaryPage } from './pages/education-summary.tsx';
 import { createAppRouter } from './router.tsx';
-import { createUserStorage } from './user.ts';
+import { builderNav, guardInitialUrl } from './steps.ts';
+import { createUserStorage, STORAGE_KEY } from './user.ts';
 
 test('education-flow regression #150 reaches the next Step with the school stored', async () => {
   const mock = createSessionStorageMock();
@@ -47,24 +63,6 @@ test('education-flow regression #150 reaches the next Step with the school store
     },
   });
 });
-
-import { renderToString } from 'remix/component/server';
-import { render } from 'remix/component/test';
-import { BaseEducationSchema } from '../shared/schemas/education.ts';
-import { UserSchema } from '../shared/schemas/user.ts';
-import {
-  EDUCATION_CAP_ERROR,
-  educationControllers,
-} from './builder/education.tsx';
-import { normalizeEducationEntry, sortEducationEntries } from './education.ts';
-import {
-  EducationEntryPage,
-  EducationLevelPage,
-  EducationPage,
-} from './pages/education.tsx';
-import { EducationSummaryPage } from './pages/education-summary.tsx';
-import { builderNav, guardInitialUrl } from './steps.ts';
-import { STORAGE_KEY } from './user.ts';
 
 function setupEducation() {
   const mock = createSessionStorageMock();

@@ -91,10 +91,10 @@ export function createBuilderController<T>({
           );
         const target = guardEnvelope(stored.value, url);
         if (target) return redirect(target, 303);
-        const selected = select ? selectValues(stored.value, url) : undefined;
+        const selected = select?.(stored.value, url);
         const renderedValues =
           selected && typeof selected === 'object'
-            ? ({ ...selected, ...values } as FormValues)
+            ? { ...selected, ...values }
             : values;
         const prompt = serializePrompt(stored.value.user);
         const formSchema =

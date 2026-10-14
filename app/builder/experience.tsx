@@ -7,7 +7,7 @@ import { ExperienceSummaryPage } from '../pages/experience-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import { type Envelope, serializePrompt, type UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
-import { checkbox, type FormValues } from './form.ts';
+import { checkbox, entryFormValues, type FormValues } from './form.ts';
 import { createEntryHub } from './hub.tsx';
 
 const experienceHubPath = '/experience-summary';
@@ -15,14 +15,6 @@ function findExperience(envelope: Envelope, id: string | null) {
   const draft = envelope.drafts.experience;
   if (!id || draft?.jobId === id) return draft;
   return envelope.user.experience?.find((job) => job.jobId === id);
-}
-function experienceFormValues(entry: object): FormValues {
-  return Object.fromEntries(
-    Object.entries(entry).map(([key, value]) => [
-      key,
-      typeof value === 'boolean' ? String(value) : value,
-    ]),
-  ) as FormValues;
 }
 export function experienceControllers(storage: UserStorage) {
   const guard = (envelope: Envelope) => guardStep('experience', envelope.user);
@@ -80,7 +72,7 @@ export function experienceControllers(storage: UserStorage) {
       const id = url.searchParams.get('jobId');
       const entry = findExperience(envelope, id);
       if (id && !entry) return experienceHubPath;
-      return experienceFormValues(entry ?? { jobId: crypto.randomUUID() });
+      return entryFormValues(entry ?? { jobId: crypto.randomUUID() });
     },
     write: (job, url, envelope) => {
       const id = url.searchParams.get('jobId');
@@ -119,7 +111,7 @@ export function experienceControllers(storage: UserStorage) {
     select: (envelope, url) => {
       const job = findExperience(envelope, url.searchParams.get('jobId'))!;
       return {
-        ...experienceFormValues(job),
+        ...entryFormValues(job),
         jobId: job.jobId!,
         prompt:
           serializePrompt({

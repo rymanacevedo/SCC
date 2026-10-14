@@ -1,3 +1,4 @@
+import { findEducationEntry } from './education.ts';
 import type { Drafts, Section, User } from './user.ts';
 
 type Prerequisite = Section | 'experienceDraft' | 'educationDraft';
@@ -169,11 +170,7 @@ export function guardInitialUrl(
     const target = guardStep('education-level', user, drafts);
     if (target) return target;
     const id = url.searchParams.get('educationId');
-    const entry = id
-      ? drafts.education?.educationId === id
-        ? drafts.education
-        : user.education?.find((entry) => entry.educationId === id)
-      : drafts.education;
+    const entry = findEducationEntry(user, drafts, id);
     if (id && !entry) return '/education-summary';
     if (
       step.id !== 'education-level' &&

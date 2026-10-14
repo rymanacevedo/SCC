@@ -3,7 +3,7 @@ import {
   BaseEducationSchema,
   EducationLevelSchema,
 } from '../../shared/schemas/education.ts';
-import { normalizeEducationEntry } from '../education.ts';
+import { findEducationEntry, normalizeEducationEntry } from '../education.ts';
 import {
   EducationEntryPage,
   EducationLevelPage,
@@ -13,23 +13,17 @@ import { EducationSummaryPage } from '../pages/education-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import type { Envelope, UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
-import { checkbox, type FormValues } from './form.ts';
+import { checkbox, entryFormValues, type FormValues } from './form.ts';
 import { createEntryHub } from './hub.tsx';
 
 export const EDUCATION_CAP_ERROR = 'You can add up to three schools.';
 function findEducation(envelope: Envelope, url: URL) {
-  const id = url.searchParams.get('educationId');
-  if (!id || envelope.drafts.education?.educationId === id)
-    return envelope.drafts.education;
-  return envelope.user.education?.find((entry) => entry.educationId === id);
+  return findEducationEntry(
+    envelope.user,
+    envelope.drafts,
+    url.searchParams.get('educationId'),
+  );
 }
-const valuesFor = (entry: object): FormValues =>
-  Object.fromEntries(
-    Object.entries(entry).map(([key, value]) => [
-      key,
-      typeof value === 'boolean' ? String(value) : value,
-    ]),
-  ) as FormValues;
 export function educationControllers(storage: UserStorage) {
   const guard = (envelope: Envelope, url: URL) => {
     const target = guardStep('education-level', envelope.user);
@@ -74,28 +68,32 @@ export function educationControllers(storage: UserStorage) {
   };
   const level = createBuilderController({
     route: 'education-level',
-    schema: (envelope, url) =>
-      z.object({ educationLevel: EducationLevelSchema }).transform((typed) => ({
-        ...findEducation(envelope, url),
-        ...typed,
-        educationId:
-          findEducation(envelope, url)?.educationId ?? crypto.randomUUID(),
-      })),
+    schema: (envelope, url) => {
+      const entry = findEducation(envelope, url);
+      return z
+        .object({ educationLevel: EducationLevelSchema })
+        .transform((typed) => ({
+          ...entry,
+          ...typed,
+          educationId: entry?.educationId ?? crypto.randomUUID(),
+        }));
+    },
     page: EducationLevelPage,
     read: storage.read,
     prepare,
     guard,
-    select: (envelope, url) => valuesFor(findEducation(envelope, url) ?? {}),
+    select: (envelope, url) =>
+      entryFormValues(findEducation(envelope, url) ?? {}),
     write: (typed) => storage.writeDraft('education', typed),
     next: (url, typed) => next('/education', url, typed.educationId),
   });
-  const draftGuard = (envelope: Envelope, url: URL) =>
-    guard(envelope, url) ??
-    (!findEducation(envelope, url)?.educationLevel ||
-    !findEducation(envelope, url)?.educationId
-      ? '/education-level'
-      : undefined);
-  function capped<T extends z.ZodType>(
+  const draftGuard = (envelope: Envelope, url: URL) => {
+    const target = guard(envelope, url);
+    if (target) return target;
+    const entry = findEducation(envelope, url);
+    if (!entry?.educationLevel || !entry.educationId) return '/education-level';
+  };
+  function withEducationCap<T extends z.ZodType>(
     schema: T,
     envelope: Envelope,
     url: URL,
@@ -115,31 +113,33 @@ export function educationControllers(storage: UserStorage) {
   }
   const education = createBuilderController({
     route: 'education',
-    schema: (envelope, url) =>
-      capped(
+    schema: (envelope, url) => {
+      const entry = findEducation(envelope, url)!;
+      return withEducationCap(
         z
           .object({ schoolName: BaseEducationSchema.shape.schoolName })
           .transform((typed) => ({
-            ...findEducation(envelope, url),
+            ...entry,
             ...typed,
-            educationId: findEducation(envelope, url)!.educationId!,
+            educationId: entry.educationId!,
           })),
         envelope,
         url,
-      ),
+      );
+    },
     page: EducationPage,
     read: storage.read,
     prepare,
     guard: draftGuard,
     pageProps,
-    select: (envelope, url) => valuesFor(findEducation(envelope, url)!),
+    select: (envelope, url) => entryFormValues(findEducation(envelope, url)!),
     write: (typed) => storage.writeDraft('education', typed),
     next: (url, typed) => next('/education-entry', url, typed.educationId),
   });
   const entry = createBuilderController({
     route: 'education-entry',
     schema: (envelope, url) =>
-      capped(
+      withEducationCap(
         z.preprocess(
           (typed) =>
             normalizeEducationEntry({
@@ -175,13 +175,14 @@ export function educationControllers(storage: UserStorage) {
     page: EducationEntryPage,
     read: storage.read,
     prepare,
-    guard: (envelope, url) =>
-      draftGuard(envelope, url) ??
-      (!findEducation(envelope, url)?.schoolName
-        ? next('/education', url, findEducation(envelope, url)!.educationId!)
-        : undefined),
+    guard: (envelope, url) => {
+      const target = draftGuard(envelope, url);
+      if (target) return target;
+      const entry = findEducation(envelope, url)!;
+      if (!entry.schoolName) return next('/education', url, entry.educationId!);
+    },
     pageProps,
-    select: (envelope, url) => valuesFor(findEducation(envelope, url)!),
+    select: (envelope, url) => entryFormValues(findEducation(envelope, url)!),
     write: (typed, url, envelope) =>
       storage.writeEntry('education', {
         ...typed,

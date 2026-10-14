@@ -3,6 +3,7 @@ import type {
   BaseEducationSchema,
   EducationLevelSchema,
 } from '../shared/schemas/education.ts';
+import type { Drafts, User } from './user.ts';
 
 export type EducationEntry = z.infer<typeof BaseEducationSchema>;
 export type PartialEducationEntry = Partial<EducationEntry>;
@@ -63,4 +64,14 @@ export function getEducationGraduationLabel(education: PartialEducationEntry) {
   return education.currentlyEnrolled
     ? 'Currently Enrolled'
     : education.graduationDate;
+}
+
+export function findEducationEntry(
+  user: User,
+  drafts: Drafts,
+  id: string | null,
+) {
+  const draft = drafts.education;
+  if (!id || draft?.educationId === id) return draft;
+  return user.education?.find((entry) => entry.educationId === id);
 }
