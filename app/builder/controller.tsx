@@ -40,6 +40,15 @@ export function createBuilderController<T>({
     index: get(step.path),
     action: post(step.path),
   });
+  function guardEnvelope(envelope: Envelope, url: URL) {
+    if (guard) return guard(envelope, url);
+    return guardStep(route, envelope.user, envelope.drafts);
+  }
+  function selectValues(envelope: Envelope, url: URL) {
+    if (select) return select(envelope, url);
+    if (step.section) return envelope.user[step.section];
+    return undefined;
+  }
   const controller = createController(routes, {
     actions: {
       index({ render, url }) {
@@ -54,15 +63,9 @@ export function createBuilderController<T>({
             />,
             { status: 500 },
           );
-        const target = guard
-          ? guard(stored.value, url)
-          : guardStep(route, stored.value.user, stored.value.drafts);
+        const target = guardEnvelope(stored.value, url);
         if (target) return redirect(target, 303);
-        const values = select
-          ? select(stored.value, url)
-          : step.section
-            ? stored.value.user[step.section]
-            : undefined;
+        const values = selectValues(stored.value, url);
         if (typeof values === 'string') return redirect(values, 303);
         return render(
           <Page
@@ -86,9 +89,7 @@ export function createBuilderController<T>({
             />,
             { status: 500 },
           );
-        const target = guard
-          ? guard(stored.value, url)
-          : guardStep(route, stored.value.user, stored.value.drafts);
+        const target = guardEnvelope(stored.value, url);
         if (target) return redirect(target, 303);
         const prompt = serializePrompt(stored.value.user);
         const parsed = schema.safeParse(values);

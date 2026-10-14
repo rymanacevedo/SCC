@@ -12,16 +12,13 @@ import { type Envelope, serializePrompt, type UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';
 import { checkbox, type FormValues } from './form.ts';
 
-const hub = '/experience-summary';
-function find(envelope: Envelope, id: string | null) {
+const experienceHubPath = '/experience-summary';
+function findExperience(envelope: Envelope, id: string | null) {
   const draft = envelope.drafts.experience;
-  return id
-    ? draft?.jobId === id
-      ? draft
-      : envelope.user.experience?.find((job) => job.jobId === id)
-    : draft;
+  if (!id || draft?.jobId === id) return draft;
+  return envelope.user.experience?.find((job) => job.jobId === id);
 }
-function values(entry: object): FormValues {
+function experienceFormValues(entry: object): FormValues {
   return Object.fromEntries(
     Object.entries(entry).map(([key, value]) => [
       key,
@@ -49,7 +46,7 @@ export function experienceControllers(storage: UserStorage) {
     saveDraft: (typed: FormValues) => {
       const stored = storage.read();
       if (!stored.ok) return SAVE_ERROR;
-      const previous = find(stored.value, String(typed.jobId));
+      const previous = findExperience(stored.value, String(typed.jobId));
       const draft = draftSchemas.experience.safeParse({
         ...previous,
         ...typed,
@@ -66,7 +63,7 @@ export function experienceControllers(storage: UserStorage) {
         : SAVE_ERROR;
     },
   };
-  const schema = BaseExperienceSchema.extend({
+  const experienceSchema = BaseExperienceSchema.extend({
     currentlyEmployed: checkbox(),
   }).transform((job) => ({
     ...job,
@@ -75,7 +72,7 @@ export function experienceControllers(storage: UserStorage) {
   }));
   const experience = createBuilderController({
     route: 'experience',
-    schema,
+    schema: experienceSchema,
     page: ExperiencePage,
     pageProps,
     read: () => storage.read(),
@@ -83,17 +80,17 @@ export function experienceControllers(storage: UserStorage) {
     guard,
     select: (envelope, url) => {
       const id = url.searchParams.get('jobId');
-      const entry = find(envelope, id);
-      if (id && !entry) return hub;
-      return values(entry ?? { jobId: crypto.randomUUID() });
+      const entry = findExperience(envelope, id);
+      if (id && !entry) return experienceHubPath;
+      return experienceFormValues(entry ?? { jobId: crypto.randomUUID() });
     },
     write: (job, url, envelope) => {
       const id = url.searchParams.get('jobId');
-      if (id && (!find(envelope, id) || job.jobId !== id))
+      if (id && (!findExperience(envelope, id) || job.jobId !== id))
         return { ok: false, error: 'not-found' };
       return storage.writeDraft('experience', {
         ...job,
-        details: find(envelope, job.jobId)?.details,
+        details: findExperience(envelope, job.jobId)?.details,
       });
     },
     next: (url, job) => {
@@ -105,29 +102,26 @@ export function experienceControllers(storage: UserStorage) {
     route: 'experience-entry',
     schema: z.object({
       jobId: z.string().min(1),
-      details: z.preprocess(
-        (value) =>
-          value === undefined
-            ? []
-            : typeof value === 'string'
-              ? [value]
-              : value,
-        z.array(z.string()),
-      ),
+      details: z.preprocess((value) => {
+        if (value === undefined) return [];
+        if (typeof value === 'string') return [value];
+        return value;
+      }, z.array(z.string())),
     }),
     page: ExperienceEntryPage,
     read: () => storage.read(),
     prepare,
-    guard: (envelope, url) =>
-      guard(envelope) ??
-      (!url.searchParams.get('jobId') ||
-      !find(envelope, url.searchParams.get('jobId'))
-        ? hub
-        : undefined),
+    guard: (envelope, url) => {
+      const target = guard(envelope);
+      if (target !== undefined) return target;
+      const id = url.searchParams.get('jobId');
+      if (!id || !findExperience(envelope, id)) return experienceHubPath;
+      return undefined;
+    },
     select: (envelope, url) => {
-      const job = find(envelope, url.searchParams.get('jobId'))!;
+      const job = findExperience(envelope, url.searchParams.get('jobId'))!;
       return {
-        ...values(job),
+        ...experienceFormValues(job),
         jobId: job.jobId!,
         prompt:
           serializePrompt({
@@ -140,16 +134,22 @@ export function experienceControllers(storage: UserStorage) {
     pageProps,
     write: (typed, url, envelope) => {
       const id = url.searchParams.get('jobId');
-      const job = find(envelope, id);
+      const job = findExperience(envelope, id);
       if (!job || typed.jobId !== id) return { ok: false, error: 'not-found' };
-      const parsed = schema.safeParse({ ...job, details: typed.details });
+      const parsed = experienceSchema.safeParse({
+        ...job,
+        details: typed.details,
+      });
       return parsed.success
         ? storage.writeEntry('experience', parsed.data)
         : { ok: false, error: 'validation' };
     },
-    next: () => hub,
+    next: () => experienceHubPath,
   });
-  const routes = route({ index: get(hub), action: post(hub) });
+  const routes = route({
+    index: get(experienceHubPath),
+    action: post(experienceHubPath),
+  });
   const controller = createController(routes, {
     actions: {
       index({ url, render }) {
@@ -203,7 +203,7 @@ export function experienceControllers(storage: UserStorage) {
               />,
               { status: 500 },
             );
-          return redirect(hub, 303);
+          return redirect(experienceHubPath, 303);
         }
         return redirect(validatedReturnUrl(url) ?? '/education-level', 303);
       },
