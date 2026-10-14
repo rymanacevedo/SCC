@@ -66,6 +66,11 @@ test('ButtonLink is a link styled as a button', async () => {
   expect(html).toContain('<a');
   expect(html).toContain('href="/info"');
   expect(html).toContain(buttonClass('secondary'));
+  // The large size replaces the medium padding, text and shadow, never adds to them.
+  const large = buttonClass('primary', undefined, 'lg');
+  expect(large).toContain('px-8 py-4 text-lg');
+  expect(large).not.toContain('px-4');
+  expect(large).not.toContain('shadow-md');
 });
 
 test('an invalid Field shows red Field error text wired to the control', async () => {

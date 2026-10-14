@@ -289,6 +289,9 @@ test('stored User with four schools parses, reloads and renders, while Hub clear
       ?.getAttribute('value'),
   ).toBe('school-3');
   expect(html).toContain('+ Add another education entry');
+  expect(
+    hub.querySelector('nav button[type="submit"]')?.textContent?.trim(),
+  ).toBe('Continue to Skills');
 });
 test('education helpers normalize degrees, trim certificate location, sort without mutation and keep ids', () => {
   expect(

@@ -1,7 +1,7 @@
 import { type Handle, on, ref } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
 import type { FieldErrors } from '../../shared/fieldErrors.ts';
-import { builderNav, type StepId } from '../steps.ts';
+import { builderNav, type StepId, steps } from '../steps.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, ButtonLink } from '../ui/button.tsx';
 import { Field, type FieldProps as UiFieldProps } from '../ui/field.tsx';
@@ -46,7 +46,13 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     const nav = builderNav(step, url);
     let submitLabel = 'Next Step';
     if (step === 'finish-up') submitLabel = 'Preview Resume';
-    else if (step.endsWith('-summary')) submitLabel = 'Continue';
+    else if (step.endsWith('-summary')) {
+      // The old Hubs named the next section: "Continue to Education".
+      const section = steps.find(({ path }) => path === nav.next)?.section;
+      submitLabel = section
+        ? `Continue to ${section[0].toUpperCase()}${section.slice(1)}`
+        : 'Continue';
+    }
     if (pending.pending) {
       submitLabel = 'Saving…';
     } else if (nav.returnUrl) {

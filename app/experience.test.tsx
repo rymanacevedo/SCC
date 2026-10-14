@@ -278,6 +278,9 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   )!;
   expect(add.getAttribute('href')).toBe('/experience');
   expect(add.className).toContain('w-full');
+  expect(
+    hub.querySelector('nav button[type="submit"]')!.textContent?.trim(),
+  ).toBe('Continue to Education');
 });
 
 test('partially answered Experience fields survive reload through the Draft envelope', async () => {
