@@ -36,7 +36,7 @@ Fill in as each milestone passes. These lines are the record.
 
 | milestone | date (UTC) |
 | --- | --- |
-| `scc` created (1.1) | |
+| `scc` created (1.1) | 2026-10-14 (version `d53e1337`, from `50ad8a4`) |
 | Gate run passed (final attempt) | |
 | Smoke checks passed (3.2) | |
 | Netlify 301 live: cutover, rollback window opens (3.3) | |
