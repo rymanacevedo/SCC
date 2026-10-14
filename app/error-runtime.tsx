@@ -1,5 +1,5 @@
 import type { Runtime } from 'remix/spa';
-import { reportErrorTelemetry } from './error-reporting.ts';
+import { isNotFoundResponse, reportErrorTelemetry } from './error-reporting.ts';
 import { ErrorPage, NotFoundPage } from './pages/error.tsx';
 import { Shell } from './pages/shell.tsx';
 
@@ -7,8 +7,7 @@ import { Shell } from './pages/shell.tsx';
 export function installErrorReporting(app: Runtime) {
   app.addEventListener('error', (event) => {
     void reportErrorTelemetry(event.error);
-    const notFound =
-      event.error instanceof Response && event.error.status === 404;
+    const notFound = isNotFoundResponse(event.error);
     void app.frames.top
       .replace(<Shell>{notFound ? <NotFoundPage /> : <ErrorPage />}</Shell>)
       .catch(() => {});

@@ -14,7 +14,7 @@ import { educationControllers } from './builder/education.tsx';
 import { experienceControllers } from './builder/experience.tsx';
 import { createFinishUpController } from './builder/finish-up.tsx';
 import { skillsFormSchema } from './builder/skills.ts';
-import { reportErrorTelemetry } from './error-reporting.ts';
+import { isNotFoundResponse, reportErrorTelemetry } from './error-reporting.ts';
 import { ErrorPage, NotFoundPage } from './pages/error.tsx';
 import { HomePage } from './pages/home.tsx';
 import { InfoPage } from './pages/info.tsx';
@@ -45,7 +45,7 @@ const applicationErrors: Middleware = async (context, next) => {
   } catch (error) {
     if (context.request.signal.aborted) throw error;
     void reportErrorTelemetry(error, context.url.href);
-    const notFound = error instanceof Response && error.status === 404;
+    const notFound = isNotFoundResponse(error);
     return spaResponse.create(
       <Shell>{notFound ? <NotFoundPage /> : <ErrorPage />}</Shell>,
       { status: notFound ? 404 : 500 },

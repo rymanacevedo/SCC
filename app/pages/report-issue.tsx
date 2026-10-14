@@ -2,6 +2,9 @@ import { type Handle, on, ref } from 'remix/component';
 import { userIssueReportSchema } from '../../shared/errorReporting.ts';
 import { reportIssue } from '../api.ts';
 
+const REPORT_FAILURE_MESSAGE =
+  'Your issue could not be reported. Please try again.';
+
 export function ReportIssue(handle: Handle) {
   let dialog: HTMLDialogElement;
   let form: HTMLFormElement;
@@ -9,6 +12,13 @@ export function ReportIssue(handle: Handle) {
   let message = '';
   let success = false;
   let opener: HTMLButtonElement;
+
+  function open() {
+    message = '';
+    success = false;
+    void handle.update();
+    dialog.showModal();
+  }
 
   function close() {
     dialog.close();
@@ -38,10 +48,10 @@ export function ReportIssue(handle: Handle) {
       success = result.ok;
       message = result.ok
         ? 'Thank you. Your issue has been reported.'
-        : 'Your issue could not be reported. Please try again.';
+        : REPORT_FAILURE_MESSAGE;
       if (result.ok) form.reset();
     } catch {
-      message = 'Your issue could not be reported. Please try again.';
+      message = REPORT_FAILURE_MESSAGE;
     } finally {
       pending = false;
       if (!handle.signal.aborted) await handle.update().catch(() => {});
@@ -57,12 +67,7 @@ export function ReportIssue(handle: Handle) {
           ref((node) => {
             opener = node;
           }),
-          on('click', () => {
-            message = '';
-            success = false;
-            void handle.update();
-            dialog.showModal();
-          }),
+          on('click', open),
         ]}
       >
         Report an issue
