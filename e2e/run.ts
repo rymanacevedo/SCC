@@ -6,21 +6,26 @@ import pin from './browser.json' with { type: 'json' };
 
 const children: ReturnType<typeof Bun.spawn>[] = [];
 const varsPath = resolve('.dev.vars');
-const previous = (await Bun.file(varsPath).exists())
+const previousVars = (await Bun.file(varsPath).exists())
   ? await readFile(varsPath)
   : undefined;
-const directory = await mkdtemp(join(tmpdir(), 'scc-flow-'));
+const downloadsDirectory = await mkdtemp(join(tmpdir(), 'scc-flow-'));
 const env: Record<string, string | undefined> = {
   ...process.env,
   CLOUDFLARE_CF_FETCH_PATH: resolve('e2e/cf-us.json'),
 };
-async function run(command: string[], childEnv = env) {
+function spawn(command: string[], childEnv = env) {
   const child = Bun.spawn(command, {
     env: childEnv,
     stdout: 'inherit',
     stderr: 'inherit',
   });
   children.push(child);
+  return child;
+}
+
+async function run(command: string[], childEnv = env) {
+  const child = spawn(command, childEnv);
   const timeout = setTimeout(() => child.kill(), 120_000);
   const code = await child.exited;
   clearTimeout(timeout);
@@ -56,31 +61,28 @@ try {
     buildId: pin.buildId,
     cacheDir: resolve('.cache/scc-chrome'),
   });
-  const stub = Bun.spawn(['bun', 'e2e/openai-stub.ts'], {
-    env: { ...env, PORT: '8788' },
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
-  children.push(stub);
+  const stub = spawn(['bun', 'e2e/openai-stub.ts'], { ...env, PORT: '8788' });
   await ready('http://127.0.0.1:8788/health', stub);
-  const preview = Bun.spawn(
-    ['node', 'node_modules/vite/bin/vite.js', 'preview', '--port', '5199'],
-    { env, stdout: 'inherit', stderr: 'inherit' },
-  );
-  children.push(preview);
+  const preview = spawn([
+    'node',
+    'node_modules/vite/bin/vite.js',
+    'preview',
+    '--port',
+    '5199',
+  ]);
   await ready('http://localhost:5199', preview);
   await run(['bun', 'test', './e2e/journey.e2e.ts', './e2e/history.e2e.ts'], {
     ...env,
     SCC_E2E_ORIGIN: 'http://localhost:5199',
     SCC_E2E_CHROME: chrome.executablePath,
-    SCC_E2E_DOWNLOADS: directory,
+    SCC_E2E_DOWNLOADS: downloadsDirectory,
   });
 } finally {
   for (const child of children.reverse()) {
     if (child.exitCode === null) child.kill();
     await child.exited;
   }
-  if (previous) await writeFile(varsPath, previous);
+  if (previousVars) await writeFile(varsPath, previousVars);
   else await rm(varsPath, { force: true });
-  await rm(directory, { recursive: true, force: true });
+  await rm(downloadsDirectory, { recursive: true, force: true });
 }

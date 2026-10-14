@@ -3,29 +3,31 @@ import { summaries, summaryResponse } from './fixtures.ts';
 
 export { summaryResponse };
 
-const body = {
-  id: 'resp_perf',
-  object: 'response',
-  created_at: 0,
-  model: 'perf-stub',
-  status: 'completed',
-  output: [
-    {
-      type: 'message',
-      role: 'assistant',
-      id: 'msg_perf',
-      status: 'completed',
-      content: [
-        {
-          type: 'output_text',
-          text: JSON.stringify({ summaries }),
-          annotations: [],
-        },
-      ],
-    },
-  ],
-  usage: { input_tokens: 1, output_tokens: 1 },
-};
+function completionResponse(value: unknown) {
+  return {
+    id: 'resp_perf',
+    object: 'response',
+    created_at: 0,
+    model: 'perf-stub',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        id: 'msg_perf',
+        status: 'completed',
+        content: [
+          {
+            type: 'output_text',
+            text: JSON.stringify(value),
+            annotations: [],
+          },
+        ],
+      },
+    ],
+    usage: { input_tokens: 1, output_tokens: 1 },
+  };
+}
 if (import.meta.main) {
   const port = Number(process.env.PORT ?? 8788);
   Bun.serve({
@@ -44,9 +46,7 @@ if (import.meta.main) {
           'summaries' in properties
             ? { summaries }
             : { expertRecommended: ['TypeScript'], other: [] };
-        const response = structuredClone(body);
-        response.output[0]!.content[0]!.text = JSON.stringify(value);
-        return Response.json(response);
+        return Response.json(completionResponse(value));
       }
       return new Response('not found', { status: 404 });
     },

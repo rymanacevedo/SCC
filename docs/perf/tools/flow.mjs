@@ -1,13 +1,12 @@
 // Lighthouse user flow: seeded /summary and /resume Preview with Revisit typing.
 // Usage: CHROME_PATH=... node flow.mjs --origin=https://host --out=/dir --formFactor=mobile|desktop --ai=mock|live
-import {mkdirSync, writeFileSync} from 'node:fs';
-import puppeteer from 'puppeteer';
-import { seededEnvelope } from '../../../e2e/fixtures.ts';
-import { summaryResponse } from '../../../e2e/openai-stub.ts';
-import { readFileSync } from 'node:fs';
-import { computeExecutablePath, Browser } from '@puppeteer/browsers';
-const pin = JSON.parse(readFileSync(new URL('../../../e2e/browser.json', import.meta.url), 'utf8'));
+import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {Browser, computeExecutablePath} from '@puppeteer/browsers';
 import {desktopConfig, startFlow} from 'lighthouse';
+import puppeteer from 'puppeteer';
+import {seededEnvelope, summaryResponse} from '../../../e2e/fixtures.ts';
+
+const pin = JSON.parse(readFileSync(new URL('../../../e2e/browser.json', import.meta.url), 'utf8'));
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const {origin, out} = args;
@@ -15,7 +14,12 @@ const formFactor = args.formFactor ?? 'mobile';
 const ai = args.ai ?? 'mock';
 if (!origin || !out) throw new Error('--origin and --out are required');
 mkdirSync(out, {recursive: true});
-const browser = await puppeteer.launch({executablePath: process.env.CHROME_PATH ?? computeExecutablePath({ browser: Browser.CHROME, buildId: pin.buildId, cacheDir: '.cache/scc-chrome' }), headless: true});
+const executablePath = process.env.CHROME_PATH ?? computeExecutablePath({
+  browser: Browser.CHROME,
+  buildId: pin.buildId,
+  cacheDir: '.cache/scc-chrome',
+});
+const browser = await puppeteer.launch({executablePath, headless: true});
 const page = await browser.newPage();
 if (ai === 'mock') {
   await page.setRequestInterception(true);
