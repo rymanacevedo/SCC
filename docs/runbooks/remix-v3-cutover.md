@@ -243,6 +243,7 @@ One line per attempt. A withdrawn attempt keeps its number; the next attempt tak
 | attempt | `main` SHA | Version URL | outcome |
 | --- | --- | --- | --- |
 | `gate-1` | `5907733` | `https://d74d11ad-scc.ryan-avocado-6a07yrtc.workers.dev` | Withdrawn 2026-10-14 before 2.3. 1.6 checks, browser walk, 2.1 and 2.2 passed; the walk showed the UI regressed from the Netlify app (unstyled controls, lost layout, missing error UI). Fixes land on `main` through the `fix/remove-tab-disclosure` integration branch, then `gate-2`. No perf data was collected. |
+| `gate-2` | `8d84340` | `https://604bdccf-scc.ryan-avocado-6a07yrtc.workers.dev` | FAIL 2026-10-14. 1.6 checks, browser walk, 2.1 and 2.2 passed. Hard misses: mobile `/experience` TBT +125 ms (startup long task in the app bundle), mobile `/summary` FCP +370 ms, mobile seeded `/resume` FCP +481 ms; six narrow misses not re-collected. App script bytes −36% to −79% on every page, LCP better in every cell, seeded mobile CLS 0. Results in `docs/perf/remix-v3/gate-2/` ([#243](https://github.com/rymanacevedo/SCC/pull/243)). Fix on `main`, then `gate-3`. |
 
 ---
 
