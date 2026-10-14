@@ -252,6 +252,24 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   expect(html).toContain(
     '/experience?jobId=job-1&amp;returnUrl=%2Fexperience-summary',
   );
+  // Numbered entry cards with Edit / Delete, then a full-width "add another".
+  const hub = new DOMParser().parseFromString(html, 'text/html');
+  const card = hub.querySelector('article')!;
+  expect(card.querySelector('span')!.textContent).toBe('1');
+  expect(card.querySelector('h2')!.textContent).toBe('Developer');
+  expect(card.textContent).toContain('Company • Boston, MA | 2020 - Present');
+  expect(card.querySelector('li')!.textContent).toBe('Built reliable software');
+  expect(card.querySelector('a')!.getAttribute('aria-label')).toBe(
+    'Edit Developer',
+  );
+  expect(card.querySelector('input[name="jobId"]')!.getAttribute('value')).toBe(
+    'job-1',
+  );
+  const add = Array.from(hub.querySelectorAll('a')).find(
+    (link) => link.textContent === '+ Add another position',
+  )!;
+  expect(add.getAttribute('href')).toBe('/experience');
+  expect(add.className).toContain('w-full');
 });
 
 test('partially answered Experience fields survive reload through the Draft envelope', async () => {

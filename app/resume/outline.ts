@@ -1,7 +1,12 @@
 import {
+  formatEducationCredential,
   getEducationGraduationLabel,
   sortEducationEntries,
 } from '../education.ts';
+import {
+  formatExperienceDateRange,
+  formatExperienceLocation,
+} from '../experience.ts';
 import type { Section, User } from '../user.ts';
 
 export type BlockKind =
@@ -19,18 +24,6 @@ export interface Block {
   section: Section;
 }
 export type Outline = readonly Block[];
-
-function formatExperienceDate(value?: string): string {
-  if (!value) return '';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : parsed.toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      });
-}
 
 /** The sole description of Resume content and ordering; no surface styling. */
 export function createOutline(user: User): Outline {
@@ -63,13 +56,9 @@ export function createOutline(user: User): Outline {
       add(
         'experience',
         'job-heading',
-        `${job.jobTitle} | ${job.employer} | ${[job.city, job.state].filter(Boolean).join(', ')}`,
+        `${job.jobTitle} | ${job.employer} | ${formatExperienceLocation(job)}`,
       );
-      add(
-        'experience',
-        'date-line',
-        `${formatExperienceDate(job.startDate)} - ${job.currentlyEmployed ? 'Present' : formatExperienceDate(job.endDate)}`,
-      );
+      add('experience', 'date-line', formatExperienceDateRange(job));
       for (const detail of job.details ?? [])
         add('experience', 'bullet', detail);
       add('experience', 'spacer');
@@ -78,17 +67,7 @@ export function createOutline(user: User): Outline {
   if (user.education?.length) {
     add('education', 'section-title', 'EDUCATION');
     for (const entry of sortEducationEntries(user.education)) {
-      let text = 'Certificate';
-      if (entry.educationLevel !== 'Certificate') {
-        const educationLevel =
-          entry.degree === entry.educationLevel
-            ? undefined
-            : entry.educationLevel;
-        text = [entry.degree, educationLevel, entry.schoolName, entry.location]
-          .filter(Boolean)
-          .join(' | ');
-      }
-      add('education', 'paragraph', text);
+      add('education', 'paragraph', formatEducationCredential(entry));
       add(
         'education',
         'date-line',

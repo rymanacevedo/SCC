@@ -276,6 +276,18 @@ test('stored User with four schools parses, reloads and renders, while Hub clear
   expect(html).toContain(
     'educationId=school-3&amp;returnUrl=%2Feducation-summary',
   );
+  const hub = new DOMParser().parseFromString(html, 'text/html');
+  expect(
+    Array.from(hub.querySelectorAll('article > span')).map(
+      (badge) => badge.textContent,
+    ),
+  ).toEqual(entries.map((_, index) => String(index + 1)));
+  expect(
+    hub
+      .querySelector('article input[name="educationId"]')
+      ?.getAttribute('value'),
+  ).toBe('school-3');
+  expect(html).toContain('+ Add another education entry');
 });
 test('education helpers normalize degrees, trim certificate location, sort without mutation and keep ids', () => {
   expect(

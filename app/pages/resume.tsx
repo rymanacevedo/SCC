@@ -3,6 +3,9 @@ import { StartOver } from '../builder/start-over.tsx';
 import { downloadDocument } from '../resume/download.ts';
 import type { Outline } from '../resume/outline.ts';
 import { Preview } from '../resume/preview.tsx';
+import { Button } from '../ui/button.tsx';
+import { cardClass } from '../ui/card.tsx';
+import { PageHeading } from '../ui/heading.tsx';
 
 export interface ResumeProps {
   outline: Outline;
@@ -39,31 +42,37 @@ export function ResumePage(handle: Handle<ResumeProps>) {
       void handle.update();
     }
   }
-  return () => (
-    <div>
-      <h1>Preview</h1>
-      <div className="flex gap-4">
-        <button
-          type="button"
-          disabled={pending || !handle.props.outline.length}
-          mix={on('click', () => exportDocument('pdf'))}
-        >
-          Export PDF
-        </button>
-        <button
-          type="button"
-          disabled={pending || !handle.props.outline.length}
-          mix={on('click', () => exportDocument('docx'))}
-        >
-          Export DOCX
-        </button>
+  return () => {
+    const disabled = pending || !handle.props.outline.length;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <PageHeading
+          title="Preview"
+          subtitle="Check your Resume, then export it as a PDF or Word document."
+        />
+        <div className="flex flex-wrap gap-4">
+          <Button
+            disabled={disabled}
+            mix={on('click', () => exportDocument('pdf'))}
+          >
+            Export PDF
+          </Button>
+          <Button
+            disabled={disabled}
+            mix={on('click', () => exportDocument('docx'))}
+          >
+            Export DOCX
+          </Button>
+        </div>
+        <p role="status" aria-live="polite" className="mt-2 mb-4 text-sm">
+          {pending ? 'Creating Export…' : exportError}
+        </p>
+        {handle.props.error && <p role="alert">{handle.props.error}</p>}
+        <div className={cardClass('outlined', 'p-8')}>
+          <Preview outline={handle.props.outline} />
+        </div>
+        <StartOver action="/resume" />
       </div>
-      <p role="status" aria-live="polite">
-        {pending ? 'Creating Export…' : exportError}
-      </p>
-      {handle.props.error && <p role="alert">{handle.props.error}</p>}
-      <Preview outline={handle.props.outline} />
-      <StartOver action="/resume" />
-    </div>
-  );
+    );
+  };
 }

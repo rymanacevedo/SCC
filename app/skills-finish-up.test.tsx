@@ -165,17 +165,43 @@ test('Skills markup carries values and errors; finish-up lists completed Section
   expect(html).toContain('value="Typed skill"');
   expect(html).toContain('Field error');
   expect(html).toContain('Form error');
+  const reviewed = { ...summaryUser, summary: { summary } };
   const finish = await renderToString(
     <FinishUpPage
       url={new URL('https://scc.example/finish-up')}
       values={{}}
-      completed={completedSections({ ...summaryUser, summary: { summary } })}
+      completed={completedSections(reviewed)}
+      user={reviewed}
     />,
   );
   expect(finish).toContain('Start over');
   for (const label of ['Info', 'Experience', 'Education', 'Skills', 'Summary'])
     expect(finish).toContain(`Edit ${label}`);
   expect(finish).not.toContain('name="confirm"');
+  // The review card shows each Section's answers in the old order.
+  const doc = new DOMParser().parseFromString(finish, 'text/html');
+  expect(
+    Array.from(doc.querySelectorAll('section[aria-label] h2')).map(
+      (node) => node.textContent,
+    ),
+  ).toEqual([
+    'Personal Information',
+    'Professional Summary',
+    'Job Experience',
+    'Education',
+    'Skills',
+  ]);
+  expect(
+    doc.querySelector('a[aria-label="Edit Summary"]')?.getAttribute('href'),
+  ).toBe('/summary?returnUrl=%2Ffinish-up');
+  for (const text of [
+    info.email,
+    summary,
+    reviewed.experience![0]!.jobTitle,
+    'College',
+    'TypeScript',
+  ])
+    expect(doc.body.textContent).toContain(text);
 });
 test('Skills Suggestions call the API client and become selected only on click; manual add/remove and cap work', async () => {
   let calls = 0;
@@ -252,6 +278,7 @@ test('Start over click only opens confirmation; cancel leaves no destructive for
       url={new URL('https://scc.example/finish-up')}
       values={{}}
       completed={[]}
+      user={{}}
     />,
   );
   cleanups.push(view.cleanup);

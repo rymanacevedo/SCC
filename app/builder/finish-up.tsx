@@ -46,6 +46,7 @@ export function createFinishUpController(storage: UserStorage) {
               url={url}
               values={{}}
               completed={[]}
+              user={{}}
               errors={{ _form: [SAVE_ERROR] }}
             />,
             { status: 500 },
@@ -57,6 +58,7 @@ export function createFinishUpController(storage: UserStorage) {
             url={url}
             values={{}}
             completed={completedSections(stored.value.user)}
+            user={stored.value.user}
           />,
         );
       },
@@ -69,6 +71,7 @@ export function createFinishUpController(storage: UserStorage) {
               url={url}
               values={{}}
               completed={stored.ok ? completedSections(stored.value.user) : []}
+              user={stored.ok ? stored.value.user : {}}
               errors={{ _form: [message] }}
             />,
             { status },

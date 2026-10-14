@@ -60,6 +60,23 @@ export function sortEducationEntries<T extends PartialEducationEntry>(
   });
 }
 
+/** "Degree | Level | School | Location", or "Certificate". */
+export function formatEducationCredential(education: PartialEducationEntry) {
+  if (education.educationLevel === 'Certificate') return 'Certificate';
+  const educationLevel =
+    education.degree === education.educationLevel
+      ? undefined
+      : education.educationLevel;
+  return [
+    education.degree,
+    educationLevel,
+    education.schoolName,
+    education.location,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 export function getEducationGraduationLabel(education: PartialEducationEntry) {
   return education.currentlyEnrolled
     ? 'Currently Enrolled'

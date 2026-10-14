@@ -6,6 +6,7 @@ import {
   summaryUser,
 } from '../../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../../test/storage.ts';
+import { ResumePage } from '../pages/resume.tsx';
 import { builderPageIds, createAppRouter } from '../router.tsx';
 import { guardInitialUrl } from '../steps.ts';
 import { createUserStorage } from '../user.ts';
@@ -102,6 +103,26 @@ test('Preview contains every Block in order and one ordinary Edit link per Secti
   expect(partial).toContain('&lt;script&gt;');
   expect(partial).not.toContain('<script>');
   expect(partial.match(/href=/g)?.length).toBe(1);
+});
+test('Preview toolbar offers primary Export buttons, blue Edit links and an outline Start over', async () => {
+  const html = await renderToString(<ResumePage outline={outline} />);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const buttons = Array.from(doc.querySelectorAll('button'));
+  for (const label of ['Export PDF', 'Export DOCX']) {
+    const button = buttons.find((node) => node.textContent === label)!;
+    expect(button.className).toContain('bg-blue-600');
+    expect(button.hasAttribute('disabled')).toBe(false);
+  }
+  expect(
+    buttons.find((node) => node.textContent === 'Start over')!.className,
+  ).toContain('border-slate-300');
+  for (const link of doc.querySelectorAll('article a'))
+    expect(link.className).toContain('text-blue-600');
+  const empty = new DOMParser().parseFromString(
+    await renderToString(<ResumePage outline={[]} />),
+    'text/html',
+  );
+  expect(empty.querySelectorAll('button[disabled]').length).toBe(2);
 });
 test('PDF and DOCX render the same Outline into non-empty documents, including long content', async () => {
   expect(renderPdf(outline).size).toBeGreaterThan(0);
