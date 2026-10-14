@@ -81,8 +81,8 @@ Every line must be true before Phase 1 starts. Anything false means stop. Lines 
       `sccc` site linked; `CHROME_PATH` points at Chrome for Testing 155 (`e2e/browser.json`);
       `node --version` is 24.x; `jq` installed. Evidence: confirmed by the dev, 2026-10-14.
 - [x] Netlify builds are stopped (1.5). Evidence: confirmed by the dev, 2026-10-14.
-- [ ] This runbook, as amended by [#231](https://github.com/rymanacevedo/SCC/issues/231), is
-      merged on `main`.
+- [x] This runbook, as amended by [#231](https://github.com/rymanacevedo/SCC/issues/231), is
+      merged on `main` (#232).
 
 ---
 
