@@ -1,3 +1,4 @@
+import { findEducationEntry } from './education.ts';
 import type { Drafts, Section, User } from './user.ts';
 
 type Prerequisite = Section | 'experienceDraft' | 'educationDraft';
@@ -116,6 +117,12 @@ export function validatedReturnUrl(url: URL): string | undefined {
 export function builderNav(id: StepId, url: URL) {
   const index = steps.findIndex((step) => step.id === id);
   let previous: string = index > 0 ? steps[index - 1].path : '/';
+  if (
+    (id === 'education' || id === 'education-entry') &&
+    url.searchParams.has('educationId')
+  ) {
+    previous = `${id === 'education' ? '/education-level' : '/education'}?${new URLSearchParams({ educationId: url.searchParams.get('educationId')! })}`;
+  }
   if (id === 'experience-entry' && url.searchParams.has('jobId')) {
     const params = new URLSearchParams({
       jobId: url.searchParams.get('jobId') ?? '',
@@ -156,6 +163,27 @@ export function guardInitialUrl(
   const step = steps.find(
     (step) => step.path === url.pathname && available.includes(step.id),
   );
+  if (
+    step &&
+    ['education-level', 'education', 'education-entry'].includes(step.id)
+  ) {
+    const target = guardStep('education-level', user, drafts);
+    if (target) return target;
+    const id = url.searchParams.get('educationId');
+    const entry = findEducationEntry(user, drafts, id);
+    if (id && !entry) return '/education-summary';
+    if (
+      step.id !== 'education-level' &&
+      (!entry?.educationLevel || !entry?.educationId)
+    )
+      return '/education-level';
+    if (step.id === 'education-entry' && !entry?.schoolName) {
+      return id
+        ? `/education?${new URLSearchParams({ educationId: id })}`
+        : '/education';
+    }
+    return undefined;
+  }
   if (step?.id === 'experience-entry') {
     const missingInfo = guardStep('experience', user, drafts);
     if (missingInfo) return missingInfo;

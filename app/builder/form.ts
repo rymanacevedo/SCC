@@ -17,6 +17,14 @@ export function formValues(data: FormData): FormValues {
   }
   return values;
 }
+export function entryFormValues(entry: object): FormValues {
+  return Object.fromEntries(
+    Object.entries(entry).map(([key, value]) => [
+      key,
+      typeof value === 'boolean' ? String(value) : value,
+    ]),
+  ) as FormValues;
+}
 export const checkbox = () =>
   z.preprocess(
     (value) => value === true || value === 'on' || value === 'true',
