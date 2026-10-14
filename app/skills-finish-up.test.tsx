@@ -8,7 +8,6 @@ import {
   summaryUser,
 } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
-import { TAB_DISCLOSURE } from './builder/disclosure.ts';
 import { completedSections } from './builder/finish-up.tsx';
 import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
 import { FinishUpPage } from './pages/finish-up.tsx';
@@ -173,7 +172,6 @@ test('Skills markup carries values and errors; finish-up lists completed Section
       completed={completedSections({ ...summaryUser, summary: { summary } })}
     />,
   );
-  expect(finish).toContain(TAB_DISCLOSURE);
   expect(finish).toContain('Start over');
   for (const label of ['Info', 'Experience', 'Education', 'Skills', 'Summary'])
     expect(finish).toContain(`Edit ${label}`);

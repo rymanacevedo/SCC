@@ -1,5 +1,4 @@
 import type { Handle } from 'remix/component';
-import { TAB_DISCLOSURE } from '../builder/disclosure.ts';
 import { BuilderLayout, type BuilderPageProps } from '../builder/layout.tsx';
 import { StartOver } from '../builder/start-over.tsx';
 import type { Section } from '../user.ts';
@@ -23,7 +22,6 @@ export function FinishUpPage(handle: Handle<FinishUpProps>) {
             </li>
           ))}
         </ul>
-        <p>{TAB_DISCLOSURE}</p>
       </BuilderLayout>
       <StartOver action="/finish-up" />
     </div>
