@@ -534,9 +534,11 @@ site weeks later.
 Checked against the Cloudflare and Netlify docs on 2026-10-13; these were not stated and are
 handled defensively above. Confirm each the first time you hit it and strike it here.
 
-- Whether Workers Builds picks Bun from `packageManager` (1.3 sets `BUN_VERSION`).
-- Whether the non-production trigger's `*` branch include matches branch names containing a
-  slash, such as `gate/remix-v3-1` (1.6 has the local `versions upload` fallback).
+- Whether Workers Builds picks Bun from `packageManager` (1.3 sets `BUN_VERSION`). With it set,
+  builds report `bun@1.4.3, nodejs@24.21.0` detected from the environment (2026-10-14).
+- ~~Whether the non-production trigger's `*` branch include matches branch names containing a
+  slash~~: it does. `docs/runbook-on-main` built on 2026-10-14 with the alias
+  `https://docs-runbook-on-main-scc.ryan-avocado-6a07yrtc.workers.dev` (slashes become dashes).
 - Whether `wrangler deployments list` names the commit SHA of a Workers Builds deployment
   (3.1 reads it from the dashboard if not).
 - Whether `wrangler delete` prompts for confirmation (3.5 runs it in a terminal).
