@@ -22,7 +22,7 @@ A guard on the three generation routes that refuses a Generation request whose p
 The body a builder page sends to a generation route: `{ prompt }` with a non-empty string prompt, the section answers already serialized by the frontend. The Worker never sees the User, only the prompt.
 
 ### Error envelope
-The one shape every non-2xx `/api/*` response carries: `{ error }`, plus an `issues` array on every 400 (validation details, or an empty array for a filtered prompt). The status code is the discriminator; the `error` text is for logs and tests, never shown to the user verbatim.
+The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues` on every 400: Zod 4 `flattenError` output, `{ formErrors, fieldErrors }` (validation details, or both empty for a filtered prompt). The status code is the discriminator; the `error` text is for logs and tests, never shown to the user verbatim.
 
 ### Same-origin guard
 The middleware that replaces CORS now that UI and API share one origin: rejects requests marked `Sec-Fetch-Site: cross-site` with 403 and bodies without the `application/json` content type with 415. Absent fetch-site metadata is accepted, including command-line callers. No configuration, no allowed-origin variable.
