@@ -18,9 +18,11 @@ import { InfoPage } from './pages/info.tsx';
 import { Shell } from './pages/shell.tsx';
 import { SkillsPage } from './pages/skills.tsx';
 import { SummaryPage } from './pages/summary.tsx';
+import { createResumeController } from './resume/controller.tsx';
 import { type UserStorage, userStorage } from './user.ts';
 
 export const builderPageIds = {
+  resume: 'resume',
   info: 'info',
   skills: 'skills',
   finishUp: 'finish-up',
@@ -73,6 +75,8 @@ export function createAppRouter(storage: UserStorage = userStorage) {
     next: '/summary',
   });
   const finishUp = createFinishUpController(storage);
+  const resume = createResumeController(storage);
+  router.map(resume.routes, resume.controller);
   router.map(skills.routes, skills.controller);
   router.map(finishUp.routes, finishUp.controller);
   const summary = createBuilderController({

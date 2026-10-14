@@ -5,6 +5,7 @@ import { FinishUpPage } from '../pages/finish-up.tsx';
 import { guardStep, steps, validatedReturnUrl } from '../steps.ts';
 import type { User, UserStorage } from '../user.ts';
 import { SAVE_ERROR } from './controller.tsx';
+import { startOverAction } from './start-over-action.ts';
 
 export function completedSections(user: User) {
   return steps.flatMap((step) => {
@@ -73,12 +74,8 @@ export function createFinishUpController(storage: UserStorage) {
             { status },
           );
         if (data.get('intent') === 'start-over') {
-          if (data.get('confirm') !== 'yes')
-            return failed(
-              'Confirm Start over before discarding your answers.',
-              400,
-            );
-          if (!storage.startOver().ok) return failed(SAVE_ERROR, 500);
+          const failure = startOverAction(data, storage);
+          if (failure) return failed(failure.error, failure.status);
           return redirect('/', 303);
         }
         if (!stored.ok) return failed(SAVE_ERROR, 500);
