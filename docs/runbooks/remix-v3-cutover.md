@@ -124,35 +124,39 @@ bunx wrangler secret list --name scc
 Do **not** set `ALLOWED_ORIGIN`, `VITE_HONO_BACKEND_URL`, or `GEMINI_API_KEY`: the first two no
 longer exist ([#193](https://github.com/rymanacevedo/SCC/issues/193)), the third is eval-only.
 
-### 1.3 Connect Workers Builds
+### 1.3 Connect Workers Builds (done 2026-10-14)
 
-Cloudflare dashboard → Workers & Pages → `scc` → Settings → Build → connect the GitHub repo
-`rymanacevedo/SCC`.
+Workers Builds runs as two build triggers on `scc`, both on the existing repo connection to
+`rymanacevedo/SCC` and the existing build token (shared with `scc-backend`). Created through the
+Cloudflare API; in the dashboard they appear under Workers & Pages → `scc` → Settings → Build.
 
-| setting | value |
-| --- | --- |
-| Production branch | `main` |
-| Root directory | *(empty: the repo root)* |
-| Build command | `bun install --frozen-lockfile && bun run build` |
-| Deploy command | `npx wrangler deploy` |
-| Enable Preview Builds | **on** |
-| Preview command | `npx wrangler versions upload` |
-| Build variables | `BUN_VERSION=1.4.3` |
+| setting | `Deploy default branch` | `Deploy non-production branches` |
+| --- | --- | --- |
+| Branch includes | `main` | `*` |
+| Branch excludes | *(none)* | `main` |
+| Root directory | `/` | `/` |
+| Build command | `bun install --frozen-lockfile && bun run build` | same |
+| Deploy command | `bunx wrangler deploy` | `bunx wrangler versions upload` |
+| Build variables | `BUN_VERSION=1.4.3` | `BUN_VERSION=1.4.3` |
+| Path includes / excludes | `*` / *(none)* | `*` / *(none)* |
 
 Notes:
 
-- Connecting with production branch `main` makes the first build deploy `main` to `scc`
-  production immediately, and every later push to `main` redeploys it. That is harmless: no
+- The `main` trigger deploys `scc` production on every push to `main`. That is harmless: no
   traffic reaches `scc` until 3.3.
-- The preview command **must** be `npx wrangler versions upload`, not the default
-  `npx wrangler preview`. Only a Version URL runs on the secrets set in 1.2; a Worker Preview
-  starts with none and the gate's manual walk would fail on every AI call.
+- The non-production deploy command **must** be `versions upload`, not `wrangler preview`.
+  Only a Version URL runs on the secrets set in 1.2; a Worker Preview starts with none and the
+  gate's manual walk would fail on every AI call.
+- Deploy commands use `bunx`, matching the rest of the toolchain; wrangler still runs on Node
+  through its shebang, never `--bun`.
 - Node is pinned by `.node-version`; `BUN_VERSION` is set explicitly because Workers Builds'
   package-manager detection from `packageManager` is undocumented.
+- `scc-backend` keeps its own `main` trigger rooted at `/packages/backend`. Since the collapse it
+  fails on every push and deploys nothing; it goes away with the Worker in 3.5.
 
-Confirm the first production build goes green: Workers & Pages → `scc` → Deployments. If it
-fails, fix the Builds setting before Phase 2; the gate needs preview builds working (or uses
-the 1.6 fallback).
+Confirm the first build of each trigger goes green: Workers & Pages → `scc` → Deployments. If
+either fails, fix the trigger before Phase 2; the gate needs non-production builds working (or
+uses the 1.6 fallback).
 
 ### 1.4 Web Analytics for the new hostname
 
@@ -193,7 +197,7 @@ git switch -c gate/remix-v3-1        # gate/remix-v3-2… for later attempts
 git push -u origin gate/remix-v3-1
 ```
 
-Workers Builds runs the build and preview commands on the push. The Version URL, of the form
+The `Deploy non-production branches` trigger (1.3) builds the push and runs `versions upload`. The Version URL, of the form
 `https://<alias>-scc.ryan-avocado-6a07yrtc.workers.dev`, is printed in that build's log
 (Workers & Pages → `scc` → Deployments → the build for the gate branch).
 
@@ -277,8 +281,8 @@ GITHUB_REPO=rymanacevedo/SCC
 GITHUB_TOKEN=perf-stub
 ENV
 PORT=8788 bun e2e/openai-stub.ts &             # stub lives in e2e/ now (#194)
-bun run build && bun run preview &             # Worker in workerd on http://localhost:5199
-# 30-sample curl loop from #179 step 5 against http://localhost:5199/api/summaries
+bun run build && bun run preview &             # Worker in workerd on http://localhost:5173
+# 30-sample curl loop from #179 step 5 against http://localhost:5173/api/summaries
 ```
 
 `localhost`, not `127.0.0.1`: the dev server binds `[::1]` only
@@ -530,10 +534,9 @@ site weeks later.
 Checked against the Cloudflare and Netlify docs on 2026-10-13; these were not stated and are
 handled defensively above. Confirm each the first time you hit it and strike it here.
 
-- Whether "Enable Preview Builds" is on by default in Workers Builds (1.3 sets it explicitly).
 - Whether Workers Builds picks Bun from `packageManager` (1.3 sets `BUN_VERSION`).
-- Whether a Workers Builds preview build runs for every non-production branch by default, so a
-  `gate/remix-v3-<n>` push produces a Version URL (1.6 has the local `versions upload` fallback).
+- Whether the non-production trigger's `*` branch include matches branch names containing a
+  slash, such as `gate/remix-v3-1` (1.6 has the local `versions upload` fallback).
 - Whether `wrangler deployments list` names the commit SHA of a Workers Builds deployment
   (3.1 reads it from the dashboard if not).
 - Whether `wrangler delete` prompts for confirmation (3.5 runs it in a terminal).
