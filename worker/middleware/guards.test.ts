@@ -122,10 +122,10 @@ test('Profanity filter passes clean prompts and refuses the unchanged word list,
     expect(response.status).toBe(400);
     const envelope = (await response.json()) as {
       error: string;
-      issues: unknown[];
+      issues: unknown;
     };
     expect(envelope.error.toLowerCase()).toContain(term.toLowerCase());
-    expect(envelope.issues).toEqual([]);
+    expect(envelope.issues).toEqual({ formErrors: [], fieldErrors: {} });
   }
   expect(log).toHaveBeenCalledWith(
     expect.objectContaining({ category: 'filtered' }),

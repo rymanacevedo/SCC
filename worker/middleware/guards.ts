@@ -1,6 +1,6 @@
 import { Filter } from 'bad-words';
 import { createContextKey, type Middleware } from 'remix/router';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { GenerationRequest } from '../../shared/schemas/generation.ts';
 import { apiError } from '../lib/response.ts';
 
@@ -56,13 +56,18 @@ export function bodyValidation<T>(schema: z.ZodType<T>) {
     try {
       body = await context.request.json();
     } catch {
-      return apiError(400, 'Invalid JSON body', [
-        { message: 'Invalid JSON body' },
-      ]);
+      return apiError(400, 'Invalid JSON body', {
+        formErrors: ['Invalid JSON body'],
+        fieldErrors: {},
+      });
     }
     const parsed = schema.safeParse(body);
     if (!parsed.success)
-      return apiError(400, 'Invalid request body', parsed.error.issues);
+      return apiError(
+        400,
+        'Invalid request body',
+        z.flattenError(parsed.error),
+      );
     context.set(key, parsed.data);
     return next();
   };

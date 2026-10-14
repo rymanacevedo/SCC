@@ -5,21 +5,27 @@ after-report of the Remix v3 app. Written for the driving dev to run alone, in o
 for the cutover day itself, with **no decisions left inside it**: every rule below was settled
 on the wayfinder map [#174](https://github.com/rymanacevedo/SCC/issues/174), and the ticket
 that settled each one is linked where it applies. Decided in
-[#195](https://github.com/rymanacevedo/SCC/issues/195).
+[#195](https://github.com/rymanacevedo/SCC/issues/195); amended in
+[#231](https://github.com/rymanacevedo/SCC/issues/231) because the rewrite reached `main`
+incrementally (workspace collapse `d528db7` through #230) instead of as one merge on cutover day.
 
 Every step is run by the dev on their own machine or in a dashboard. No step is agent-run:
 the repo's Claude hook blocks pushes and agent sessions hold no Cloudflare or Netlify login.
 
 ## Terms
 
-- **Cutover commit**: the merge commit of the rewrite branch on `main`. Tagged `remix-v3/cutover`.
+- **Cutover**: the moment the Netlify 301 goes live (3.3). Until then every visitor is on
+  Netlify + `scc-backend`, whatever `main` or `scc` contain.
+- **Cutover commit**: the `main` SHA deployed on `scc` when the 301 goes live, as recorded in
+  3.1. Tagged `remix-v3/cutover`.
+- **Gated SHA**: the `main` commit whose gate run passed (Phase 2), tagged `remix-v3/gate-<n>`.
 - **Gate run**: the full measurement ([#179](https://github.com/rymanacevedo/SCC/issues/179)
   method, [#183](https://github.com/rymanacevedo/SCC/issues/183) rules) taken on a Version URL of
-  the `scc` Worker **before** the merge. Any FAIL blocks the cutover.
+  the `scc` Worker **before** the cutover. Any FAIL blocks the cutover.
 - **Report run**: the same measurement taken on production **after** the cutover. It is the
   committed "after"; a FAIL here fixes forward, never rolls back.
-- **Rollback window**: from the merge of the rewrite branch until `scc-backend` is deleted.
-  Rollback is possible only inside it, and only for a functional smoke failure.
+- **Rollback window**: from the Netlify 301 (3.3) until `scc-backend` is deleted (3.5).
+  Rollback is possible only inside it, and only for a functional failure.
 - **Version URL**: the preview produced by `wrangler versions upload`, which runs the uploaded
   code on the Worker's own secrets and bindings. This is *not* a Worker Preview
   (`wrangler preview`), which gets its own empty secrets.
@@ -30,11 +36,11 @@ Fill in as each milestone passes. These lines are the record.
 
 | milestone | date (UTC) |
 | --- | --- |
+| `scc` created (1.1) | 2026-10-14 (version `d53e1337`, from `50ad8a4`) |
 | Gate run passed (final attempt) | |
-| Cutover commit merged | |
-| Smoke checks passed | |
-| Netlify 301 live | |
-| `scc-backend` deleted (rollback window closed) | |
+| Smoke checks passed (3.2) | |
+| Netlify 301 live: cutover, rollback window opens (3.3) | |
+| `scc-backend` deleted: rollback window closes (3.5) | |
 | Report run committed | |
 | Netlify site deleted (cutover + 30 days) | |
 
@@ -42,52 +48,63 @@ Fill in as each milestone passes. These lines are the record.
 
 ## Phase 0. Preconditions
 
-Every line must be true before Phase 1 starts. Anything false means stop.
+Every line must be true before Phase 1 starts. Anything false means stop. Lines checked on
+2026-10-14 carry their evidence.
 
-- [ ] The package upgrade PRs from [#185](https://github.com/rymanacevedo/SCC/issues/185)
+- [x] The package upgrade PRs from [#185](https://github.com/rymanacevedo/SCC/issues/185)
       (Zod 4, AI SDK 7, TypeScript 7, Cloudflare trio, Bun pin, tooling) are merged on `main`.
-- [ ] The rewrite branch is complete: single root package
+      Evidence: `3c15545` and the upgrade history before the collapse `d528db7`.
+- [x] The rewrite is complete on `main`: single root package
       ([#191](https://github.com/rymanacevedo/SCC/issues/191)), all 12 builder pages, Preview,
       exports, the five API routes, `wrangler.jsonc` with `name: "scc"`,
       `assets.run_worker_first: ["/api/*"]`, `assets.not_found_handling: "single-page-application"`,
       `observability.enabled: true`, vars `ALLOWED_COUNTRIES` and `GITHUB_REPO`.
-- [ ] On the rewrite branch, locally: `bun test` green and `bun run test:e2e` green
+      Evidence: [#216](https://github.com/rymanacevedo/SCC/issues/216),
+      [`issue-216-phase-0.md`](issue-216-phase-0.md).
+- [x] On `main`, locally: `bun test` green and `bun run test:e2e` green
       ([#194](https://github.com/rymanacevedo/SCC/issues/194): the Flow test is required before
-      merge).
-- [ ] The baseline results branch `perf/baseline-pre-remix-v3` is merged to `main`, so
-      `docs/perf/baseline/pre-remix-v3/summary.json` exists on the rewrite branch.
-- [ ] `docs/perf/thresholds.json` and the verdict script `docs/perf/tools/verdict.mjs` exist on
-      the rewrite branch and run against the baseline `summary.json` without error.
-- [ ] `docs/perf/tools/flow.mjs` imports its stub and fixtures from root `e2e/` and seeds the new
+      the gate). Evidence: run by the dev on `main` at `eed0088`, 2026-10-14.
+- [x] The baseline results branch `perf/baseline-pre-remix-v3` is merged to `main`, so
+      `docs/perf/baseline/pre-remix-v3/summary.json` exists. Evidence:
+      [`issue-216-phase-0.md`](issue-216-phase-0.md).
+- [x] `docs/perf/thresholds.json` and the verdict script `docs/perf/tools/verdict.mjs` exist on
+      `main` and run against the baseline `summary.json` without error. Evidence: baseline
+      self-check `Overall: PASS` in [`issue-216-phase-0.md`](issue-216-phase-0.md).
+- [x] `docs/perf/tools/flow.mjs` imports its stub and fixtures from root `e2e/` and seeds the new
       storage envelope ([#192](https://github.com/rymanacevedo/SCC/issues/192)); fixture content is
-      byte-identical to the baseline.
-- [ ] [#196](https://github.com/rymanacevedo/SCC/issues/196) is done: Cloudflare Web Analytics
-      has been collecting on `sccc.netlify.app`.
-- [ ] A `.node-version` file reading `24` is at the repo root on the rewrite branch.
-- [ ] On the dev machine: `bunx wrangler whoami` shows the account; `netlify status` shows the
+      byte-identical to the baseline. Evidence: `cmp` result in
+      [`issue-216-phase-0.md`](issue-216-phase-0.md).
+- [x] [#196](https://github.com/rymanacevedo/SCC/issues/196) is done: Cloudflare Web Analytics
+      has been collecting on `sccc.netlify.app` since 2026-10-13.
+- [x] A `.node-version` file reading `24` is at the repo root on `main`.
+- [x] On the dev machine: `bunx wrangler whoami` shows the account; `netlify status` shows the
       `sccc` site linked; `CHROME_PATH` points at Chrome for Testing 155 (`e2e/browser.json`);
-      `node --version` is 24.x; `jq` installed.
-- [ ] This runbook is merged on `main`.
+      `node --version` is 24.x; `jq` installed. Evidence: confirmed by the dev, 2026-10-14.
+- [x] Netlify builds are stopped (1.5). Evidence: confirmed by the dev, 2026-10-14.
+- [ ] This runbook, as amended by [#231](https://github.com/rymanacevedo/SCC/issues/231), is
+      merged on `main`.
 
 ---
 
 ## Phase 1. Pre-cutover
 
-Nothing in this phase touches traffic. Production is still Netlify + `scc-backend`.
+Nothing in this phase touches traffic. Production is still Netlify + `scc-backend`; `scc`
+receives no visitors until the 301 in 3.3, so deploying `main` to it is safe.
 
-### 1.1 Create the `scc` Worker from the rewrite branch
+### 1.1 Create the `scc` Worker from `main`
 
 Deploying once from the dev machine creates the Worker so secrets can be set and Workers Builds
 has something to attach to. Nobody visits it yet.
 
 ```bash
-git switch <rewrite-branch>
+git switch main && git pull
 bun install --frozen-lockfile
 bun run build                     # vite build; writes dist/<worker>/wrangler.json
 bunx wrangler deploy              # picks up the generated config via .wrangler/deploy/config.json
 ```
 
 Expect the deploy summary to name `scc` and print `https://scc.ryan-avocado-6a07yrtc.workers.dev`.
+Record the date.
 
 ### 1.2 Set secrets
 
@@ -124,21 +141,27 @@ Cloudflare dashboard → Workers & Pages → `scc` → Settings → Build → co
 
 Notes:
 
+- Connecting with production branch `main` makes the first build deploy `main` to `scc`
+  production immediately, and every later push to `main` redeploys it. That is harmless: no
+  traffic reaches `scc` until 3.3.
 - The preview command **must** be `npx wrangler versions upload`, not the default
   `npx wrangler preview`. Only a Version URL runs on the secrets set in 1.2; a Worker Preview
   starts with none and the gate's manual walk would fail on every AI call.
 - Node is pinned by `.node-version`; `BUN_VERSION` is set explicitly because Workers Builds'
   package-manager detection from `packageManager` is undocumented.
-- Until the merge, every push to `main` builds the old two-package layout and **fails**. That is
-  expected noise; a failed production build deploys nothing.
+
+Confirm the first production build goes green: Workers & Pages → `scc` → Deployments. If it
+fails, fix the Builds setting before Phase 2; the gate needs preview builds working (or uses
+the 1.6 fallback).
 
 ### 1.4 Web Analytics for the new hostname
 
 Cloudflare dashboard → Analytics & Logs → Web Analytics → Add a site → hostname
 `scc.ryan-avocado-6a07yrtc.workers.dev` (JS snippet, not proxied). Put the token into the shell
-on the rewrite branch (the beacon tag in `index.html`), commit, push.
+on `main`: replace `REPLACE_WITH_WORKER_ANALYTICS_TOKEN` in the beacon tag in `index.html`, and
+land it by PR. Workers Builds redeploys `scc`.
 
-The beacon is verified on **production** in 3.4, not on the Version URL: the token is bound to
+The beacon is verified on **production** in 3.2, not on the Version URL: the token is bound to
 the hostname by suffix match, so a `<alias>-scc.…workers.dev` preview may log a CORS error from
 `cloudflareinsights.com`. That error is expected and harmless on the preview.
 
@@ -146,27 +169,48 @@ If the dashboard refuses a `workers.dev` hostname, record "field data: unavailab
 rejected" in the verdict's field-data appendix and continue. Field data is reported, never
 scored ([#183](https://github.com/rymanacevedo/SCC/issues/183)).
 
-### 1.5 Freeze Netlify
+### 1.5 Freeze Netlify (done 2026-10-14)
 
 Netlify dashboard → `sccc` → Project configuration → Build & deploy → Continuous deployment →
 Build settings → **Stop builds**.
 
-This keeps the current deploy published and keeps the Deploys list (needed for rollback) while
-guaranteeing that the merge in 3.2, which removes `packages/frontend`, cannot trigger a Netlify
-build. Do **not** unlink the repository: unlinking deletes deploy keys and hooks for nothing.
-Manual CLI deploys (3.5) still work with builds stopped.
+This keeps the current React Router deploy published and keeps the Deploys list (needed for
+rollback) while guaranteeing that no push to `main`, which no longer contains
+`packages/frontend`, can trigger a Netlify build. Do **not** unlink the repository: unlinking
+deletes deploy keys and hooks for nothing. Manual CLI deploys (3.3) still work with builds
+stopped.
 
-### 1.6 Push the rewrite branch and verify the Version URL
+### 1.6 Get a Version URL and verify it
 
-Push the rewrite branch to `origin`. Workers Builds runs the build and preview commands and
-prints a Version URL of the form `https://<alias>-scc.ryan-avocado-6a07yrtc.workers.dev`.
+Gate runs measure a Version URL, never `scc` production
+([#183](https://github.com/rymanacevedo/SCC/issues/183)). The Version URL comes from a **gate
+branch**: a branch named `gate/remix-v3-<n>` pointing at the `main` commit to be measured, with
+`<n>` matching the gate attempt in 2.2.
+
+```bash
+git switch main && git pull
+git switch -c gate/remix-v3-1        # gate/remix-v3-2… for later attempts
+git push -u origin gate/remix-v3-1
+```
+
+Workers Builds runs the build and preview commands on the push. The Version URL, of the form
+`https://<alias>-scc.ryan-avocado-6a07yrtc.workers.dev`, is printed in that build's log
+(Workers & Pages → `scc` → Deployments → the build for the gate branch).
+
+Fallback, if preview builds are not producing a Version URL: upload from the gate branch locally.
+
+```bash
+bun install --frozen-lockfile && bun run build
+bunx wrangler versions upload        # prints "Version Preview URL: https://<id>-scc.…workers.dev"
+```
+
 Export it:
 
 ```bash
 export GATE_ORIGIN="https://<alias>-scc.ryan-avocado-6a07yrtc.workers.dev"
 ```
 
-Verify the deployed Worker before measuring it:
+Verify the version before measuring it:
 
 ```bash
 # routing, same-origin guard, validation: 400 with { error, issues }, no side effect (#193)
@@ -189,7 +233,7 @@ contract tests own it ([#186](https://github.com/rymanacevedo/SCC/issues/186) pr
 
 ## Phase 2. Gate run
 
-Everything here is on the rewrite branch, against `GATE_ORIGIN`. The rules are
+Everything here is on the gate branch from 1.6, against `GATE_ORIGIN`. The rules are
 [#183](https://github.com/rymanacevedo/SCC/issues/183); the commands are the
 [#179](https://github.com/rymanacevedo/SCC/issues/179) runbook as executed for the baseline
 ([#180](https://github.com/rymanacevedo/SCC/issues/180)), with the origin swapped.
@@ -204,10 +248,12 @@ Green is required before any Lighthouse collection ([#194](https://github.com/ry
 
 ### 2.2 Tag the attempt
 
-The perf tooling refuses an untagged HEAD. Gate attempts are numbered; never reuse a number.
+The perf tooling refuses an untagged HEAD. Gate attempts are numbered to match the gate branch;
+never reuse a number. The tag goes on the gate branch head, which is a `main` commit.
 
 ```bash
 git tag remix-v3/gate-1            # gate-2, gate-3… for re-measurements after a fix
+git push origin remix-v3/gate-1
 export PERF_TAG="$(git describe --tags --exact-match HEAD)"
 export PERF_DIR="docs/perf/remix-v3/${PERF_TAG#remix-v3/}"
 export PERF_ORIGIN="$GATE_ORIGIN"
@@ -253,56 +299,68 @@ node docs/perf/tools/verdict.mjs \
 tail -1 docs/perf/verdict-remix-v3.md       # one overall PASS / FAIL line
 ```
 
+Commit the attempt to `main` by PR, whatever the outcome (the uncommitted results carry over
+the branch switch):
+
+```bash
+git switch -c "perf/remix-v3-${PERF_TAG#remix-v3/}" main
+git add "$PERF_DIR" docs/perf/verdict-remix-v3.md
+git commit -m "perf(remix-v3): record ${PERF_TAG#remix-v3/} gate run and verdict"
+```
+
+Push the branch and open a PR against `main` (`gh pr create --fill`); merge it. The PR touches
+only `docs/`, so it does not invalidate the gated SHA (see 3.1).
+
 Outcomes, exactly as [#183](https://github.com/rymanacevedo/SCC/issues/183) rules:
 
-- **PASS**: commit `$PERF_DIR` and the verdict on the rewrite branch. Record the date in the
-  Dates table. Proceed to Phase 3.
+- **PASS**: the gate branch head is the **gated SHA**. Record the date in the Dates table.
+  Proceed to Phase 3.
 - **Narrow timing miss** (FCP, LCP, TBT, or INP failing by less than twice its tolerance):
   re-collect that cell once with `--numberOfRuns=9`; those medians are final. Byte and CLS
   cells get no re-run.
-- **FAIL**: fix the branch, push (a new Version URL appears), return to 2.1 with the next
-  `gate-<n>` tag. The failed attempt's directory stays committed. Thresholds are never edited
-  here; changing one needs a new ticket on the map.
+- **FAIL**: fix on `main` by PR, then return to 1.6 with the next gate branch
+  (`gate/remix-v3-<n+1>`) and 2.1 with the next `gate-<n>` tag. The failed attempt's directory
+  stays committed. Thresholds are never edited here; changing one needs a new ticket on the map.
+
+Delete gate branches once their attempt is committed; the `remix-v3/gate-<n>` tags are the
+record.
 
 ---
 
 ## Phase 3. Cutover day
 
-Run top to bottom without pausing between 3.2 and 3.7. Re-check Phase 0 first.
+Run top to bottom without pausing between 3.3 and 3.5. Re-check Phase 0 first.
 
-### 3.1 Open the PR
+### 3.1 Confirm `scc` production runs the gated code
 
-Open the rewrite branch's PR against `main` if not already open. Its description links the
-passing gate directory. Nothing else is in flight on `main`.
-
-### 3.2 Merge → rollback window opens
-
-Merge the PR. From this moment until 3.7, a smoke failure is handled by the
-[Rollback](#rollback) section.
-
-### 3.3 Confirm the Workers Build deploy
-
-Watch Workers & Pages → `scc` → Deployments. The build on `main` must go green and deploy.
-Confirm from the machine:
+Workers Builds has been deploying `main` to `scc` since 1.3. Check what production runs:
+Workers & Pages → `scc` → Deployments shows the commit SHA of the active deployment. From the
+machine:
 
 ```bash
+git switch main && git pull
 bunx wrangler deployments list --name scc | head -20
+export GATED_SHA="$(git rev-list -n1 remix-v3/gate-<n>)"     # the passing attempt
+export CUTOVER_SHA="<SHA of the active deployment>"
+git diff --name-only "$GATED_SHA" "$CUTOVER_SHA" -- . ':!docs'
 ```
 
-The top deployment's source is the merge commit SHA. If the build fails (the first build of
-`main` with the new layout is the one risk Workers Builds previews did not cover), use the
-break-glass path, which produces the same artifact:
+- **Empty diff**: production runs the gated code (docs-only commits since are fine). Record
+  `CUTOVER_SHA` here; it is the cutover commit.
+- **Non-empty diff**: app or worker code changed after the gate. Re-gate (1.6 with the next
+  `<n>`) before continuing. Freeze `main` until cutover is done to avoid this.
+- **Active deployment is not `main`'s latest** (a Workers Build failed): use the break-glass
+  path, which produces the same artifact, then repeat 3.1:
 
-```bash
-git switch main && git pull && bun install --frozen-lockfile && bun run build && bunx wrangler deploy
-```
+  ```bash
+  bun install --frozen-lockfile && bun run build && bunx wrangler deploy
+  ```
 
-Then fix the Builds setting afterwards; the cutover does not wait for it.
+### 3.2 Production smoke (six checks)
 
-### 3.4 Production smoke (six checks)
-
-`PROD=https://scc.ryan-avocado-6a07yrtc.workers.dev`. Each check proves one route, secret, or
-binding. All six must pass; one failure triggers the Rollback section.
+Run against `scc` production **before** the 301, while it still has no visitors: a failure here
+costs nothing. `PROD=https://scc.ryan-avocado-6a07yrtc.workers.dev`. Each check proves one
+route, secret, or binding. All six must pass.
 
 1. **Routing, guard, validation.**
    `curl -s -i -X POST "$PROD/api/errors" -H 'content-type: application/json' --data '{}'`
@@ -323,9 +381,10 @@ Also confirm, without it being a gate: the Web Analytics beacon request to
 `cloudflareinsights.com/cdn-cgi/rum` returns 2xx in the browser's network panel, and the smoke
 requests show in `scc` → Logs.
 
-Record the date in the Dates table.
+**A failure here is not a rollback**: nobody has been moved. Fix forward on `main`, then return
+to 3.1 (which re-gates if the fix touched code). Record the date once all six pass.
 
-### 3.5 Redirect Netlify
+### 3.3 Redirect Netlify → cutover, rollback window opens
 
 Builds are stopped (1.5), so this is a manual production deploy of a two-file directory.
 `301!` forces the redirect even though the shell files no longer exist at those paths; the
@@ -345,20 +404,21 @@ curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://sccc.netlify.ap
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://sccc.netlify.app/summary
 ```
 
-Both `301` to the Worker URL with the path preserved. Record the date.
+Both `301` to the Worker URL with the path preserved. This is the cutover: record the date.
+From here until 3.5, a functional failure is handled by the [Rollback](#rollback) section.
 
 Old-origin `sessionStorage` is not carried over, by design
 ([#182](https://github.com/rymanacevedo/SCC/issues/182),
 [#192](https://github.com/rymanacevedo/SCC/issues/192)); a user mid-session on the old origin
 lands on the new home page.
 
-### 3.6 Re-check through the redirect
+### 3.4 Re-check through the redirect
 
 Open `https://sccc.netlify.app/summary` in a fresh browser tab: it must land on the Worker's
 `/` (empty User redirects home) and suggestions must still work after filling a job. This is the
 last check inside the rollback window.
 
-### 3.7 Delete `scc-backend` → rollback window closes
+### 3.5 Delete `scc-backend` → rollback window closes
 
 ```bash
 bunx wrangler delete --name scc-backend      # answer the confirmation prompt if one appears
@@ -368,16 +428,15 @@ bunx wrangler deployments list --name scc-backend   # expect "not found"
 Its secrets go with it. Record the date: **from here there is no rollback**. The 30-day Netlify
 redirect is a courtesy for stale links, not a fallback.
 
-### 3.8 Tag the cutover commit
+### 3.6 Tag the cutover commit
 
 ```bash
-git switch main && git pull
-git tag remix-v3/cutover "$(git rev-parse HEAD)"     # HEAD is the merge commit from 3.2
+git tag remix-v3/cutover "$CUTOVER_SHA"      # recorded in 3.1
 ```
 
 Push the tag to `origin`.
 
-### 3.9 Close the issues the migration resolved
+### 3.7 Close the issues the migration resolved
 
 - [#149](https://github.com/rymanacevedo/SCC/issues/149): comment linking #192 as the
   persistence-model record; the new-tab expectation is rejected by design; close.
@@ -392,8 +451,8 @@ Push the tag to `origin`.
 
 ## Phase 4. Report run
 
-On `main` at `remix-v3/cutover`, against production. Same method, same toolchain, same
-fixtures as the gate.
+At `remix-v3/cutover`, against production. Same method, same toolchain, same fixtures as the
+gate.
 
 ```bash
 git switch main && git checkout -q remix-v3/cutover
@@ -402,9 +461,9 @@ export PERF_DIR="docs/perf/remix-v3/cutover"
 export PERF_ORIGIN="https://scc.ryan-avocado-6a07yrtc.workers.dev"
 ```
 
-Run Phase 2.3 and 2.4 unchanged (the API cell is local again). Add to `meta.json`:
-`"webAnalyticsSince"` for the new hostname and `"gateRun"` naming the passing gate directory.
-Then:
+Run Phase 2.3 and 2.4's verdict command unchanged (the API cell is local again). Add to
+`meta.json`: `"webAnalyticsSince"` for the new hostname and `"gateRun"` naming the passing gate
+directory. Then:
 
 ```bash
 git switch -c perf/remix-v3-cutover main
@@ -433,30 +492,32 @@ hostname has 7 days of traffic; append it in a follow-up commit on `main`.
 2. Cloudflare → Web Analytics → remove the `sccc.netlify.app` site entry.
 3. Record the date in the Dates table and commit this file.
 
-Nothing else remains on the old path: `scc-backend` went in 3.7, the proxy routes and
+Nothing else remains on the old path: `scc-backend` went in 3.5, the proxy routes and
 `VITE_HONO_BACKEND_URL` went with the rewrite.
 
 ---
 
 ## Rollback
 
-**Trigger**: one of the six checks in 3.4 (or the re-check in 3.6) fails. Performance never
-triggers a rollback: a gate FAIL stops you before 3.2, and a report FAIL fixes forward.
+**Trigger**: the re-check through the redirect (3.4) fails, or a functional failure on
+production is found between 3.3 and 3.5. Performance never triggers a rollback: a gate FAIL
+stops you before 3.3, and a report FAIL fixes forward. A smoke failure in 3.2 is not a rollback
+either: nobody has been moved yet.
 
-**Window**: open at 3.2 (merge), closed at 3.7 (`scc-backend` deleted). Inside it, the previous
-Netlify deploy and `scc-backend` both still exist, so the old site can be re-published intact.
+**Window**: open at 3.3 (Netlify 301), closed at 3.5 (`scc-backend` deleted). Inside it, the
+frozen Netlify deploy and `scc-backend` both still exist, so the old site can be re-published
+intact.
 
 **Steps**, in order:
 
-1. If 3.5 has already run: Netlify dashboard → Deploys → the last deploy *before* the redirect
-   (the frozen React Router build) → **Publish deploy**. Instant. With builds stopped, nothing
-   can overwrite it. If 3.5 has not run, there is nothing to re-publish: Netlify is still
-   serving the old site.
+1. Netlify dashboard → Deploys → the last deploy *before* the redirect (the frozen React Router
+   build) → **Publish deploy**. Instant. With builds stopped, nothing can overwrite it.
 2. Verify `curl -s -o /dev/null -w '%{http_code}\n' https://sccc.netlify.app/summary` → `200`
    and that the old site's `/summary` still gets suggestions from `scc-backend`.
-3. Leave `main` merged. Fix forward on `main`; each push redeploys `scc` through Workers Builds
-   (nobody is on it yet).
-4. Resume at 3.3. The rollback window is still open because 3.7 never ran.
+3. Fix forward on `main` by PR; each merge redeploys `scc` through Workers Builds (nobody is on
+   it again). There is no merge to revert: `main` has carried the rewrite since before Phase 1.
+4. Resume at 3.1 (which re-gates if the fix touched code). 3.5 never ran, so `scc-backend` is
+   still there and rollback stays available on the next attempt.
 
 Netlify's free tier keeps only the published deploy and the most recent successful production
 deploy beyond 30 days, which is why the window is same-day: do not plan on re-publishing the old
@@ -471,8 +532,12 @@ handled defensively above. Confirm each the first time you hit it and strike it 
 
 - Whether "Enable Preview Builds" is on by default in Workers Builds (1.3 sets it explicitly).
 - Whether Workers Builds picks Bun from `packageManager` (1.3 sets `BUN_VERSION`).
-- Whether `wrangler delete` prompts for confirmation (3.7 runs it in a terminal).
+- Whether a Workers Builds preview build runs for every non-production branch by default, so a
+  `gate/remix-v3-<n>` push produces a Version URL (1.6 has the local `versions upload` fallback).
+- Whether `wrangler deployments list` names the commit SHA of a Workers Builds deployment
+  (3.1 reads it from the dashboard if not).
+- Whether `wrangler delete` prompts for confirmation (3.5 runs it in a terminal).
 - Whether Web Analytics accepts a `workers.dev` hostname (1.4 has the fallback).
-- Whether a Netlify deploy with no `index.html` is accepted (3.5 ships one).
-- Netlify's behaviour when the configured base directory is missing on the production branch
-  (1.5 stops builds so it never applies).
+- Whether a Netlify deploy with no `index.html` is accepted (3.3 ships one).
+- ~~Netlify's behaviour when the configured base directory is missing on the production
+  branch~~: moot, builds were stopped before it could apply (1.5, 2026-10-14).

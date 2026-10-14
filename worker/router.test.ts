@@ -26,7 +26,11 @@ async function assertResponse(response: Response, status: number) {
   expect(response.headers.get('Content-Type')).toContain('application/json');
   const body = (await response.json()) as Record<string, unknown>;
   if (status >= 400) expect(typeof body.error).toBe('string');
-  if (status === 400) expect(Array.isArray(body.issues)).toBe(true);
+  if (status === 400)
+    expect(body.issues).toEqual({
+      formErrors: expect.any(Array),
+      fieldErrors: expect.any(Object),
+    });
   return body;
 }
 
@@ -109,10 +113,14 @@ test('invalid bodies and malformed JSON carry issues before config validation', 
       await router.fetch(contractRequest(path, {})),
       400,
     );
-    expect((body.issues as unknown[]).length).toBeGreaterThan(0);
+    expect(
+      Object.keys((body.issues as { fieldErrors: object }).fieldErrors).length,
+    ).toBeGreaterThan(0);
   }
   const malformed = contractRequest('/api/summaries', {}, { body: '{' });
-  await assertResponse(await router.fetch(malformed), 400);
+  expect(
+    (await assertResponse(await router.fetch(malformed), 400)).issues,
+  ).toEqual({ formErrors: ['Invalid JSON body'], fieldErrors: {} });
 });
 
 test('Profanity filter rejects XML terms and multi-word roles without resolving a model', async () => {
