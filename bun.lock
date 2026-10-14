@@ -19,6 +19,7 @@
         "@cloudflare/vite-plugin": "^1.63.1",
         "@cloudflare/workers-types": "^5",
         "@happy-dom/global-registrator": "^20",
+        "@puppeteer/browsers": "^2.13.2",
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4",
         "@types/node": "^24",
