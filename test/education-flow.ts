@@ -174,11 +174,6 @@ try {
   await page.waitForSelector('aside button');
   await page.click('aside button');
   await submit('/finish-up');
-  assert.ok(
-    (await page.$eval('body', (node) => node.textContent))?.includes(
-      'Your answers live in this browser tab only',
-    ),
-  );
   const stored = await page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('scc:user')!),
   );

@@ -236,6 +236,14 @@ confirm the requests from the walk appear (observability live).
 Geo restriction is not checked from a deployed URL (the dev is in an allowed country); the
 contract tests own it ([#186](https://github.com/rymanacevedo/SCC/issues/186) proved the port).
 
+### Gate attempts
+
+One line per attempt. A withdrawn attempt keeps its number; the next attempt takes the next one.
+
+| attempt | `main` SHA | Version URL | outcome |
+| --- | --- | --- | --- |
+| `gate-1` | `5907733` | `https://d74d11ad-scc.ryan-avocado-6a07yrtc.workers.dev` | Withdrawn 2026-10-14 before 2.3. 1.6 checks, browser walk, 2.1 and 2.2 passed; the walk showed the UI regressed from the Netlify app (unstyled controls, lost layout, missing error UI). Fixes land on `main` through the `fix/remove-tab-disclosure` integration branch, then `gate-2`. No perf data was collected. |
+
 ---
 
 ## Phase 2. Gate run

@@ -1,4 +1,3 @@
-import { TAB_DISCLOSURE } from '../builder/disclosure.ts';
 export function HomePage() {
   return () => (
     <section className="space-y-6">
@@ -12,7 +11,6 @@ export function HomePage() {
       >
         Start your resume
       </a>
-      <p>{TAB_DISCLOSURE}</p>
     </section>
   );
 }
