@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
 import { info, summary } from '../../test/builder-fixtures.ts';
-import { SUGGESTIONS_UNAVAILABLE } from '../builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from '../builder/suggestions.ts';
 import { buttonClass } from '../ui/button.tsx';
 import { InfoPage } from './info.tsx';
 import { Shell } from './shell.tsx';
@@ -79,6 +79,7 @@ test('Suggestions reserve space during loading, pick only on click, and retain t
   cleanups.push(view.cleanup);
   await view.act(async () => {});
   expect(view.$('[role="status"]')?.textContent).toContain('Loading');
+  expect(view.$('[role="status"] svg.animate-spin')).not.toBeNull();
   expect((view.$('aside') as HTMLElement).style.minHeight).toBe('24rem');
   const textarea = view.$('textarea') as HTMLTextAreaElement;
   textarea.value = 'Typed while loading';
@@ -100,12 +101,14 @@ test('Suggestions reserve space during loading, pick only on click, and retain t
   view.cleanup();
   expect(signal?.aborted).toBe(true);
 });
-test('every failed Suggestion Result renders fixed unavailable copy', async () => {
-  globalThis.fetch = (async () =>
-    Response.json(
-      { error: 'sensitive' },
-      { status: 403 },
-    )) as unknown as typeof fetch;
+async function renderFailedSummary(fail: () => Promise<Response>) {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return calls === 1
+      ? fail()
+      : Response.json([{ title: 'One', text: summary }]);
+  }) as unknown as typeof fetch;
   const view = render(
     <SummaryPage
       url={new URL('https://scc.example/summary')}
@@ -114,12 +117,56 @@ test('every failed Suggestion Result renders fixed unavailable copy', async () =
     />,
   );
   cleanups.push(view.cleanup);
-  await view.act(async () => {
-    await Promise.resolve();
-  });
-  expect(view.container.textContent).toContain(SUGGESTIONS_UNAVAILABLE);
+  const settle = () =>
+    view.act(async () => {
+      await new Promise((done) => setTimeout(done, 0));
+    });
+  await settle();
+  const retry = () =>
+    [...view.$$('aside button')].find(
+      (button) => button.textContent === 'Retry',
+    ) as HTMLButtonElement | undefined;
+  return { view, settle, retry, calls: () => calls };
+}
+test('a region Suggestion failure says why and offers no Retry', async () => {
+  const { view, retry } = await renderFailedSummary(async () =>
+    Response.json({ error: 'sensitive' }, { status: 403 }),
+  );
+  expect(view.$('aside [role="status"]')?.textContent).toBe(
+    SUGGESTION_FAILURE_MESSAGES.region,
+  );
   expect(view.container.textContent).not.toContain('sensitive');
+  expect(retry()).toBeUndefined();
+  expect(view.$('textarea[name="summary"]')).not.toBeNull();
 });
+for (const [failure, fail] of [
+  [
+    'offline',
+    async () => {
+      throw new TypeError('Failed to fetch');
+    },
+  ],
+  [
+    'generator',
+    async () => Response.json({ error: 'provider' }, { status: 502 }),
+  ],
+] as const) {
+  test(`a ${failure} Suggestion failure says why and Retry loads Suggestions`, async () => {
+    const { view, settle, retry, calls } = await renderFailedSummary(fail);
+    expect(view.$('aside [role="status"]')?.textContent).toBe(
+      SUGGESTION_FAILURE_MESSAGES[failure],
+    );
+    expect(SUGGESTION_FAILURE_MESSAGES[failure]).toContain(
+      'You can still write your own answer.',
+    );
+    await view.act(() => retry()?.click());
+    expect(view.$('[role="status"]')?.textContent).toContain('Loading');
+    await settle();
+    expect(calls()).toBe(2);
+    expect(retry()).toBeUndefined();
+    expect(view.$('aside button')?.textContent).toContain('One');
+  });
+}
 test('pending submit disables the button without removing the form or typed answers', async () => {
   const view = render(
     <Shell>

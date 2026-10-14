@@ -11,6 +11,7 @@ import {
 } from '../builder/suggestion-list.tsx';
 import { loadSuggestions } from '../builder/suggestions.ts';
 import { Alert } from '../ui/alert.tsx';
+import { FieldError } from '../ui/field.tsx';
 
 function roleQuestion(jobTitle: unknown): string {
   if (typeof jobTitle !== 'string' || !jobTitle.trim())
@@ -65,7 +66,7 @@ export function ExperienceEntryPage(handle: Handle<BuilderPageProps>) {
         suggestions={
           <SuggestionPanel
             title="Suggested Experience"
-            state={suggestions.state}
+            suggestions={suggestions}
           >
             <SuggestionGroups
               groups={[
@@ -141,13 +142,7 @@ export function ExperienceEntryPage(handle: Handle<BuilderPageProps>) {
           ))}
         </PickedBox>
         {errors?.length ? (
-          <p
-            id="details-error"
-            role="alert"
-            className="mt-1 text-sm text-red-600"
-          >
-            {errors.join(' ')}
-          </p>
+          <FieldError id="details-error" errors={errors} />
         ) : null}
         {full ? (
           <LimitNotice max={MAX_DETAILS} noun="details" />

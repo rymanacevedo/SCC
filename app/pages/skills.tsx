@@ -12,6 +12,7 @@ import {
 } from '../builder/suggestion-list.tsx';
 import { loadSuggestions } from '../builder/suggestions.ts';
 import { Chip } from '../ui/chip.tsx';
+import { FieldError } from '../ui/field.tsx';
 
 const categories = ['expertRecommended', 'other'] as const;
 type Category = (typeof categories)[number];
@@ -59,7 +60,7 @@ export function SkillsPage(handle: Handle<BuilderPageProps>) {
         subtitle="Add skills that are relevant to your experience and the job you want."
         suggestionsFirst
         suggestions={
-          <SuggestionPanel title="Suggested Skills" state={suggestions.state}>
+          <SuggestionPanel title="Suggested Skills" suggestions={suggestions}>
             <SuggestionGroups
               groups={categories.map((category) => ({
                 title:
@@ -99,13 +100,10 @@ export function SkillsPage(handle: Handle<BuilderPageProps>) {
           ) : null}
         </PickedBox>
         {errored.map((category) => (
-          <p
+          <FieldError
             id={`${category}-error`}
-            role="alert"
-            className="mt-1 text-sm text-red-600"
-          >
-            {handle.props.errors?.[category]?.join(' ')}
-          </p>
+            errors={handle.props.errors?.[category]}
+          />
         ))}
         {full ? (
           <LimitNotice max={MAX_SKILLS} noun="skills" />

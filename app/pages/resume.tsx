@@ -3,6 +3,7 @@ import { StartOver } from '../builder/start-over.tsx';
 import { downloadDocument } from '../resume/download.ts';
 import type { Outline } from '../resume/outline.ts';
 import { Preview } from '../resume/preview.tsx';
+import { Alert } from '../ui/alert.tsx';
 import { Button } from '../ui/button.tsx';
 import { cardClass } from '../ui/card.tsx';
 import { PageHeading } from '../ui/heading.tsx';
@@ -65,9 +66,13 @@ export function ResumePage(handle: Handle<ResumeProps>) {
           </Button>
         </div>
         <p role="status" aria-live="polite" className="mt-2 mb-4 text-sm">
-          {pending ? 'Creating Export…' : exportError}
+          {pending ? 'Creating Export…' : ''}
         </p>
-        {handle.props.error && <p role="alert">{handle.props.error}</p>}
+        {exportError || handle.props.error ? (
+          <div className="mb-4">
+            <Alert tone="error">{exportError || handle.props.error}</Alert>
+          </div>
+        ) : null}
         <div className={cardClass('outlined', 'p-8')}>
           <Preview outline={handle.props.outline} />
         </div>

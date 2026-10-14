@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
+import { render } from 'remix/component/test';
 import {
   builderRequest,
   summary,
@@ -123,6 +124,31 @@ test('Preview toolbar offers primary Export buttons, blue Edit links and an outl
     'text/html',
   );
   expect(empty.querySelectorAll('button[disabled]').length).toBe(2);
+});
+test('an Export failure shows a red alert and leaves the Export buttons usable', async () => {
+  const createObjectURL = URL.createObjectURL;
+  URL.createObjectURL = () => {
+    throw new Error('blocked');
+  };
+  const view = render(<ResumePage outline={outline} />);
+  try {
+    const exportPdf = Array.from(view.$$('button')).find(
+      (node) => node.textContent === 'Export PDF',
+    ) as HTMLButtonElement;
+    await view.act(async () => {
+      exportPdf.click();
+      await new Promise((done) => setTimeout(done, 0));
+    });
+    const alert = view.$('[role="alert"]') as HTMLElement;
+    expect(alert.textContent).toBe(
+      'The Export could not be created. Please try again.',
+    );
+    expect(alert.className).toContain('text-rose-700');
+    expect(exportPdf.disabled).toBe(false);
+  } finally {
+    URL.createObjectURL = createObjectURL;
+    view.cleanup();
+  }
 });
 test('PDF and DOCX render the same Outline into non-empty documents, including long content', async () => {
   expect(renderPdf(outline).size).toBeGreaterThan(0);

@@ -4,7 +4,7 @@ import { render } from 'remix/component/test';
 import { usStates } from '../shared/usStates.ts';
 import { builderRequest, experience, info } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
-import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from './builder/suggestions.ts';
 import { ExperiencePage } from './pages/experience.tsx';
 import { ExperienceEntryPage } from './pages/experience-entry.tsx';
 import { ExperienceSummaryPage } from './pages/experience-summary.tsx';
@@ -245,7 +245,9 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   await view.act(async () => {
     await new Promise((done) => setTimeout(done, 0));
   });
-  expect(view.container.textContent).toContain(SUGGESTIONS_UNAVAILABLE);
+  expect(view.container.textContent).toContain(
+    SUGGESTION_FAILURE_MESSAGES.region,
+  );
   expect((view.$('textarea') as HTMLTextAreaElement).value).toBe('Typed');
   expect(view.$('nav a')?.getAttribute('href')).toBe('/experience?jobId=job-1');
   const html = await renderToString(

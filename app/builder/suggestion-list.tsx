@@ -1,10 +1,13 @@
 import { type Handle, on, ref } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
+import { Button } from '../ui/button.tsx';
 import { classes } from '../ui/classes.ts';
 import { controlClass } from '../ui/field.tsx';
+import { Spinner } from '../ui/spinner.tsx';
 import {
-  type loadSuggestions,
-  SUGGESTIONS_UNAVAILABLE,
+  canRetrySuggestions,
+  SUGGESTION_FAILURE_MESSAGES,
+  type Suggestions,
 } from './suggestions.ts';
 
 /**
@@ -13,13 +16,9 @@ import {
  * rows, the bordered box of picked items, the typed-entry input and the cap notice.
  */
 
-type SuggestionsState = ReturnType<
-  typeof loadSuggestions<unknown, unknown>
->['state'];
-
 interface SuggestionPanelProps {
   title: string;
-  state: SuggestionsState;
+  suggestions: Pick<Suggestions<unknown>, 'state' | 'failure' | 'retry'>;
   /** The Suggestions; rendered only once they have loaded. */
   children?: RemixNode;
 }
@@ -27,23 +26,29 @@ interface SuggestionPanelProps {
 /** Heading plus the Suggestions, or the loading or failure state in their place. */
 export function SuggestionPanel(handle: Handle<SuggestionPanelProps>) {
   return () => {
-    const { title, state, children } = handle.props;
+    const { title, suggestions, children } = handle.props;
+    const { state, failure } = suggestions;
     let body: RemixNode = children;
     if (state === 'idle' || state === 'loading') {
+      // Reserves the panel's height so the page doesn't shift once Suggestions load.
       body = (
-        <div
-          role="status"
-          className="animate-pulse rounded-md bg-gray-100 p-4 text-sm text-gray-600"
-          style={{ height: '20rem' }}
-        >
-          Loading Suggestions…
-        </div>
+        <Spinner label="Loading Suggestions…" className="h-80 items-start" />
       );
-    } else if (state === 'error') {
+    } else if (state === 'error' && failure) {
       body = (
-        <p role="status" className="text-sm text-gray-600">
-          {SUGGESTIONS_UNAVAILABLE}
-        </p>
+        <div className="space-y-3 rounded-md border p-4">
+          <p role="status" className="text-sm text-gray-600">
+            {SUGGESTION_FAILURE_MESSAGES[failure]}
+          </p>
+          {canRetrySuggestions(failure) ? (
+            <Button
+              variant="outline"
+              mix={on('click', () => suggestions.retry())}
+            >
+              Retry
+            </Button>
+          ) : null}
+        </div>
       );
     }
     return (

@@ -59,10 +59,12 @@ try {
       path === '/throw' ? 1 : 2,
     );
   }
-  await page.click('footer button');
-  assert.equal(await page.$eval('dialog', (dialog) => dialog.open), true);
-  await page.type('textarea', 'The demo page threw an error');
-  await page.click('button[type="submit"]');
+  // The error page's primary Report an issue opens its own dialog.
+  await page.click('main section button');
+  const dialog = 'main section dialog';
+  assert.equal(await page.$eval(dialog, (node) => node.open), true);
+  await page.type(`${dialog} textarea`, 'The demo page threw an error');
+  await page.click(`${dialog} button[type="submit"]`);
   await page.waitForFunction(() =>
     document
       .querySelector('[role="status"]')
@@ -77,8 +79,8 @@ try {
     'timestamp',
     'url',
   ]);
-  await page.click('dialog button[type="button"]');
-  assert.equal(await page.$eval('dialog', (dialog) => dialog.open), false);
+  await page.click(`${dialog} button[type="button"]`);
+  assert.equal(await page.$eval(dialog, (node) => node.open), false);
   await page.goto(`${base}/unknown`);
   await page.waitForFunction(() =>
     document.body.textContent?.includes('Page not found'),

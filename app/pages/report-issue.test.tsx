@@ -13,24 +13,48 @@ afterEach(() => {
   globalThis.fetch = original;
 });
 
-test('error and 404 pages render recovery copy and the shell report action', async () => {
+test('error and 404 pages render the old error card with primary Report an issue and secondary Return home', async () => {
   const html = await renderToString(
     <Shell>
       <ErrorPage />
     </Shell>,
   );
   expect(html).toContain(ERROR_MODAL_MESSAGE);
-  expect(html).toContain('Report an issue');
   expect(html).toContain('<footer');
-  const notFound = await renderToString(
+  for (const [page, title] of [
+    [<ErrorPage />, 'Something went wrong'],
+    [<NotFoundPage />, 'Page not found'],
+  ] as const) {
+    const view = render(<Shell>{page}</Shell>);
+    cleanups.push(view.cleanup);
+    expect(view.$('main section p')?.textContent).toBe('Error');
+    expect(view.$('main section p')?.className).toContain('text-rose-600');
+    expect(view.$('main h1')?.textContent).toBe(title);
+    const home = view.$('main section a') as HTMLAnchorElement;
+    expect(home.textContent).toBe('Return home');
+    expect(home.getAttribute('href')).toBe('/');
+    expect(home.className).toBe(buttonClass('secondary'));
+    const report = view.$('main section button') as HTMLButtonElement;
+    expect(report.textContent).toBe('Report an issue');
+    expect(report.className).toBe(buttonClass('primary'));
+  }
+});
+test('the error page Report an issue opens the report dialog', async () => {
+  const view = render(
     <Shell>
-      <NotFoundPage />
+      <ErrorPage />
     </Shell>,
   );
-  expect(notFound).toContain('Page not found');
-  expect(notFound).toContain('Return home');
+  cleanups.push(view.cleanup);
+  const dialog = view.$('main section dialog') as HTMLDialogElement;
+  dialog.showModal = () => dialog.setAttribute('open', '');
+  dialog.close = () => dialog.removeAttribute('open');
+  await view.act(() =>
+    (view.$('main section button') as HTMLButtonElement).click(),
+  );
+  expect(dialog.open).toBe(true);
+  expect(dialog.querySelector('h2')?.textContent).toBe('Report an issue');
 });
-
 test('report modal validates, submits only explicit description, and shows failure then success', async () => {
   const requests: { path: string; body: Record<string, unknown> }[] = [];
   let resolve!: (response: Response) => void;
@@ -68,6 +92,8 @@ test('report modal validates, submits only explicit description, and shows failu
   expect(view.$('[role="alert"]')?.textContent).toBe(
     'Please describe what happened.',
   );
+  expect(textarea.getAttribute('aria-invalid')).toBe('true');
+  expect(textarea.className).toContain('border-red-500');
   textarea.value = '  The page failed  ';
   await submit();
   await submit();

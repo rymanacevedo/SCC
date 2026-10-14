@@ -125,16 +125,19 @@ export function Field(handle: Handle<FieldProps>) {
           {label}
         </label>
         {input}
-        {invalid ? (
-          <p
-            id={`${name}-error`}
-            role="alert"
-            className="mt-1 text-sm text-red-600"
-          >
-            {errors?.join(' ')}
-          </p>
-        ) : null}
+        {invalid ? <FieldError id={`${name}-error`} errors={errors} /> : null}
       </div>
     );
   };
+}
+
+/** Red Field error text under an answer; the answer points at it with aria-describedby. */
+export function FieldError(
+  handle: Handle<{ id: string; errors?: readonly string[] }>,
+) {
+  return () => (
+    <p id={handle.props.id} role="alert" className="mt-1 text-sm text-red-600">
+      {handle.props.errors?.join(' ')}
+    </p>
+  );
 }

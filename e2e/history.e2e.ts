@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { SUGGESTIONS_UNAVAILABLE } from '../app/builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from '../app/builder/suggestions.ts';
 import { summaries } from './fixtures.ts';
 import {
   openBrowser,
@@ -104,7 +104,7 @@ test('geo 403 displays plain Suggestion unavailability and permits writing', asy
     await page.waitForFunction(
       (copy) => document.body.textContent?.includes(copy),
       {},
-      SUGGESTIONS_UNAVAILABLE,
+      SUGGESTION_FAILURE_MESSAGES.region,
     );
     expect(rejected).toBe(true);
     expect(await page.$eval('body', (body) => body.textContent)).not.toContain(

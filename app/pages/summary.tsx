@@ -24,7 +24,7 @@ export function SummaryPage(handle: Handle<BuilderPageProps>) {
       title="Create Your Professional Summary"
       subtitle="Write a compelling summary that highlights your key achievements and career goals. This is often the first thing employers read."
       suggestions={
-        <SuggestionPanel title="Example Summaries" state={suggestions.state}>
+        <SuggestionPanel title="Example Summaries" suggestions={suggestions}>
           <div className="space-y-4">
             {suggestions.value?.map((suggestion) => (
               <button

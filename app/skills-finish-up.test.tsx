@@ -9,7 +9,7 @@ import {
 } from '../test/builder-fixtures.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
 import { completedSections } from './builder/finish-up.tsx';
-import { SUGGESTIONS_UNAVAILABLE } from './builder/suggestions.ts';
+import { SUGGESTION_FAILURE_MESSAGES } from './builder/suggestions.ts';
 import { FinishUpPage } from './pages/finish-up.tsx';
 import { SkillsPage } from './pages/skills.tsx';
 import { builderPageIds, createAppRouter } from './router.tsx';
@@ -291,7 +291,9 @@ test('Skills failed Suggestions show fixed unavailable copy and still allow answ
   await view.act(async () => {
     await new Promise((done) => setTimeout(done, 0));
   });
-  expect(view.container.textContent).toContain(SUGGESTIONS_UNAVAILABLE);
+  expect(view.container.textContent).toContain(
+    SUGGESTION_FAILURE_MESSAGES.generator,
+  );
   expect(view.container.textContent).not.toContain('private provider error');
   expect(view.$('#manual-skill')).not.toBeNull();
 });
