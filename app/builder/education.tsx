@@ -4,12 +4,12 @@ import {
 } from '../../shared/schemas/education.ts';
 import { z } from '../../shared/zod.ts';
 import { findEducationEntry, normalizeEducationEntry } from '../education.ts';
+import { EducationSummaryPage } from '../pages/education-summary.tsx';
 import {
   EducationEntryPage,
   EducationLevelPage,
   EducationPage,
 } from '../pages/education.tsx';
-import { EducationSummaryPage } from '../pages/education-summary.tsx';
 import { guardStep, validatedReturnUrl } from '../steps.ts';
 import type { Envelope, UserStorage } from '../user.ts';
 import { createBuilderController, SAVE_ERROR } from './controller.tsx';

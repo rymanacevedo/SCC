@@ -10,12 +10,12 @@ import {
   educationControllers,
 } from './builder/education.tsx';
 import { normalizeEducationEntry, sortEducationEntries } from './education.ts';
+import { EducationSummaryPage } from './pages/education-summary.tsx';
 import {
   EducationEntryPage,
   EducationLevelPage,
   EducationPage,
 } from './pages/education.tsx';
-import { EducationSummaryPage } from './pages/education-summary.tsx';
 import { createAppRouter } from './router.tsx';
 import { builderNav, guardInitialUrl } from './steps.ts';
 import { buttonClass } from './ui/button.tsx';

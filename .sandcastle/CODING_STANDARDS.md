@@ -14,15 +14,16 @@ for both phases.
   extract into a module. Duplicate logic across files is a code smell. Change
   existing code rather than bolting on local workarounds.
 
-## Style (enforced by Biome, `biome.json` at the root)
+## Style (enforced by oxlint and oxfmt, `.oxlintrc.json` and `.oxfmtrc.json` at the root)
 
 - Two-space indent, single quotes in TS, double quotes in JSX, trailing commas,
   semicolons, parentheses around arrow parameters. Run `bun run check` to see
   what the pre-commit hook will flag.
-- `noExplicitAny` is an error: no `any`, no unchecked casts to escape the type
-  system. `noArrayIndexKey` is an error: never use an array index as a React key.
-- `noConsole` warns: no stray `console.*` in committed code outside scripts.
-- Imports are organized by Biome; do not hand-order them.
+- `typescript/no-explicit-any` is an error: no `any`, no unchecked casts to escape the type
+  system. `react/no-array-index-key` is an error: never use an array index as a key.
+- `no-console` warns: no stray `console.*` in committed code outside scripts.
+- Imports are sorted by oxfmt; do not hand-order them.
+- Suppress a rule only with `// oxlint-disable-next-line <rule> -- <reason>`.
 - Bun only: `bun`, `bun x`, `bun run`. Never `npm`, `npx`, `yarn`, or `pnpm`
   (the `.claude/hooks/enforce-bun.sh` hook blocks them).
 

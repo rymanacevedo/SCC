@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": [
+    "dist",
+    "build",
+    ".cache",
+    ".ona",
+    "bin",
+    ".wrangler",
+    "worker-configuration.d.ts",
+    "docs"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-console": "warn",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "warn",
+    "react/no-array-index-key": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-key": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["app/**", "shared/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "zod",
+                "message": "Client code imports `z` from shared/zod.ts (zod/mini); full zod adds startup cost to every page."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
