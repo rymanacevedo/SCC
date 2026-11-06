@@ -1,4 +1,7 @@
 {
-  "**/*.{ts,tsx,css,yaml,md,mdx}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
-  "**/!(biome).json": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+  "**/*.{ts,tsx,mts,cts,mjs}": [
+    "oxfmt --no-error-on-unmatched-pattern",
+    "oxlint --fix --no-error-on-unmatched-pattern"
+  ],
+  "**/*.{json,jsonc,yaml,yml,toml,css,html}": "oxfmt --no-error-on-unmatched-pattern"
 }

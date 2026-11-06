@@ -47,7 +47,7 @@ export function createRouteErrorMiddleware<T>(
       ) {
         status = 502;
       }
-      // biome-ignore lint/suspicious/noConsole: Categorized failures belong in Workers Logs.
+      // oxlint-disable-next-line no-console -- Categorized failures belong in Workers Logs.
       console.error({
         route: path,
         category,

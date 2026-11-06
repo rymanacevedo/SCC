@@ -8,7 +8,7 @@ export function createWorker(api: {
       try {
         return await api.fetch(request);
       } catch (error) {
-        // biome-ignore lint/suspicious/noConsole: Worker failures belong in Workers Logs.
+        // oxlint-disable-next-line no-console -- Worker failures belong in Workers Logs.
         console.error({
           category: 'unknown',
           message: 'router.fetch threw',

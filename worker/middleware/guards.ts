@@ -34,7 +34,7 @@ export function createGeoRestrictionMiddleware({
       normalizedCountry === 'XX' ||
       !allowed.has(normalizedCountry)
     ) {
-      // biome-ignore lint/suspicious/noConsole: Guard refusals belong in Workers Logs.
+      // oxlint-disable-next-line no-console -- Guard refusals belong in Workers Logs.
       console.log({
         event: 'geo_blocked',
         category: 'geo_blocked',
@@ -120,7 +120,7 @@ export function createProfanityFilter(
       );
     const match = terms.find(({ pattern }) => pattern.test(prompt));
     if (match) {
-      // biome-ignore lint/suspicious/noConsole: Guard refusals belong in Workers Logs.
+      // oxlint-disable-next-line no-console -- Guard refusals belong in Workers Logs.
       console.log({
         category: 'filtered',
         term: match.term,
