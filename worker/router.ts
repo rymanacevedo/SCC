@@ -11,6 +11,9 @@ import {
 } from '../shared/errorReporting.ts';
 import { FLAGS_PATH } from '../shared/flags.ts';
 import {
+  BoundedExperienceSchema,
+  BoundedSkillsSchema,
+  BoundedSummarySchema,
   generationRequestSchema,
   MAX_PROMPT_LENGTH,
 } from '../shared/schemas/generation.ts';
@@ -110,6 +113,7 @@ export function createApiRouter(
       model: LanguageModel,
       abortSignal: AbortSignal,
     ) => Promise<unknown>,
+    boundedOutputSchema: Parameters<typeof boundGeneratedOutput>[0],
   ) {
     register(
       path,
@@ -119,7 +123,10 @@ export function createApiRouter(
       // An over-limit result throws, and the route error middleware answers 502.
       async ({ prompt }, request) =>
         Response.json(
-          boundGeneratedOutput(await generate(prompt, model(), request.signal)),
+          boundGeneratedOutput(
+            boundedOutputSchema,
+            await generate(prompt, model(), request.signal),
+          ),
         ),
       {
         generation: true,
@@ -132,9 +139,9 @@ export function createApiRouter(
   router.route('ANY', FLAGS_PATH, {
     handler: ({ request }) => handleFlagsRequest(request, env),
   });
-  generationRoute('/api/summaries', createSummaries);
-  generationRoute('/api/skills', createSkills);
-  generationRoute('/api/experience', createExperience);
+  generationRoute('/api/summaries', createSummaries, BoundedSummarySchema);
+  generationRoute('/api/skills', createSkills, BoundedSkillsSchema);
+  generationRoute('/api/experience', createExperience, BoundedExperienceSchema);
   register(
     '/api/errors',
     errorTelemetrySchema,

@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import {
+  buildTelemetryFingerprint,
+  type ErrorTelemetryPayload,
+} from '../../shared/errorReporting.ts';
+import {
   buildAutoReportedIssueBody,
   createAutoReportedIssue,
   createUserReportedIssue,
+  GITHUB_ISSUE_BODY_MAX,
   GitHubIssueCreationError,
+  issueFingerprint,
 } from './github.ts';
 
 const originalFetch = globalThis.fetch;
@@ -13,40 +19,60 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+const auth = { repo: 'acme/scc', token: 'token-123' };
+/** The body GitHub holds for an issue auto-reported from `payload`. */
+const filedBody = async (payload: ErrorTelemetryPayload) =>
+  buildAutoReportedIssueBody(payload, await issueFingerprint(payload));
+/** Serves `pages` of open issues, then accepts any created issue. */
+function githubWith(...pages: { number: number; body: string }[][]) {
+  const fetchMock = mock(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (!url.includes('/issues?'))
+      return Response.json({ id: 2 }, { status: 201 });
+    const page = Number(new URL(url).searchParams.get('page'));
+    return Response.json(pages[page - 1] ?? []);
+  });
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+}
+
+const chunkFailure = {
+  timestamp: '2026-04-27T12:00:00.000Z',
+  url: 'https://example.com/assets/app-a1b2c3d4.js:12:34',
+  message: 'Chunk failed',
+  stackTrace:
+    'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
+};
+// The same failure from another build: a new asset hash and stack coordinates.
+const chunkFailureNextBuild = {
+  ...chunkFailure,
+  timestamp: '2026-04-28T09:00:00.000Z',
+  url: 'https://example.com/assets/app-ffee9988.js:1:2',
+  stackTrace:
+    'TypeError: Chunk failed\n    at https://example.com/assets/app-ffee9988.js:1:2',
+};
+
+describe('issueFingerprint', () => {
+  test('is the SHA-256 hex digest of the telemetry fingerprint', async () => {
+    expect(
+      await issueFingerprint({
+        timestamp: '2026-04-27T12:00:00.000Z',
+        url: 'https://example.com/',
+        message: 'Broken',
+      }),
+    ).toBe('649d60c2ca005780376ea10c2dc41367ce5ddd6ceaee41c580c028d66c1d0809');
+  });
+});
+
 describe('createAutoReportedIssue', () => {
   test('does not create another issue when an open auto-reported issue has the same fingerprint', async () => {
-    const fetchMock = mock(
-      async (input: RequestInfo | URL, _init?: RequestInit) => {
-        const url = String(input);
-
-        if (url.includes('/issues?')) {
-          return Response.json([
-            {
-              number: 24,
-              body: [
-                '# Auto-reported application error',
-                '',
-                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at https://example.com/assets/app-[hash].js"}',
-              ].join('\n'),
-            },
-          ]);
-        }
-
-        return Response.json({ id: 2 }, { status: 201 });
-      },
-    );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = githubWith([
+      { number: 24, body: await filedBody(chunkFailureNextBuild) },
+    ]);
 
     const result = await createAutoReportedIssue({
-      repo: 'acme/scc',
-      token: 'token-123',
-      payload: {
-        timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/assets/app-a1b2c3d4.js:12:34',
-        message: 'Chunk failed',
-        stackTrace:
-          'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
-      },
+      ...auth,
+      payload: chunkFailure,
     });
 
     expect(result).toEqual({ deduped: true, issueNumber: 24 });
@@ -54,63 +80,47 @@ describe('createAutoReportedIssue', () => {
   });
 
   test('checks additional open issue pages before creating a new auto-reported issue', async () => {
-    const fetchMock = mock(
-      async (input: RequestInfo | URL, _init?: RequestInit) => {
-        const url = String(input);
-
-        if (
-          url.includes('/issues?') &&
-          new URL(url).searchParams.get('page') === '1'
-        ) {
-          return Response.json(
-            Array.from({ length: 100 }, (_, index) => ({
-              number: index + 1,
-              body: '- Fingerprint: different',
-            })),
-          );
-        }
-
-        if (
-          url.includes('/issues?') &&
-          new URL(url).searchParams.get('page') === '2'
-        ) {
-          return Response.json([
-            {
-              number: 151,
-              body: [
-                '# Auto-reported application error',
-                '',
-                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at https://example.com/assets/app-[hash].js"}',
-              ].join('\n'),
-            },
-          ]);
-        }
-
-        return Response.json({ id: 2 }, { status: 201 });
-      },
+    const fetchMock = githubWith(
+      Array.from({ length: 100 }, (_, index) => ({
+        number: index + 1,
+        body: '- Fingerprint: different',
+      })),
+      [{ number: 151, body: await filedBody(chunkFailureNextBuild) }],
     );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const result = await createAutoReportedIssue({
-      repo: 'acme/scc',
-      token: 'token-123',
-      payload: {
-        timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/assets/app-a1b2c3d4.js:12:34',
-        message: 'Chunk failed',
-        stackTrace:
-          'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
-      },
+      ...auth,
+      payload: chunkFailure,
     });
 
     expect(result).toEqual({ deduped: true, issueNumber: 151 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  test('reports that differ only deep in a long stack trace are not deduped together', async () => {
+    // Backslashes escape to two characters, so these stacks, at the 16,000
+    // limit, differ only past the first 32,000 characters of the fingerprint JSON.
+    const stack = (last: string) => `${'\\'.repeat(15_999)}${last}`;
+    const first = { ...chunkFailure, stackTrace: stack('A') };
+    const second = { ...chunkFailure, stackTrace: stack('B') };
+    const json = buildTelemetryFingerprint(first);
+    expect(json.slice(0, 32_000)).toBe(
+      buildTelemetryFingerprint(second).slice(0, 32_000),
+    );
+    expect(json).not.toBe(buildTelemetryFingerprint(second));
+    expect(await issueFingerprint(first)).not.toBe(
+      await issueFingerprint(second),
+    );
+
+    const fetchMock = githubWith([{ number: 9, body: await filedBody(first) }]);
+    expect(await createAutoReportedIssue({ ...auth, payload: second })).toEqual(
+      { id: 2 },
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('GitHub issue body size', () => {
-  // GitHub refuses an issue body over 65,536 characters.
-  const GITHUB_ISSUE_BODY_MAX = 65_536;
   // U+0001 passes every field limit yet JSON-escapes to six characters.
   const worstCase = {
     timestamp: '2026-04-27T12:00:00.000Z',
@@ -120,22 +130,14 @@ describe('GitHub issue body size', () => {
   };
 
   test('a worst-case escaped auto-reported issue body stays under the GitHub limit and still dedupes', async () => {
-    const body = buildAutoReportedIssueBody(worstCase);
+    const body = await filedBody(worstCase);
+    expect(GITHUB_ISSUE_BODY_MAX).toBe(65_536);
     expect(body.length).toBeLessThanOrEqual(GITHUB_ISSUE_BODY_MAX);
     expect(body).toContain(worstCase.stackTrace);
 
-    const fetchMock = mock(async (input: RequestInfo | URL) =>
-      String(input).includes('/issues?')
-        ? Response.json([{ number: 7, body }])
-        : Response.json({ id: 2 }, { status: 201 }),
-    );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    githubWith([{ number: 7, body }]);
     expect(
-      await createAutoReportedIssue({
-        repo: 'acme/scc',
-        token: 'token-123',
-        payload: worstCase,
-      }),
+      await createAutoReportedIssue({ ...auth, payload: worstCase }),
     ).toEqual({ deduped: true, issueNumber: 7 });
   });
 
@@ -148,7 +150,6 @@ describe('GitHub issue body size', () => {
         return Response.json({ id: 2 }, { status: 201 });
       },
     ) as unknown as typeof fetch;
-    const auth = { repo: 'acme/scc', token: 'token-123' };
     await createAutoReportedIssue({ ...auth, payload: worstCase });
     await createUserReportedIssue({
       ...auth,
@@ -172,8 +173,7 @@ describe('GitHub error snippet', () => {
     ) as unknown as typeof fetch;
 
     const error = await createUserReportedIssue({
-      repo: 'acme/scc',
-      token: 'token-123',
+      ...auth,
       payload: {
         description: 'Broken',
         timestamp: '2026-04-27T12:00:00.000Z',

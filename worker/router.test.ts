@@ -223,22 +223,46 @@ test('generated output at its limits is returned; one item or character over is 
     }).fetch(contractRequest(path));
   const items = (count: number, length = 10) =>
     Array.from({ length: count }, () => 'x'.repeat(length));
-  const atLimit = { expertRecommended: items(50, 2_000), other: items(50) };
-  expect(
-    await assertResponse(await generate('/api/skills', atLimit), 200),
-  ).toEqual(atLimit);
-  for (const [path, output] of [
-    ['/api/skills', { expertRecommended: items(51), other: [] }],
-    ['/api/experience', { expertRecommended: [], other: items(1, 2_001) }],
+  const summaries = (count: number, length = 10) =>
+    items(count, length).map((text) => ({ title: text, text }));
+  // [path, model output at the limit, its route response, model outputs over it]
+  const cases = [
+    [
+      '/api/skills',
+      { expertRecommended: items(50, 2_000), other: items(50, 2_000) },
+      undefined,
+      [
+        { expertRecommended: items(51), other: [] },
+        { expertRecommended: [], other: items(1, 2_001) },
+      ],
+    ],
+    [
+      '/api/experience',
+      { expertRecommended: items(50, 2_000), other: items(50, 2_000) },
+      undefined,
+      [
+        { expertRecommended: [], other: items(51) },
+        { expertRecommended: items(1, 2_001), other: [] },
+      ],
+    ],
     [
       '/api/summaries',
-      { summaries: [{ title: 'Developer', text: 'x'.repeat(2_001) }] },
+      { summaries: summaries(50, 2_000) },
+      summaries(50, 2_000),
+      [{ summaries: summaries(51) }, { summaries: summaries(1, 2_001) }],
     ],
-  ] as const) {
-    const body = await assertResponse(await generate(path, output), 502);
-    expect(body.error).toBe('Failed to generate content');
+  ] as const;
+  for (const [path, atLimit, response, overLimit] of cases) {
+    const expected: unknown = response ?? atLimit;
+    expect(await assertResponse(await generate(path, atLimit), 200)).toEqual(
+      expected as Record<string, unknown>,
+    );
+    for (const output of overLimit) {
+      const body = await assertResponse(await generate(path, output), 502);
+      expect(body.error).toBe('Failed to generate content');
+    }
   }
-  expect(log).toHaveBeenCalledTimes(3);
+  expect(log).toHaveBeenCalledTimes(6);
   expect(log).toHaveBeenCalledWith(
     expect.objectContaining({ category: 'generated_output_limit' }),
   );

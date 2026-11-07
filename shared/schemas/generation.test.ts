@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
 import { zodSchema } from 'ai';
 import {
+  BoundedExperienceSchema,
+  BoundedSkillsSchema,
+  BoundedSummarySchema,
   ExperienceSchema,
-  exceedsGeneratedOutputLimits,
   GENERATED_OUTPUT_LIMITS,
   generationRequestSchema,
   MAX_PROMPT_LENGTH,
@@ -76,30 +78,49 @@ test('a Generation request prompt is accepted up to its cap and refused one char
   expect(generationRequestSchema.safeParse({ prompt: '' }).success).toBe(false);
 });
 
-test('generated output is within its limits at exactly 50 items of 2,000 characters', () => {
+const strings = (count: number, length = 10) =>
+  Array.from({ length: count }, () => 'x'.repeat(length));
+const summaries = (count: number, length = 10) =>
+  strings(count, length).map((text) => ({ title: text, text }));
+
+test('the Generated output limits are 50 items and 2,000 characters', () => {
   expect(GENERATED_OUTPUT_LIMITS).toEqual({ items: 50, length: 2_000 });
-  const text = 'x'.repeat(2_000);
-  const items = Array.from({ length: 50 }, () => text);
-  expect(
-    exceedsGeneratedOutputLimits({ expertRecommended: items, other: items }),
-  ).toBe(false);
-  expect(
-    exceedsGeneratedOutputLimits({
-      summaries: items.map(() => ({ title: text, text })),
-    }),
-  ).toBe(false);
 });
 
-test('generated output one item or one character over a limit exceeds it, wherever it sits', () => {
-  const items = (count: number, length = 10) =>
-    Array.from({ length: count }, () => 'x'.repeat(length));
+for (const [name, schema] of [
+  ['skills', BoundedSkillsSchema],
+  ['experience', BoundedExperienceSchema],
+] as const)
+  test(`bounded ${name} accepts 50 items of 2,000 characters and refuses one more of either`, () => {
+    const atLimit = strings(50, 2_000);
+    expect(
+      schema.safeParse({ expertRecommended: atLimit, other: atLimit }).success,
+    ).toBe(true);
+    for (const output of [
+      { expertRecommended: strings(51), other: [] },
+      { expertRecommended: [], other: strings(51) },
+      { expertRecommended: strings(1, 2_001), other: [] },
+      { expertRecommended: [], other: strings(1, 2_001) },
+    ])
+      expect(schema.safeParse(output).success).toBe(false);
+  });
+
+test('bounded summaries accept 50 summaries of 2,000 characters and refuse one more of either', () => {
+  expect(BoundedSummarySchema.safeParse(summaries(50, 2_000)).success).toBe(
+    true,
+  );
   for (const output of [
-    { expertRecommended: items(51), other: [] },
-    { expertRecommended: [], other: items(51) },
-    { expertRecommended: items(1, 2_001), other: [] },
-    { summaries: items(51).map((title) => ({ title, text: title })) },
-    { summaries: [{ title: 'Developer', text: 'x'.repeat(2_001) }] },
+    summaries(51),
     [{ title: 'x'.repeat(2_001), text: 'Developer' }],
+    [{ title: 'Developer', text: 'x'.repeat(2_001) }],
   ])
-    expect(exceedsGeneratedOutputLimits(output)).toBe(true);
+    expect(BoundedSummarySchema.safeParse(output).success).toBe(false);
+});
+
+test('the unbounded schemas the provider gets accept any size', () => {
+  const huge = strings(51, 2_001);
+  expect(
+    SkillsSchema.safeParse({ expertRecommended: huge, other: huge }).success,
+  ).toBe(true);
+  expect(SummarySchema.safeParse(summaries(51, 2_001)).success).toBe(true);
 });

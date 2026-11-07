@@ -2,7 +2,6 @@ import { generateText, type LanguageModel, Output } from 'ai';
 import { z } from 'zod';
 import {
   ExperienceSchema,
-  exceedsGeneratedOutputLimits,
   SkillsSchema,
   SummarySchema,
 } from '../../shared/schemas/generation.ts';
@@ -15,10 +14,15 @@ export class GeneratedOutputLimitError extends Error {
   }
 }
 
-/** Returns a section generator's result, or throws if it is over its limits. */
-export function boundGeneratedOutput<T>(output: T): T {
-  if (exceedsGeneratedOutputLimits(output))
-    throw new GeneratedOutputLimitError();
+/**
+ * Returns a section generator's result, or throws if it fails the bounded
+ * schema for that generator (the Generated output limits).
+ */
+export function boundGeneratedOutput<T>(
+  schema: { safeParse: (value: unknown) => { success: boolean } },
+  output: T,
+): T {
+  if (!schema.safeParse(output).success) throw new GeneratedOutputLimitError();
   return output;
 }
 

@@ -34,6 +34,20 @@ function cappedReport<const F extends Record<string, CappedField>>(fields: F) {
   return {
     schema: z.object(shape),
     maxLength: entries.reduce((total, [, field]) => total + field.maxLength, 0),
+    /** Cuts every string field to its limit; other fields pass through. */
+    truncate<T extends Record<string, unknown>>(report: T): T {
+      return Object.fromEntries(
+        Object.entries(report).map(([key, value]) => {
+          const limit = fields[key]?.maxLength;
+          return [
+            key,
+            typeof value === 'string' && limit !== undefined
+              ? value.slice(0, limit)
+              : value,
+          ];
+        }),
+      ) as T;
+    },
   };
 }
 
@@ -90,19 +104,7 @@ export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;
 export function boundTelemetry(
   telemetry: ErrorTelemetryPayload,
 ): ErrorTelemetryPayload {
-  return {
-    ...telemetry,
-    url: telemetry.url.slice(0, REPORT_FIELD_LIMITS.url),
-    message: telemetry.message.slice(0, REPORT_FIELD_LIMITS.message),
-    ...(telemetry.stackTrace === undefined
-      ? {}
-      : {
-          stackTrace: telemetry.stackTrace.slice(
-            0,
-            REPORT_FIELD_LIMITS.stackTrace,
-          ),
-        }),
-  };
+  return errorTelemetry.truncate(telemetry);
 }
 
 const STACK_COORDINATE_SUFFIX_PATTERN = /:\d+:\d+\b/g;
