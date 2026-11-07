@@ -20,7 +20,8 @@ const repoConfig = {
   submodules: [['push.recurseSubmodules', 'on-demand']],
   recurse: [['submodule.recurse', 'true']],
   tags: [['push.followTags', 'true']],
-  pushurl: [['remote.pushDefault', 'https://example.com/repo.git']],
+  pushdefault: [['remote.pushDefault', 'https://example.com/repo.git']],
+  pushurl: [['remote.origin.pushurl', 'https://example.com/repo.git']],
   aliased: [
     ['alias.p', 'push'],
     ['alias.ship', '!git push origin main'],
@@ -107,6 +108,10 @@ const allowed: [string, Where][] = [
   ['git log -- p', 'aliased'],
   ['git commit -m "fix the git hook"', 'main'],
   ['echo git is great', 'main'],
+  ["rg '\\.push\\(' app/", 'main'],
+  ['grep -n push worker/x.ts', 'main'],
+  ['cat docs/push.md', 'main'],
+  ['git status && \\\n  git log -1', 'main'],
   ['git -c user.name="Jane Doe" status', 'main'],
   [
     "git -c user.name='Jane Doe' -c user.email=j@d commit -m 'fix the git hook'",
@@ -196,7 +201,8 @@ const blocked: [string, Where][] = [
   ['git push origin feat', 'submodules'],
   ['git push origin feat', 'recurse'],
   ['git push origin feat', 'tags'],
-  ['git push', 'pushurl'],
+  ['git push', 'pushdefault'],
+  ['git push origin feat', 'pushurl'],
   // Aliases (any, since a push alias may be defined in another repo) and
   // typos git may autocorrect.
   ['git st', 'aliased'],
@@ -207,6 +213,9 @@ const blocked: [string, Where][] = [
   ['cd ../aliased && git ship', 'feature'],
   ['git -C ../aliased ship', 'feature'],
   ['git pussh origin main', 'feature'],
+  ['git \\\nship', 'aliased'],
+  ['git pu\\\nsh --force origin main', 'feature'],
+  ["sh -c 'git \\\nship'", 'aliased'],
   ['if true; then git ship; fi', 'aliased'],
   ['while true; do git ship; done', 'aliased'],
   ['! git ship', 'aliased'],
