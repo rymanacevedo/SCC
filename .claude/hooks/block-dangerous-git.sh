@@ -90,27 +90,27 @@ check_dangerous_patterns() {
 # shell_words: COMMAND with quotes and backslashes removed, like NORMALIZED,
 # but whitespace inside a quoted string becomes \x01 so the string stays one
 # word (-c user.name="Jane Doe"). A quoted string that mentions git may be a
-# script for an inner shell (sh -c '...'), so it is left to be split.
+# script for an inner shell (sh -c '...'), so it is left to be split. One
+# awk pass over tokens, so large heredocs stay fast.
 shell_words() {
-  local s=$COMMAND out="" chunk="" quote="" c i
-  for ((i = 0; i < ${#s}; i++)); do
-    c=${s:i:1}
-    if [ -z "$quote" ]; then
-      case $c in
-        "'"|'"') quote=$c; chunk="" ;;
-        '\') out+=${s:i+1:1}; i=$((i + 1)) ;;
-        *) out+=$c ;;
-      esac
-    elif [ "$c" = "$quote" ]; then
-      if [[ "$chunk" =~ (^|[^A-Za-z0-9_-])git([^A-Za-z0-9_-]|$) ]]; then out+=$chunk
-      else out+=${chunk//[[:space:]]/$'\x01'}
-      fi
-      quote="" chunk=""
-    elif [ "$c" != '\' ]; then
-      chunk+=$c
-    fi
-  done
-  printf '%s\n' "$out$chunk"
+  printf '%s\n' "$COMMAND" | LC_ALL=C awk '
+    function quoted(chunk) {
+      gsub(/\\/, "", chunk)
+      if (chunk !~ /(^|[^A-Za-z0-9_-])git([^A-Za-z0-9_-]|$)/) gsub(/[ \t\n]/, "\001", chunk)
+      printf "%s", chunk
+    }
+    { s = s (NR > 1 ? "\n" : "") $0 }
+    END {
+      while (s != "") {
+        if (match(s, /^[^"\047\\]+/)) printf "%s", substr(s, 1, RLENGTH)
+        else if (match(s, /^\\./)) printf "%s", substr(s, 2, 1)
+        else if (match(s, /^\047[^\047]*\047/)) quoted(substr(s, 2, RLENGTH - 2))
+        else if (match(s, /^"([^"\\]|\\.)*"/)) quoted(substr(s, 2, RLENGTH - 2))
+        else { rest = substr(s, 2); gsub(/\\/, "", rest); printf "%s", rest; RLENGTH = length(s) }
+        s = substr(s, RLENGTH + 1)
+      }
+      print ""
+    }'
 }
 
 # simple_commands: shell_words split into simple commands, one per line.
@@ -125,15 +125,18 @@ simple_commands() {
     s/(;|&|\||\(|\)|\{|\})/\n/g'
 }
 
-# program_index <words...>: index of the program a simple command runs,
-# past VAR=value and control words; for a wrapper, its first git word.
+# program_index <var> <words...>: set <var> to the index of the program a
+# simple command runs, past VAR=value and control words; for a wrapper, its
+# first git word. Sets a variable rather than printing, to avoid a fork per
+# command.
 program_index() {
+  local out=$1; shift
   local words=("$@") i=0 n=$#
   while [ "$i" -lt "$n" ] && [[ "${words[$i]}" =~ ^($SHELL_PREFIX)$ ]]; do i=$((i + 1)); done
   if [[ "${words[$i]##*/}" =~ ^($WRAPPERS)$ ]]; then
     while [ "$i" -lt "$n" ] && ! [[ "${words[$i]##*/}" =~ ^git(-($PUSH_PLUMBING))?$ ]]; do i=$((i + 1)); done
   fi
-  echo "$i"
+  printf -v "$out" '%s' "$i"
 }
 
 # check_git_invocation <args after git...>: block a subcommand that may push
@@ -159,14 +162,15 @@ check_git_subcommands() {
     block "defines git config inline that can add aliases"
   fi
 
-  local segment words i program
+  local segment words at program
   while IFS= read -r segment; do
+    [[ "$segment" == *git* ]] || continue
     read -ra words <<< "$segment"
     [ "${#words[@]}" -gt 0 ] || continue
-    i=$(program_index "${words[@]}")
-    program=${words[$i]##*/}
+    program_index at "${words[@]}"
+    program=${words[$at]##*/}
     [[ "$program" =~ ^git-($PUSH_PLUMBING)$ ]] && block "runs $program, which pushes without git push"
-    [ "$program" = "git" ] && check_git_invocation "${words[@]:i+1}"
+    [ "$program" = "git" ] && check_git_invocation "${words[@]:at+1}"
   done < <(simple_commands)
   return 0
 }
@@ -215,7 +219,7 @@ check_push_config() {
   return 0
 }
 
-# check_push_target (also pins the resolved push URL): a configured remote (also when implied by config), and
+# check_push_target: a configured remote (also when implied by config), and
 # a local branch (not a tag or other ref) that is not protected or a
 # detached HEAD.
 check_push_target() {
@@ -232,14 +236,25 @@ check_push_target() {
       repo_git config --get "branch.$BRANCH.remote" || echo origin)
   fi
   repo_git remote | grep -qxF -- "$REMOTE" || block "pushes to '$REMOTE', which is not a configured remote"
-  # get-url --push applies pushurl and insteadOf rewrites: the real target.
-  local url
-  url=$(repo_git remote get-url --push "$REMOTE")
-  [[ "$url" =~ ^($TRUSTED_PUSH_URLS)$ ]] || block "pushes to '$url', which is not this repo's GitHub remote"
+  check_push_url "$REMOTE"
+}
+
+# check_push_url <remote>: every URL the push goes to must be this repo on
+# GitHub. A remote may list several URLs and git pushes to all of them;
+# get-url --push --all applies pushurl and insteadOf rewrites.
+check_push_url() {
+  local url urls
+  urls=$(repo_git remote get-url --push --all "$1")
+  [ -n "$urls" ] || block "pushes to '$1', whose URL cannot be resolved"
+  while IFS= read -r url; do
+    [[ "$url" =~ ^($TRUSTED_PUSH_URLS)$ ]] || block "pushes to '$url', which is not this repo's GitHub remote"
+  done <<< "$urls"
   return 0
 }
 
 check_dangerous_patterns
+# Fast path: a command that never mentions git or push cannot run either.
+has_word "$NORMALIZED" 'git|push' || exit 0
 check_git_subcommands
 has_word "$NORMALIZED" push || exit 0
 parse_push

@@ -27,6 +27,7 @@ const repoConfig = {
     ['url.https://example.com/.pushInsteadOf', 'https://github.com/'],
   ],
   redirected: [['remote.origin.url', 'https://example.com/repo.git']],
+  multiurl: [['--add', 'remote.origin.url', 'https://example.com/repo.git']],
   insteadof: [['url.https://example.com/.insteadOf', 'https://github.com/']],
   ssh: [['remote.origin.url', 'git@github.com:rymanacevedo/SCC.git']],
   aliased: [
@@ -97,7 +98,7 @@ beforeAll(() => {
     git(repo, 'tag', 'v1.0');
     if (where === 'detached') git(repo, 'checkout', '-q', '--detach');
     else if (where !== 'main') git(repo, 'checkout', '-q', '-b', 'feat');
-    for (const [key, value] of config) git(repo, 'config', key, value);
+    for (const args of config) git(repo, 'config', ...args);
     dirs[where as Where] = repo;
   }
 });
@@ -215,6 +216,7 @@ const blocked: [string, Where][] = [
   ['git push origin feat', 'pushurl'],
   ['git push origin feat', 'pushinsteadof'],
   ['git push origin feat', 'redirected'],
+  ['git push origin feat', 'multiurl'],
   ['git push origin feat', 'insteadof'],
   // Aliases (any, since a push alias may be defined in another repo) and
   // typos git may autocorrect.
