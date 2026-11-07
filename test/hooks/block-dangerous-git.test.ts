@@ -73,6 +73,12 @@ const allowed: [string, Where][] = [
   ['git status && git push origin feat', 'main'],
   ['git stash push -m wip', 'main'],
   ['git status', 'main'],
+  ['GIT_OPTIONAL_LOCKS=0 git push origin feat', 'main'],
+  ['env git push origin feat', 'main'],
+  ['git push --no-verify -uv origin feat', 'main'],
+  ['git push -n origin feat', 'main'],
+  ['git -c push.default=current push', 'feature'],
+  ['git -c push.default=simple push origin feat', 'main'],
 ];
 
 const blocked: [string, Where][] = [
@@ -112,13 +118,33 @@ const blocked: [string, Where][] = [
   ['sh -c "git push origin main"', 'feature'],
   ['git status && git push origin feat && git push origin main', 'feature'],
   ['git status || git push origin main', 'feature'],
+  // Prefixes before git: the push is still found and checked.
+  ['GIT_OPTIONAL_LOCKS=0 git push origin main', 'feature'],
+  ['env git push --force origin feat', 'feature'],
+  ['GIT_DIR={main}/.git git push', 'feature'],
+  // Destination taken from config rather than the command.
+  ['git -c remote.origin.push=HEAD:main push origin', 'feature'],
+  ['git -c remote.origin.push=HEAD:main push origin feat', 'feature'],
+  ['git -c remote.origin.mirror=true push origin', 'feature'],
+  ['git -c push.default=upstream push', 'feature'],
+  ['git -c push.default=tracking push origin feat', 'feature'],
+  ['git push origin feat', 'matching'],
+  // Abbreviated or unknown options are not on the allowlist.
+  ['git push --del origin feat', 'feature'],
+  ['git push --force-with-l origin feat', 'feature'],
+  ['git push --mirr origin', 'feature'],
+  ['git push --no-verify --forc origin feat', 'feature'],
+  ['git push -nf origin feat', 'feature'],
+  ['git push --unknown origin feat', 'feature'],
   ['git reset --hard', 'feature'],
   ['git clean -fd', 'feature'],
   ['git branch -D feat', 'feature'],
 ];
 
 function expand(command: string) {
-  return command.replace('{main}', mainRepo).replace('{feature}', featureTree);
+  return command
+    .replaceAll('{main}', mainRepo)
+    .replaceAll('{feature}', featureTree);
 }
 
 describe('block-dangerous-git hook', () => {
