@@ -2,6 +2,11 @@ import { expect, spyOn, test } from 'bun:test';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
+import {
+  expectNoSensitiveValues,
+  SENSITIVE_MESSAGE,
+  SENSITIVE_URL,
+} from '../test/sensitive-reports.ts';
 import { createApiRouter } from './router.ts';
 import { createWorker } from './worker.ts';
 
@@ -30,6 +35,27 @@ test('the Worker converts thrown errors to a 500 without leaking details', async
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Internal error' });
     expect(log).toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+  }
+});
+
+test('the Worker redacts an unhandled error before logging it', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const worker = createWorker({
+      fetch: async () => {
+        throw new Error(SENSITIVE_MESSAGE, { cause: new Error(SENSITIVE_URL) });
+      },
+    });
+    await worker.fetch(new Request('https://scc.example/api/anything'));
+    const entry = log.mock.calls[0]?.[0] as { error: Record<string, unknown> };
+    expectNoSensitiveValues(JSON.stringify(entry));
+    expect(entry.error.message).toBe(
+      'Save failed for [redacted], call [redacted]',
+    );
+    expect(entry.error.causeMessage).toBe('https://scc.example/summary');
+    expect(entry.error.name).toBe('Error');
   } finally {
     log.mockRestore();
   }

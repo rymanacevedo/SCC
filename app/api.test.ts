@@ -1,4 +1,12 @@
 import { afterEach, expect, test } from 'bun:test';
+import { TRUNCATED } from '../shared/telemetryRedaction.ts';
+import {
+  expectNoSensitiveValues,
+  SENSITIVE_DESCRIPTION,
+  SENSITIVE_MESSAGE,
+  SENSITIVE_STACK,
+  SENSITIVE_URL,
+} from '../test/sensitive-reports.ts';
 import {
   createExperience,
   createSkills,
@@ -16,6 +24,31 @@ function mockFetch(
 ) {
   globalThis.fetch = handler as typeof fetch;
 }
+test('both report senders sanitize every field before it leaves the browser', async () => {
+  const bodies: string[] = [];
+  mockFetch(async (_path, init) => {
+    bodies.push(String(init?.body));
+    return Response.json({ ok: true });
+  });
+  const timestamp = new Date().toISOString();
+  await reportError({
+    timestamp,
+    url: SENSITIVE_URL,
+    message: SENSITIVE_MESSAGE,
+    stackTrace: SENSITIVE_STACK,
+  });
+  await reportIssue({
+    timestamp,
+    url: SENSITIVE_URL,
+    description: `${SENSITIVE_DESCRIPTION} ${'d'.repeat(9_000)}`,
+  });
+  expect(bodies).toHaveLength(2);
+  for (const body of bodies) {
+    expectNoSensitiveValues(body);
+    expect(JSON.parse(body).url).toBe('https://scc.example/summary');
+  }
+  expect(JSON.parse(bodies[1] ?? '{}').description).toEndWith(TRUNCATED);
+});
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {
   const signal = new AbortController().signal;
   const requests: string[] = [];

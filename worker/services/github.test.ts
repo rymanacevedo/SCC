@@ -6,7 +6,7 @@ import {
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
-} from '../../test/sensitive-telemetry.ts';
+} from '../../test/sensitive-reports.ts';
 import {
   buildAutoReportedIssueBody,
   buildUserReportedIssueBody,

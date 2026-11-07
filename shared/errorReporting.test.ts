@@ -47,8 +47,8 @@ test('fingerprint is not split by query strings, fragments or redacted values', 
     }),
   ).not.toContain('abc123');
 });
-test('sanitizes every telemetry and user report field', () => {
-  expect(
+test('sanitizes every Error telemetry and User report field', () => {
+  expect<unknown>(
     sanitizeErrorTelemetry({
       timestamp: telemetry.timestamp,
       url: 'https://scc.example/info?token=abc123#fragment',

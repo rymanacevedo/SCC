@@ -1,7 +1,8 @@
 import {
-  buildTelemetryFingerprint,
+  buildSanitizedTelemetryFingerprint,
   type ErrorTelemetryPayload as ErrorTelemetry,
   errorTelemetrySchema,
+  type SanitizedErrorTelemetry,
   sanitizeErrorTelemetry,
   sanitizeUserIssueReport,
   type UserIssueReportPayload as UserIssueReport,
@@ -43,13 +44,14 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
-export function buildAutoReportedIssueBody(telemetry: ErrorTelemetry) {
-  // Never trust the client to have sanitized: reduce, redact and truncate again.
-  const payload = sanitizeErrorTelemetry(telemetry);
+function renderAutoReportedIssueBody(
+  payload: SanitizedErrorTelemetry,
+  fingerprint: string,
+) {
   return [
     '# Auto-reported application error',
     '',
-    `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
+    `${FINGERPRINT_LABEL}${fingerprint}`,
     `- Timestamp: ${payload.timestamp}`,
     `- URL: ${payload.url}`,
     `- Message: ${payload.message}`,
@@ -59,6 +61,15 @@ export function buildAutoReportedIssueBody(telemetry: ErrorTelemetry) {
     payload.stackTrace ?? 'No stack trace available.',
     '```',
   ].join('\n');
+}
+
+export function buildAutoReportedIssueBody(telemetry: ErrorTelemetry) {
+  // Never trust the client to have sanitized: reduce, redact and truncate again.
+  const payload = sanitizeErrorTelemetry(telemetry);
+  return renderAutoReportedIssueBody(
+    payload,
+    buildSanitizedTelemetryFingerprint(payload),
+  );
 }
 
 export function buildUserReportedIssueBody(report: UserIssueReport) {
@@ -212,7 +223,9 @@ export async function createAutoReportedIssue({
   token: string;
   payload: ErrorTelemetry;
 }) {
-  const fingerprint = buildTelemetryFingerprint(payload);
+  // Sanitize once: the lookup, title and body all use the same values.
+  const telemetry = sanitizeErrorTelemetry(payload);
+  const fingerprint = buildSanitizedTelemetryFingerprint(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
@@ -226,8 +239,8 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `${AUTO_REPORTED_TITLE_PREFIX}${sanitizeErrorTelemetry(payload).message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
-    body: buildAutoReportedIssueBody(payload),
+    title: `${AUTO_REPORTED_TITLE_PREFIX}${telemetry.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
+    body: renderAutoReportedIssueBody(telemetry, fingerprint),
     labels: ['bug', 'auto-reported'],
   });
 }

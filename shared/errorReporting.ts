@@ -22,40 +22,44 @@ export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;
 // Per-field caps applied at write time, before a report is sent, stored in a
 // GitHub issue, or fingerprinted. Together they stay far below GitHub's
 // 65,536-character issue body limit.
-export const TELEMETRY_FIELD_MAX = {
+export const REPORT_FIELD_MAX = {
   url: 2_000,
   message: 1_000,
   stackTrace: 8_000,
   description: 8_000,
 } as const;
 
-function sanitizeReportUrl(url: string): string {
-  return sanitizeTelemetryText(toPathOnlyUrl(url), TELEMETRY_FIELD_MAX.url);
+declare const sanitized: unique symbol;
+/** Error telemetry that has been through sanitizeErrorTelemetry. */
+export type SanitizedErrorTelemetry = ErrorTelemetryPayload & {
+  readonly [sanitized]: true;
+};
+
+/** A report URL reduced to origin + path, redacted and truncated. */
+export function sanitizeReportUrl(url: string): string {
+  return sanitizeTelemetryText(toPathOnlyUrl(url), REPORT_FIELD_MAX.url);
 }
 
-/** The only form of error telemetry that may be sent, stored or fingerprinted. */
+/** The only form of Error telemetry that may be sent, stored or fingerprinted. */
 export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
-): ErrorTelemetryPayload {
+): SanitizedErrorTelemetry {
   return {
     timestamp: telemetry.timestamp,
     url: sanitizeReportUrl(telemetry.url),
-    message: sanitizeTelemetryText(
-      telemetry.message,
-      TELEMETRY_FIELD_MAX.message,
-    ),
+    message: sanitizeTelemetryText(telemetry.message, REPORT_FIELD_MAX.message),
     ...(telemetry.stackTrace === undefined
       ? {}
       : {
           stackTrace: sanitizeTelemetryText(
             telemetry.stackTrace,
-            TELEMETRY_FIELD_MAX.stackTrace,
+            REPORT_FIELD_MAX.stackTrace,
           ),
         }),
-  };
+  } as SanitizedErrorTelemetry;
 }
 
-/** The only form of a user report that may be sent or stored. */
+/** The only form of a User report that may be sent or stored. */
 export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,
 ): UserIssueReportPayload {
@@ -64,7 +68,7 @@ export function sanitizeUserIssueReport(
     url: sanitizeReportUrl(report.url),
     description: sanitizeTelemetryText(
       report.description,
-      TELEMETRY_FIELD_MAX.description,
+      REPORT_FIELD_MAX.description,
     ),
   };
 }
@@ -79,16 +83,25 @@ export function normalizeTelemetryFingerprintValue(value: string): string {
     .replace(HASHED_ASSET_FILENAME_PATTERN, '/assets/$1-[hash]$2');
 }
 
-/** Computed on sanitized values, so query strings and redacted data never split it. */
-export function buildTelemetryFingerprint(
-  payload: ErrorTelemetryPayload,
+/**
+ * Computed on sanitized values, so query strings and redacted data never split
+ * it. Takes already-sanitized telemetry so a caller sanitizes once and every
+ * use (the dedup lookup, the issue body) sees the same fingerprint.
+ */
+export function buildSanitizedTelemetryFingerprint(
+  telemetry: SanitizedErrorTelemetry,
 ): string {
-  const telemetry = sanitizeErrorTelemetry(payload);
   return JSON.stringify({
     url: normalizeTelemetryFingerprintValue(telemetry.url),
     message: telemetry.message,
     stackTrace: normalizeTelemetryFingerprintValue(telemetry.stackTrace ?? ''),
   });
+}
+
+export function buildTelemetryFingerprint(
+  telemetry: ErrorTelemetryPayload,
+): string {
+  return buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(telemetry));
 }
 
 const TELEMETRY_DEDUPLICATION_WINDOW_MS = 1_000;

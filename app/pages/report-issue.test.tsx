@@ -5,7 +5,7 @@ import {
   expectNoSensitiveValues,
   SENSITIVE_DESCRIPTION,
   SENSITIVE_URL,
-} from '../../test/sensitive-telemetry.ts';
+} from '../../test/sensitive-reports.ts';
 import { ERROR_MODAL_MESSAGE } from '../error-reporting.ts';
 import { buttonClass } from '../ui/button.tsx';
 import { ErrorPage, NotFoundPage } from './error.tsx';

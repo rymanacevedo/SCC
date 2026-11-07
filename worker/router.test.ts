@@ -9,7 +9,7 @@ import {
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
-} from '../test/sensitive-telemetry.ts';
+} from '../test/sensitive-reports.ts';
 import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 

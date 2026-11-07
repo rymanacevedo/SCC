@@ -1,28 +1,15 @@
 import { APICallError } from 'ai';
 import type { Middleware } from 'remix/router';
-import {
-  sanitizeTelemetryText,
-  toPathOnlyUrl,
-} from '../../shared/telemetryRedaction.ts';
 import { isClientAbort } from '../lib/abort.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
+import {
+  describeErrorForLog,
+  redactForLog,
+  redactUrlForLog,
+} from '../lib/log.ts';
 import { apiError } from '../lib/response.ts';
 import { GitHubIssueCreationError } from '../services/github.ts';
 import type { bodyValidation } from './guards.ts';
-
-// Caps for one Workers Logs line. Each field is redacted before it is cut.
-const LOG_FIELD_MAX = { url: 2_000, message: 1_000, stack: 4_000 } as const;
-
-/** Redacts and truncates a logged value; non-strings are logged as they are. */
-function logText(value: unknown, max: number = LOG_FIELD_MAX.message) {
-  return typeof value === 'string' ? sanitizeTelemetryText(value, max) : value;
-}
-
-function logUrl(value: unknown) {
-  return typeof value === 'string'
-    ? sanitizeTelemetryText(toPathOnlyUrl(value), LOG_FIELD_MAX.url)
-    : value;
-}
 
 export type RouteErrorPolicy = {
   generation?: boolean;
@@ -48,8 +35,8 @@ export function createRouteErrorMiddleware<T>(
         'timestamp' in payload &&
         'url' in payload
           ? {
-              timestamp: logText(payload.timestamp),
-              url: logUrl(payload.url),
+              timestamp: redactForLog(payload.timestamp),
+              url: redactUrlForLog(payload.url),
             }
           : {};
       const isConfigurationError = error instanceof EnvironmentValidationError;
@@ -76,28 +63,17 @@ export function createRouteErrorMiddleware<T>(
         route: path,
         category,
         ...reportMetadata,
-        name: error instanceof Error ? logText(error.name) : undefined,
-        stack:
-          error instanceof Error
-            ? logText(error.stack, LOG_FIELD_MAX.stack)
-            : undefined,
-        causeMessage:
-          error instanceof Error && error.cause instanceof Error
-            ? logText(error.cause.message)
-            : undefined,
-        message: logText(
-          error instanceof Error ? error.message : String(error),
-        ),
+        ...describeErrorForLog(error),
         ...(isGitHubError
           ? {
               githubStatus: error.status,
-              githubResponseSnippet: logText(error.details),
+              githubResponseSnippet: redactForLog(error.details),
             }
           : {}),
         ...(isProviderError
           ? {
               providerStatus: error.statusCode,
-              providerUrl: logUrl(error.url),
+              providerUrl: redactUrlForLog(error.url),
               isRetryable: error.isRetryable,
             }
           : {}),

@@ -67,6 +67,55 @@ describe('redactTelemetryText', () => {
     );
   });
 
+  test('masks secret shapes that are not simple word runs', () => {
+    // Synthetic key shapes are assembled at runtime so no credential-shaped
+    // literal sits in the source.
+    const jwt = ['eyJhbGciOiJub25lIn0', 'eyJmYWtlIjoxfQ', 'ZmFrZQ'].join('.');
+    const prefixedKey = ['sk', 'test', 'Fake0Not0Real0Value'].join('-');
+    const accessKey = `${'AK'}${'IA'}${'Z'.repeat(16)}`;
+    const cases: [string, string][] = [
+      ['base64 aGVsbG8+d29ybGQ/Zm9vYmFyYmF6cXV4cXV1eDEyMzQ1Ng==', 'aGVsbG8'],
+      [`jwt ${jwt}`, 'eyJ'],
+      ['password="my secret pass" next', 'secret pass'],
+      [`key ${prefixedKey}`, 'Fake0Not0Real'],
+      [`aws ${accessKey}`, 'ZZZZ'],
+      ['GET /api/x?email=x#a done', 'email'],
+      ['HTTPS://X.COM/a?b=c done', 'b=c'],
+      ['ws://x.com/a?sid=zz done', 'sid'],
+      ['Call 07700 900123 or 555-1234', '900123'],
+      ['Call 07700 900123 or 555-1234', '555-1234'],
+    ];
+    for (const [input, secret] of cases)
+      expect(redactTelemetryText(input)).not.toContain(secret);
+    expect(redactTelemetryText('GET /api/x?email=x#a done')).toBe(
+      'GET /api/x done',
+    );
+    expect(redactTelemetryText('password="my secret pass" next')).toBe(
+      'password="[redacted]" next',
+    );
+  });
+
+  test('does not redact ordinary names that merely contain a keyword', () => {
+    const text = 'author: John, keyboard: 3, monkey=banana, issue #12';
+    expect(redactTelemetryText(text)).toBe(text);
+    expect(redactTelemetryText('Cache key: foo, x: token=abc')).toBe(
+      'Cache key: [redacted], x: token=[redacted]',
+    );
+  });
+
+  test('stays fast on adversarial input', () => {
+    const inputs = [
+      'keyx'.repeat(8_000),
+      'http://a'.repeat(4_000),
+      'a@'.repeat(16_000),
+      '+1'.repeat(16_000),
+      `${'a'.repeat(31_999)}=`,
+    ];
+    const started = performance.now();
+    for (const input of inputs) redactTelemetryText(input);
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
   test('is idempotent', () => {
     const once = redactTelemetryText(text);
     expect(redactTelemetryText(once)).toBe(once);

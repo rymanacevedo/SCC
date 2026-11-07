@@ -1,4 +1,5 @@
 import { isClientAbort } from './lib/abort.ts';
+import { describeErrorForLog } from './lib/log.ts';
 import { apiError } from './lib/response.ts';
 
 export function createWorker(api: {
@@ -23,7 +24,7 @@ export function createWorker(api: {
         console.error({
           category: 'unknown',
           message: 'router.fetch threw',
-          error,
+          error: describeErrorForLog(error),
         });
         return apiError(500, 'Internal error');
       }
