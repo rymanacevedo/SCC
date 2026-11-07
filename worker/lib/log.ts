@@ -7,6 +7,7 @@ import {
   stackWithHeader,
 } from '../../shared/stackFrames.ts';
 import {
+  type OmittedField,
   omittedText,
   sanitizeErrorName,
   toPathOnlyUrl,
@@ -49,7 +50,7 @@ function thrownType(value: unknown): string {
 }
 
 /** A string property's length placeholder; any other value, its type. */
-function omittedProperty(field: string, value: unknown): string {
+function omittedProperty(field: OmittedField, value: unknown): string {
   return typeof value === 'string'
     ? omittedText(field, value)
     : `[${field} omitted: ${thrownType(value)}]`;

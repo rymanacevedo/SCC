@@ -197,6 +197,9 @@ describe('sanitizeStackTrace', () => {
       '    at eval (//janedoe.example.com/script.js:1:7)',
       // A nested URL inside any scheme but blob: omits the frame.
       '    at a (node:https://janedoe.example.com/a.js:1:2)',
+      // `node:` with an authority would read its host as a path.
+      '    at n (node://janedoe.example.com/script.js:1:2)',
+      '    at m (node:fs:1:2)',
       '    at b (webpack:https://janedoe.example.com/a.js:3:4)',
       '    at c (file:https://janedoe.example.com/a.js:5:6)',
       // A hosted scheme without `//` would read its host as a path.
@@ -210,6 +213,8 @@ describe('sanitizeStackTrace', () => {
       [
         'Error',
         '    at eval (https://app.invalid/script.js:1:7)',
+        '    [frame omitted]',
+        '    at m (node:fs:1:2)',
         '    [frame omitted]',
         '    at e (file://app.invalid/srv/a.js:9:9)',
         '    at f (https://app.invalid/a.js:1:2)',

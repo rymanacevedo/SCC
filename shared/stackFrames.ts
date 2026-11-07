@@ -83,7 +83,12 @@ function sanitizeFile(file: string): string | undefined {
     return HTTP_SCHEME.test(rest) ? `blob:${toPathOnlyUrl(rest)}` : undefined;
   // `node:https://host/…`, `webpack:https://host/…`: a nested URL.
   if (SCHEME.test(rest.replace(/^\/+/, ''))) return undefined;
-  if (scheme === 'node') return `node:${sanitizePath(rest, /\//)}`;
+  // `node:fs`, `node:internal/vm`; `node://host/…` would read its host as a
+  // path, so an authority omits the frame.
+  if (scheme === 'node')
+    return rest.startsWith('//')
+      ? undefined
+      : `node:${sanitizePath(rest, /\//)}`;
   if (!HOSTED_SCHEMES.has(scheme) || !rest.startsWith('//')) return undefined;
   let url: URL;
   try {
@@ -159,7 +164,7 @@ const FRAME_PREFIX = '    at ';
  * frame boundary to at most `max` characters, visible marker included.
  * The first line is read as `Name: message` before it is tried as a frame,
  * so `Error: …@host:1:2` is not taken for a Firefox frame; it becomes the
- * error name alone (`TypeError`), or `[redacted]` if that is not an error
+ * error name alone (`TypeError`), or `Error` if that is not a known error
  * class name. Input past four times `max` is never read, and a frame the
  * bound cut in half is dropped.
  */

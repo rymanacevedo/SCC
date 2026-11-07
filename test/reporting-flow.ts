@@ -73,7 +73,8 @@ try {
   );
   const issue = reports.find((report) => report.path === '/api/report-issue');
   assert.ok(issue);
-  assert.equal(issue.body.url, `${base}/throw-component`);
+  // The report carries the path alone, under the synthetic origin.
+  assert.equal(issue.body.url, 'https://app.invalid/throw-component');
   assert.deepEqual(Object.keys(issue.body).sort(), ['timestamp', 'url']);
   await page.click(`${dialog} button[type="button"]`);
   assert.equal(await page.$eval(dialog, (node) => node.open), false);

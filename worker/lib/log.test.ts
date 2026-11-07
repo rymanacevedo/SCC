@@ -7,6 +7,7 @@ import {
   SENSITIVE_KEY_ERROR_NAME,
   SENSITIVE_KEY_URL,
   SENSITIVE_NAMED_STACK,
+  SENSITIVE_PLACEHOLDER_MESSAGE,
   SENSITIVE_MESSAGE,
   SENSITIVE_PAREN_URL,
   SENSITIVE_STACK,
@@ -113,6 +114,16 @@ test('a key-bearing Error.name, cause.name or header is logged as Error', () => 
     causeName: 'Error',
     stack: 'Error\n    at save (https://app.invalid/a.js:1:2)',
   });
+});
+
+test('a placeholder-shaped message with a crafted label is logged by its length', () => {
+  const described = describeErrorForLog(
+    new Error(SENSITIVE_PLACEHOLDER_MESSAGE),
+  );
+  expectNoSensitiveValues(JSON.stringify(described));
+  expect(described.message).toBe(
+    `[message omitted: ${SENSITIVE_PLACEHOLDER_MESSAGE.length} characters]`,
+  );
 });
 
 test('a header ending like a frame location is logged as the error name', () => {

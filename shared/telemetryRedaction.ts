@@ -22,19 +22,27 @@ export const REPORT_ORIGIN = 'https://app.invalid';
 // field costs bounded CPU however large the request body was.
 export const SANITIZE_INPUT_FACTOR = 4;
 
-// What omittedText produces, so a second pass (the Worker, after the
-// browser) keeps the original length instead of measuring the placeholder.
-const OMITTED_TEXT = /^\[[a-z ]+ omitted: \d+ characters\]$/;
+/** The only labels a length placeholder is built with. */
+export const OMITTED_FIELDS = ['message', 'text'] as const;
+export type OmittedField = (typeof OMITTED_FIELDS)[number];
+
+// A placeholder this code built, for one of its own labels, with at most a
+// 4-digit length: `[message omitted: 142 characters]`.
+const OMITTED_TEXT = new RegExp(
+  `^\\[(${OMITTED_FIELDS.join('|')}) omitted: (\\d{1,4}) characters\\]$`,
+);
 
 /**
- * `[message omitted: 142 characters]`: free text, reduced to its length. A
- * value that already is such a placeholder is kept, within the usual digit
- * cap, so a crafted one cannot carry a number through.
+ * `[message omitted: 142 characters]`: free text, reduced to its length.
+ * A second pass (the Worker, after the browser) keeps the first pass's
+ * length: a placeholder with the same label and a length of at most 4
+ * digits is parsed and rebuilt from its number, never passed on as given.
+ * Anything else, such as a crafted label, is measured as new text.
  */
-export function omittedText(field: string, value: string): string {
-  return OMITTED_TEXT.test(value) && !hasTooManyDigits(value)
-    ? value
-    : `[${field} omitted: ${value.length} characters]`;
+export function omittedText(field: OmittedField, value: string): string {
+  const [, label, length] = OMITTED_TEXT.exec(value) ?? [];
+  const count = label === field ? Number(length) : value.length;
+  return `[${field} omitted: ${count} characters]`;
 }
 
 /**

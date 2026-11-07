@@ -16,6 +16,7 @@ import {
   SENSITIVE_KEY_URL,
   SENSITIVE_MESSAGE,
   SENSITIVE_NAMED_STACK,
+  SENSITIVE_PLACEHOLDER_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_TIMESTAMP,
   SENSITIVE_URL,
@@ -287,6 +288,20 @@ describe('issue bodies sent to GitHub', () => {
     expectNoSensitiveValues(`${title}\n${body}`);
     expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromBrowser));
     expect(title).toBe('Auto-reported error: TypeError at /summary');
+  });
+
+  test('a placeholder-shaped message with a crafted label is measured, through both passes', async () => {
+    const sent = captureCreatedIssues();
+    const fromBrowser = sanitizeErrorTelemetry({
+      ...chunkFailure,
+      message: SENSITIVE_PLACEHOLDER_MESSAGE,
+    });
+    await createAutoReportedIssue({ ...auth, payload: fromBrowser });
+    const { title, body } = sent[0] ?? { title: '', body: '' };
+    expectNoSensitiveValues(`${title}\n${body}`);
+    expect(body).toContain(
+      `- Message: \`[message omitted: ${SENSITIVE_PLACEHOLDER_MESSAGE.length} characters]\``,
+    );
   });
 
   test('a key-bearing error name reaches neither title, body nor fingerprint', async () => {

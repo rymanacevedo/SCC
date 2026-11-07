@@ -79,6 +79,7 @@ export const SENSITIVE_VALUES = [
   'janedoe.example.com',
   '555.123.4567',
   '555_987_6543',
+  'correct horse battery staple',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -101,6 +102,10 @@ export const SENSITIVE_AT_HEADER_STACK =
 
 /** A stack whose header is an error-shaped name carrying a key. */
 export const SENSITIVE_NAMED_STACK = `${SENSITIVE_KEY_ERROR_NAME}: failed\n    at save (https://scc.example/a.js:1:2)`;
+
+/** A message shaped like a placeholder, with a passphrase as its label. */
+export const SENSITIVE_PLACEHOLDER_MESSAGE =
+  '[password correct horse battery staple omitted: 1 characters]';
 
 /** A URL with userinfo and a query, embedded in free text. */
 export const SENSITIVE_EMBEDDED_URL =
@@ -148,6 +153,7 @@ export const SENSITIVE_STACK = [
   '    at run [as x_555_987_6543] (https://scc.example/a.js:3:2)',
   '    at eval (//janedoe.example.com/script.js:3:3)',
   '    at load (node:https://janedoe.example.com/a.js:3:4)',
+  '    at load (node://janedoe.example.com/script.js:3:5)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [

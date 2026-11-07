@@ -152,8 +152,8 @@ describe('isSensitiveToken', () => {
 
 describe('free text is reduced to its length', () => {
   test('omittedText names the field and keeps only the length', () => {
-    expect(omittedText('description', 'Email me at jane@example.com')).toBe(
-      '[description omitted: 28 characters]',
+    expect(omittedText('message', 'Email me at jane@example.com')).toBe(
+      '[message omitted: 28 characters]',
     );
     expect(omittedText('message', '')).toBe('[message omitted: 0 characters]');
   });
@@ -166,6 +166,28 @@ describe('free text is reduced to its length', () => {
     const crafted = '[message omitted: 5551234567 characters]';
     expect(omittedText('message', crafted)).toBe(
       '[message omitted: 40 characters]',
+    );
+  });
+
+  test('only the exact labels the code emits are recognized, and always rebuilt', () => {
+    for (const crafted of [
+      '[password correct horse battery staple omitted: 1 characters]',
+      '[text omitted: 1 characters]',
+      '[message omitted: 01234 characters]',
+      '[message omitted: 12345 characters]',
+      '[message  omitted: 12 characters]',
+      '[Message omitted: 12 characters]',
+      '[message omitted: 12 characters] ',
+    ])
+      expect(omittedText('message', crafted)).toBe(
+        `[message omitted: ${crafted.length} characters]`,
+      );
+    // A recognized placeholder is rebuilt from its number, not passed on.
+    expect(omittedText('message', '[message omitted: 0012 characters]')).toBe(
+      '[message omitted: 12 characters]',
+    );
+    expect(omittedText('text', '[text omitted: 7 characters]')).toBe(
+      '[text omitted: 7 characters]',
     );
   });
 });
