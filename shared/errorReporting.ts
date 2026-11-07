@@ -34,6 +34,10 @@ declare const sanitized: unique symbol;
 export type SanitizedErrorTelemetry = ErrorTelemetryPayload & {
   readonly [sanitized]: true;
 };
+/** A User report that has been through sanitizeUserIssueReport. */
+export type SanitizedUserIssueReport = UserIssueReportPayload & {
+  readonly [sanitized]: true;
+};
 
 /** A report URL reduced to origin + path, redacted and truncated. */
 export function sanitizeReportUrl(url: string): string {
@@ -62,7 +66,7 @@ export function sanitizeErrorTelemetry(
 /** The only form of a User report that may be sent or stored. */
 export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,
-): UserIssueReportPayload {
+): SanitizedUserIssueReport {
   return {
     timestamp: report.timestamp,
     url: sanitizeReportUrl(report.url),
@@ -70,7 +74,7 @@ export function sanitizeUserIssueReport(
       report.description,
       REPORT_FIELD_MAX.description,
     ),
-  };
+  } as SanitizedUserIssueReport;
 }
 
 const STACK_COORDINATE_SUFFIX_PATTERN = /:\d+:\d+\b/g;

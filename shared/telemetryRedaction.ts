@@ -74,14 +74,53 @@ function reduceUrlToken(value: string): string {
   return `${path}${STACK_COORDINATE_SUFFIX.exec(rest)?.[0] ?? ''}`;
 }
 
-// `name=value`, `name: value`, or `multi-word-name value` (a header written
-// with a space). The name is judged by isSecretName.
+// `name=value`, `name: value`, or `name value` (a header written with a
+// space). The name is judged by isSecretName.
 const PAIR_NAME_PATTERN = /(?<![\w-])([\w-]{1,64})(["']?\s*[=:]\s*|[ \t]+)/g;
 const PAIR_SEPARATOR = /[=:]/;
 const STACK_FRAME_VALUE = /^[([]/;
 // A quoted value is consumed whole, however long and even if unterminated.
-const PAIR_VALUE_PATTERN =
-  /"(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?|(?:(?:Bearer|Basic)\s+)?(?:\[redacted\]|[^\s&"',;)}\]]+)/y;
+const QUOTED_VALUE = /"(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?/y;
+// Cookie and Authorization values hold several secrets separated by `;` or
+// `,`, so the whole rest of the line goes.
+const REST_OF_LINE_VALUE = /[^\n]+/y;
+const REST_OF_LINE_NAME_WORDS = new Set(['authorization', 'cookie', 'cookies']);
+// An auth scheme in any case, then its credentials to the end of the line
+// (Digest and AWS put several comma-separated secrets there).
+const AUTH_SCHEME_VALUE =
+  /(?:bearer|basic|token|digest|negotiate|ntlm|hoba|mutual|aws4-hmac-sha256)\s+[^\n]+/iy;
+// After `=` or `:` a value stops at `&` and `;` (query and cookie syntax).
+// After a bare space it runs to whitespace, so `Tr0ub4dor&3` goes whole.
+const PAIR_PLAIN_VALUE = /\[redacted\]|[^\s&"',;)}\]]+/y;
+const WORD_PLAIN_VALUE = /\[redacted\]|[^\s"',)}\]]+/y;
+const LABEL_SEPARATOR = /^:\s/;
+// Credential words common in prose before `: ` (`Failed to refresh token:
+// network error`, `Invalid key: expected string`). After them a value is
+// masked only if it looks like a secret; password-class words always mask.
+const LENIENT_NAME_WORDS = new Set([
+  'auth',
+  'jwt',
+  'key',
+  'keys',
+  'session',
+  'sid',
+  'signature',
+  'token',
+  'tokens',
+]);
+const NUMERIC_VALUE = /^[\d\s.:/-]+$/;
+const DIGITS = /\d/g;
+const SECRET_SYMBOL = /[_+=~!@#$%^&*]/;
+const LOWER = /[a-z]/;
+const UPPER = /[A-Z]/;
+// Credential words whose value is often a short number (`pin 4417`).
+const NUMERIC_SECRET_NAME_WORDS = new Set([
+  'code',
+  'otp',
+  'passcode',
+  'pin',
+  'totp',
+]);
 const SECRET_NAME_WORDS = new Set([
   'auth',
   'authorization',
@@ -166,21 +205,104 @@ function isSecretName(words: string[]): boolean {
   );
 }
 
+function execAt(pattern: RegExp, value: string, index: number) {
+  pattern.lastIndex = index;
+  return pattern.exec(value)?.[0];
+}
+
+/**
+ * After a single credential word and a bare space, only a value that looks
+ * like a secret is masked, so prose (`the token expired`, `password is
+ * required`, `session started 2026-10-13`) stays readable.
+ */
+function looksLikeSecret(candidate: string, words: string[]): boolean {
+  if (candidate.startsWith('/') || candidate.includes('://')) return false;
+  if (NUMERIC_VALUE.test(candidate))
+    return (
+      words.some((word) => NUMERIC_SECRET_NAME_WORDS.has(word)) &&
+      (candidate.match(DIGITS)?.length ?? 0) >= 4
+    );
+  if (candidate.length < 6) return false;
+  if (HAS_DIGIT.test(candidate) && HAS_LETTER.test(candidate)) return true;
+  if (SECRET_SYMBOL.test(candidate)) return true;
+  return (
+    candidate.length >= 16 && LOWER.test(candidate) && UPPER.test(candidate)
+  );
+}
+
+/**
+ * How a credential name meets its value:
+ * - `pair`: `=` or `:` (and JSON `"token":`). Any value is masked.
+ * - `label`: a lenient single word then `: ` (`token: x`). Only a secret.
+ * - `header`: a multi-word name then a space (`x-api-key abc`). Any value
+ *   except a stack frame.
+ * - `word`: a single word then a space (`Password hunter2`). Only a secret.
+ */
+type PairSeparator = 'pair' | 'label' | 'header' | 'word';
+
+function classifySeparator(separator: string, words: string[]): PairSeparator {
+  if (!PAIR_SEPARATOR.test(separator))
+    return words.length > 1 ? 'header' : 'word';
+  const lenient = words.length === 1 && LENIENT_NAME_WORDS.has(words[0] ?? '');
+  return lenient && LABEL_SEPARATOR.test(separator) ? 'label' : 'pair';
+}
+
+/** The extent of the value that follows a credential name, or undefined. */
+function secretValueAt(
+  value: string,
+  start: number,
+  words: string[],
+  separator: PairSeparator,
+): string | undefined {
+  const strict = separator === 'pair' || separator === 'header';
+  const quoted = execAt(QUOTED_VALUE, value, start);
+  if (quoted) {
+    const closed = quoted.length > 1 && quoted.endsWith(quoted[0] ?? '');
+    const inner = quoted.slice(1, closed ? -1 : undefined);
+    return strict || looksLikeSecret(inner, words) ? quoted : undefined;
+  }
+  if (
+    separator === 'pair' &&
+    words.some((word) => REST_OF_LINE_NAME_WORDS.has(word))
+  )
+    return execAt(REST_OF_LINE_VALUE, value, start);
+  // `token bearer of bad news` is prose; after `=`, `:` or a header name an
+  // auth scheme introduces a credential.
+  if (separator !== 'word') {
+    const scheme = execAt(AUTH_SCHEME_VALUE, value, start);
+    if (scheme) return scheme;
+  }
+  const plain = execAt(
+    separator === 'pair' || separator === 'label'
+      ? PAIR_PLAIN_VALUE
+      : WORD_PLAIN_VALUE,
+    value,
+    start,
+  );
+  if (!plain || plain === REDACTED) return plain;
+  if (separator === 'pair') return plain;
+  // `at fetchWithAuth (url)` and `refreshToken [as x]` are stack frames.
+  if (STACK_FRAME_VALUE.test(plain)) return undefined;
+  return separator === 'header' || looksLikeSecret(plain, words)
+    ? plain
+    : undefined;
+}
+
 function redactSecretPairs(value: string): string {
   let output = '';
   let cursor = 0;
   for (const match of value.matchAll(PAIR_NAME_PATTERN)) {
     if (match.index < cursor) continue;
     const words = nameWords(match[1] ?? '');
-    // Only a multi-word name may use a bare space (`x-api-key abc`), so prose
-    // such as `the key is missing` stays readable.
-    const spaced = !PAIR_SEPARATOR.test(match[2] ?? '');
-    if ((spaced && words.length < 2) || !isSecretName(words)) continue;
+    if (!isSecretName(words)) continue;
     const valueStart = match.index + match[0].length;
-    PAIR_VALUE_PATTERN.lastIndex = valueStart;
-    const secret = PAIR_VALUE_PATTERN.exec(value)?.[0];
-    // `at fetchWithAuth (url)` and `refreshToken [as x]` are stack frames.
-    if (!secret || (spaced && STACK_FRAME_VALUE.test(secret))) continue;
+    const secret = secretValueAt(
+      value,
+      valueStart,
+      words,
+      classifySeparator(match[2] ?? '', words),
+    );
+    if (!secret) continue;
     const quote = secret[0] === '"' || secret[0] === "'" ? secret[0] : '';
     const closed = quote && secret.length > 1 && secret.endsWith(quote);
     output += `${value.slice(cursor, valueStart)}${quote}${REDACTED}${closed ? quote : ''}`;
@@ -189,7 +311,27 @@ function redactSecretPairs(value: string): string {
   return cursor === 0 ? value : `${output}${value.slice(cursor)}`;
 }
 
-const BEARER_PATTERN = /\b(Bearer)\s+(?!\[redacted\])[\w.~+/=-]+/gi;
+// `Bearer x` / `Basic x` outside a name=value pair.
+const AUTH_SCHEME_TOKEN_PATTERN =
+  /\b(Bearer|Basic)\s+(?!\[redacted\])([\w.~+/=-]+)/gi;
+const TOKEN_SYMBOL = /[\d.~+/=_-]/;
+
+/**
+ * `Bearer` as written in a header masks any credential of 4+ characters, so
+ * `Bearer of the message` stays. Any other spelling (`the bearer of bad
+ * news`, `Basic information`) masks only a token that looks like a
+ * credential: a digit or symbol, mixed case past the first letter, or 20+
+ * characters.
+ */
+function redactAuthSchemeToken(match: string, scheme: string, token: string) {
+  const headerSpelling = scheme === 'Bearer' || scheme === 'BEARER';
+  const credential =
+    (headerSpelling && (token.length >= 4 || TOKEN_SYMBOL.test(token))) ||
+    (token.length >= 6 && TOKEN_SYMBOL.test(token)) ||
+    (token.length >= 8 && UPPER.test(token.slice(1)) && LOWER.test(token)) ||
+    token.length >= 20;
+  return credential ? `${scheme} ${REDACTED}` : match;
+}
 const JWT_PATTERN = /(?<![\w-])eyJ[\w-]{2,}\.[\w-]{2,}(?:\.[\w-]+)?/g;
 // Well-known API key prefixes too short for the long-token rule.
 const PREFIXED_KEY_PATTERN =
@@ -223,7 +365,7 @@ function redactLongToken(match: string): string {
 /** Masks known sensitive patterns, leaving messages and stack frames readable. */
 export function redactTelemetryText(value: string): string {
   return redactSecretPairs(value.replace(URL_TOKEN_PATTERN, reduceUrlToken))
-    .replace(BEARER_PATTERN, `$1 ${REDACTED}`)
+    .replace(AUTH_SCHEME_TOKEN_PATTERN, redactAuthSchemeToken)
     .replace(JWT_PATTERN, REDACTED)
     .replace(PREFIXED_KEY_PATTERN, REDACTED)
     .replace(EMAIL_PATTERN, REDACTED)

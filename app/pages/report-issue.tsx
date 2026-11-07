@@ -1,5 +1,8 @@
 import { type Handle, on, ref } from 'remix/component';
-import { userIssueReportSchema } from '../../shared/errorReporting.ts';
+import {
+  sanitizeUserIssueReport,
+  userIssueReportSchema,
+} from '../../shared/errorReporting.ts';
 import { reportIssue } from '../api.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, type ButtonVariant } from '../ui/button.tsx';
@@ -55,7 +58,10 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
       message = '';
       fieldError = '';
       await handle.update();
-      const result = await reportIssue(parsed.data, handle.signal);
+      const result = await reportIssue(
+        sanitizeUserIssueReport(parsed.data),
+        handle.signal,
+      );
       if (handle.signal.aborted) return;
       success = result.ok;
       message = result.ok

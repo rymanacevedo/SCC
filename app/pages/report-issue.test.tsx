@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
+import { captureFetchBodies } from '../../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
   SENSITIVE_DESCRIPTION,
@@ -137,11 +138,7 @@ test('report modal validates, submits only explicit description, and shows failu
 });
 
 test('the report sends a path-only URL and a redacted description', async () => {
-  const bodies: string[] = [];
-  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
-    bodies.push(String(init?.body));
-    return Response.json({ ok: true });
-  }) as unknown as typeof fetch;
+  const bodies = captureFetchBodies();
   const previousUrl = window.location.href;
   // happy-dom starts on about:blank; its setURL is the only way to navigate.
   const { happyDOM } = window as unknown as {

@@ -135,6 +135,7 @@ describe('issue bodies', () => {
     );
     expect(body).toContain('at fetchWithAuth (');
     expect(body).toContain('GET https://localhost/api Authorization:');
+    expect(body).toContain('    Cookie: [redacted]\n    at retry (');
   });
 
   test('the user-reported body is path-only and redacted', () => {

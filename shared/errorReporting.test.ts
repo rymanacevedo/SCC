@@ -66,7 +66,7 @@ test('sanitizes every Error telemetry and User report field', () => {
     stackTrace:
       'Error\n    at save (https://scc.example/a.js:1:2) apiKey=[redacted]',
   });
-  expect(
+  expect<unknown>(
     sanitizeUserIssueReport({
       timestamp: telemetry.timestamp,
       url: 'https://scc.example/info#fragment',

@@ -54,6 +54,9 @@ test('logged report metadata, error text and provider URLs are path-only and red
   expect(String(entry.stack)).toContain(
     'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
   );
+  expect(String(entry.stack)).toContain(
+    'request headers: authorization=[redacted]\n    Cookie: [redacted]\n    at retry (',
+  );
 });
 
 test('an over-long logged stack is truncated with a marker', async () => {

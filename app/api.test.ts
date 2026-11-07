@@ -1,6 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { sanitizeErrorTelemetry } from '../shared/errorReporting.ts';
+import {
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
+} from '../shared/errorReporting.ts';
 import { TRUNCATED } from '../shared/telemetryRedaction.ts';
+import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
   SENSITIVE_DESCRIPTION,
@@ -25,12 +29,8 @@ function mockFetch(
 ) {
   globalThis.fetch = handler as typeof fetch;
 }
-test('a User report is sanitized before it leaves the browser; Error telemetry arrives sanitized', async () => {
-  const bodies: string[] = [];
-  mockFetch(async (_path, init) => {
-    bodies.push(String(init?.body));
-    return Response.json({ ok: true });
-  });
+test('both report senders post an already-sanitized report unchanged', async () => {
+  const bodies = captureFetchBodies();
   const timestamp = new Date().toISOString();
   const telemetry = sanitizeErrorTelemetry({
     timestamp,
@@ -38,19 +38,19 @@ test('a User report is sanitized before it leaves the browser; Error telemetry a
     message: SENSITIVE_MESSAGE,
     stackTrace: SENSITIVE_STACK,
   });
-  await reportError(telemetry);
-  expect(bodies[0]).toBe(JSON.stringify(telemetry));
-  await reportIssue({
+  const report = sanitizeUserIssueReport({
     timestamp,
     url: SENSITIVE_URL,
     description: `${SENSITIVE_DESCRIPTION} ${'d'.repeat(9_000)}`,
   });
-  expect(bodies).toHaveLength(2);
+  await reportError(telemetry);
+  await reportIssue(report);
+  expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
   for (const body of bodies) {
     expectNoSensitiveValues(body);
     expect(JSON.parse(body).url).toBe('https://scc.example/summary');
   }
-  expect(JSON.parse(bodies[1] ?? '{}').description).toEndWith(TRUNCATED);
+  expect(report.description).toEndWith(TRUNCATED);
 });
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {
   const signal = new AbortController().signal;
@@ -86,11 +86,11 @@ test('API client sends JSON with signal and parses shared output schemas for all
   expect(
     (
       await reportIssue(
-        {
+        sanitizeUserIssueReport({
           timestamp: new Date().toISOString(),
           description: 'issue',
           url: 'https://scc.example',
-        },
+        }),
         signal,
       )
     ).ok,
@@ -174,11 +174,11 @@ for (const [name, send] of [
     'reportIssue',
     (signal?: AbortSignal) =>
       reportIssue(
-        {
+        sanitizeUserIssueReport({
           url: 'https://scc.example/info',
           description: 'Failed',
           timestamp: new Date().toISOString(),
-        },
+        }),
         signal,
       ),
   ],

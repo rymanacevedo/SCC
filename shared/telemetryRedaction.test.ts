@@ -26,7 +26,105 @@ describe('toPathOnlyUrl', () => {
   });
 });
 
-describe('redactTelemetryText: council round 1', () => {
+describe('redactTelemetryText: credential headers', () => {
+  test('masks the whole value after any auth scheme, in any case', () => {
+    const digest =
+      'Digest username="u", nonce="n1", response="6629fae49393a05397450978507c4ef1"';
+    const cases = [
+      'Authorization: bearer short-secret',
+      'Authorization: BEARER short-secret',
+      'authorization=Bearer short-secret',
+      'Authorization: basic dXNlcjpwYXNz',
+      'Proxy-Authorization: Basic dXNlcjpwYXNz',
+      'Authorization: token short-secret',
+      `Authorization: ${digest}`,
+      'auth: Negotiate short-secret',
+      'x-auth: bearer short-secret',
+      '"Authorization":"bearer short-secret"',
+      "{ authorization: 'Basic dXNlcjpwYXNz' }",
+    ];
+    for (const input of cases) {
+      const redacted = redactTelemetryText(`${input}\nnext line`);
+      expect(redacted).not.toMatch(/short-secret|dXNlcjpwYXNz|6629fae|nonce/);
+      expect(redacted.endsWith('\nnext line')).toBe(true);
+    }
+    expect(redactTelemetryText('Authorization: bearer short-secret')).toBe(
+      'Authorization: [redacted]',
+    );
+  });
+
+  test('masks the whole Cookie and Set-Cookie value to the end of the line', () => {
+    const cases = [
+      'Cookie: a=one; b=private-value',
+      'cookie: a=one;b=private-value; c=more',
+      'Cookie=a=one; b=private-value',
+      'Set-Cookie: sid=private-value; Path=/; HttpOnly; Secure',
+      'set-cookie: theme=dark; private-value=1',
+      '"cookie":"a=one; b=private-value"',
+    ];
+    for (const input of cases) {
+      const redacted = redactTelemetryText(`${input}\nGET /next`);
+      expect(redacted).not.toMatch(/private-value|one|sid|theme/);
+      expect(redacted.endsWith('\nGET /next')).toBe(true);
+    }
+    expect(redactTelemetryText('Cookie: a=one; b=private-value')).toBe(
+      'Cookie: [redacted]',
+    );
+  });
+
+  test('masks a secret-looking value after a single credential word and a space', () => {
+    const cases: [string, string][] = [
+      ['Password hunter2', 'hunter2'],
+      ['Authorization abc123', 'abc123'],
+      ['token s3cr3t-value done', 's3cr3t'],
+      ['secret p@ss_w0rd!', 'p@ss'],
+      ['pin 4417', '4417'],
+      ['otp 774411', '774411'],
+      ['key AbCdEfGhIjKlMnOpQr', 'AbCdEfGh'],
+      ['api key zz99zz99', 'zz99'],
+      ['bearer 0123456789abcdef', '0123456789'],
+      ['secret Tr0ub4dor&3 next', '&3'],
+      ["Password 'hunter2'", 'hunter2'],
+      ['password: hunter', 'hunter'],
+      ['token: abc123def', 'abc123'],
+      ['Token abcdef123456', 'abcdef'],
+    ];
+    for (const [input, secret] of cases)
+      expect(redactTelemetryText(input)).not.toContain(secret);
+    expect(redactTelemetryText('Password hunter2')).toBe('Password [redacted]');
+  });
+
+  test('keeps prose, dates, paths and stack frames after a credential word', () => {
+    const prose = [
+      'the token expired',
+      'key not found',
+      'password is required',
+      'Password must contain 8 characters',
+      'session started 2026-10-13 12:00',
+      'key 123 not found',
+      'token v2 rejected',
+      'token /api/session/refresh failed',
+      'secret santa',
+      'auth header missing',
+      'cookie consent banner',
+      'the bearer of bad news',
+      'Bearer of the message',
+      'Basic information is required',
+      'Failed to refresh token: network error',
+      'Invalid key: expected string',
+      'session: expired',
+      'Unexpected token \'<\', "<!DOCTYPE " is not valid JSON',
+      'Unexpected token < in JSON at position 0',
+      "TypeError: Cannot read properties of undefined (reading 'token')",
+      '    at validateToken (https://scc.example/assets/auth.js:12:34)',
+      '    at Object.password [as check] (https://scc.example/a.js:1:2)',
+      '    at token.refresh (https://scc.example/a.js:1:2)',
+    ];
+    for (const line of prose) expect(redactTelemetryText(line)).toBe(line);
+  });
+});
+
+describe('redactTelemetryText: URLs, quoted values and credential names', () => {
   test('drops userinfo from URLs embedded in text', () => {
     for (const input of [
       'GET https://alice:hunter2@localhost/api?debug=true failed',
@@ -177,7 +275,7 @@ describe('redactTelemetryText', () => {
     const text = 'author: John, keyboard: 3, monkey=banana, issue #12';
     expect(redactTelemetryText(text)).toBe(text);
     expect(redactTelemetryText('Cache key: foo, x: token=abc')).toBe(
-      'Cache key: [redacted], x: token=[redacted]',
+      'Cache key: foo, x: token=[redacted]',
     );
   });
 
@@ -193,6 +291,11 @@ describe('redactTelemetryText', () => {
       'a://b@'.repeat(5_000),
       'u:p@'.repeat(8_000),
       'www.a/?'.repeat(4_000),
+      `token "${"token 'a ".repeat(3_500)}`,
+      'Password '.repeat(3_500),
+      'token: bearer '.repeat(2_000),
+      'session: x '.repeat(3_000),
+      'Bearer of '.repeat(3_000),
     ];
     const started = performance.now();
     for (const input of inputs) redactTelemetryText(input);

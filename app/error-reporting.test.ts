@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { resetReportedTelemetryForTests } from '../shared/errorReporting.ts';
+import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
   SENSITIVE_MESSAGE,
@@ -14,11 +15,7 @@ afterEach(() => {
   resetReportedTelemetryForTests();
 });
 test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses', async () => {
-  const bodies: unknown[] = [];
-  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
-    bodies.push(JSON.parse(String(init?.body)));
-    return Response.json({ ok: true });
-  }) as unknown as typeof fetch;
+  const bodies = captureFetchBodies();
   const error = Object.assign(new Error('Page failed'), {
     user: { name: 'Private' },
   });
@@ -26,7 +23,7 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   await reportErrorTelemetry(error, 'https://scc.example/info');
   await reportErrorTelemetry(new Response(null, { status: 404 }));
   expect(bodies).toHaveLength(1);
-  expect(bodies[0]).toEqual({
+  expect(JSON.parse(bodies[0] ?? '{}')).toEqual({
     url: 'https://scc.example/info',
     message: error.message,
     stackTrace: error.stack,
@@ -35,11 +32,7 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   expect(JSON.stringify(bodies)).not.toContain('Private');
 });
 test('auto-report sends a path-only URL and a redacted message and stack', async () => {
-  const bodies: string[] = [];
-  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
-    bodies.push(String(init?.body));
-    return Response.json({ ok: true });
-  }) as unknown as typeof fetch;
+  const bodies = captureFetchBodies();
   const error = Object.assign(new Error(SENSITIVE_MESSAGE), {
     stack: SENSITIVE_STACK,
   });
@@ -54,11 +47,7 @@ test('auto-report sends a path-only URL and a redacted message and stack', async
   );
 });
 test('errors that differ only by query string or redacted data are sent once', async () => {
-  const bodies: string[] = [];
-  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
-    bodies.push(String(init?.body));
-    return Response.json({ ok: true });
-  }) as unknown as typeof fetch;
+  const bodies = captureFetchBodies();
   const failure = (email: string) =>
     Object.assign(new Error(`Save failed for ${email}`), { stack: 'Error' });
   await reportErrorTelemetry(
