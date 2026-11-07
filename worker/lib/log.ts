@@ -3,6 +3,7 @@ import {
   sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
+import { sanitizeStackTrace } from '../../shared/stackFrames.ts';
 import { sanitizeTelemetryText } from '../../shared/telemetryRedaction.ts';
 
 // A logged stack is shorter than a stored one: Workers Logs lines stay small.
@@ -32,7 +33,10 @@ export function describeErrorForLog(error: unknown) {
     return { message: redactForLog(String(error)) };
   return {
     name: redactForLog(error.name),
-    stack: redactForLog(error.stack, LOG_STACK_MAX),
+    stack:
+      error.stack === undefined
+        ? undefined
+        : sanitizeStackTrace(error.stack, LOG_STACK_MAX),
     causeMessage:
       error.cause instanceof Error
         ? redactForLog(error.cause.message)

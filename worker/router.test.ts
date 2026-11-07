@@ -287,7 +287,7 @@ test('report route failure logs are path-only, redacted and truncated', async ()
       log.mockClear();
       globalThis.fetch = mock(async () => {
         if (failure === 'network')
-          throw new Error(`${SENSITIVE_MESSAGE} ${'x'.repeat(5_000)}`);
+          throw new Error(`${SENSITIVE_MESSAGE} ${'word '.repeat(1_000)}`);
         return new Response(
           `Bad credentials for jane.doe@example.com token=abc123`,
           { status: 401 },
@@ -307,12 +307,12 @@ test('report route failure logs are path-only, redacted and truncated', async ()
       expect(entry.category).toBe(`github_${failure}`);
       if (failure === 'network') {
         expect(entry.causeMessage).toMatch(
-          /^Save failed for \[redacted\], call \[redacted\] x+… \[truncated\]$/,
+          /^Save failed for \[redacted\], call \[redacted\] [word ]+… \[truncated\]$/,
         );
         expect(String(entry.causeMessage).length).toBeLessThan(1_100);
       } else {
         expect(entry.githubResponseSnippet).toBe(
-          'Bad credentials for [redacted] token=[redacted]',
+          'Bad credentials for [redacted]',
         );
       }
       expect(String(entry.stack)).toContain('GitHubIssueCreationError');

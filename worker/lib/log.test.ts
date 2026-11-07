@@ -37,10 +37,18 @@ test('an Error is logged with redacted name, message, cause and stack', () => {
   expect(described).toMatchObject({
     name: 'Error',
     message: 'Save failed for [redacted], call [redacted]',
-    causeMessage: 'GET https://scc.example/a(b) phone:[redacted]',
+    causeMessage: 'GET https://scc.example/a(b) [redacted]',
   });
-  expect(described.stack).toContain(
-    'GET https://scc.example/a(b) for phone:[redacted] and tel:[redacted]',
+  expect(described.stack).toBe(
+    [
+      'TypeError: Save failed',
+      '    at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
+      '    [frame omitted]',
+      '    at retry (https://scc.example/assets/api-1a2b3c4d.js:9:9)',
+      '    at loadPage (https://scc.example/assets/page.js:3:4)',
+      '    [frame omitted]',
+      '    at fn (https://scc.example/a(b).js:7:8)',
+    ].join('\n'),
   );
 });
 
@@ -48,8 +56,12 @@ test('a logged stack is capped at 4,000 characters with a marker', () => {
   const error = new Error('Broken');
   error.stack = `Error: Broken\n${'    at frame (https://scc.example/a.js:1:2)\n'.repeat(500)}`;
   const { stack } = describeErrorForLog(error) as { stack: string };
-  expect(stack.endsWith(TRUNCATED)).toBe(true);
-  expect(stack.length).toBe(4_000 + TRUNCATED.length);
+  // Cut at the last whole frame inside 4,000 characters.
+  expect(stack.endsWith(`(https://scc.example/a.js:1:2)\n${TRUNCATED}`)).toBe(
+    true,
+  );
+  expect(stack.length).toBeLessThanOrEqual(4_000 + TRUNCATED.length);
+  expect(stack.length).toBeGreaterThan(3_900);
   const short = new Error('Broken');
   short.stack = 'Error: Broken\n    at frame (https://scc.example/a.js:1:2)';
   expect(describeErrorForLog(short)).toMatchObject({ stack: short.stack });

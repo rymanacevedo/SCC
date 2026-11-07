@@ -44,7 +44,7 @@ The report a user writes in the Report an issue dialog, sent to `/api/report-iss
 _Avoid_: feedback, ticket
 
 ### Report sanitizing
-Reducing a report's URLs to origin + path, redacting sensitive patterns to `[redacted]`, and truncating each field with a `… [truncated]` marker. Runs in the browser before sending and again on the Worker before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
+Keeping only the parts of a report known to be safe: URLs as http(s) origin + path, stack traces as canonical frames, free text as allowlisted tokens. Everything else becomes `[redacted]`, and each field is truncated with a `… [truncated]` marker. The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
 _Avoid_: scrubbing, anonymizing
 
 ## Generation architecture

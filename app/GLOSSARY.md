@@ -86,16 +86,6 @@ _Avoid_: fetcher, proxy, resource route, service
 
 ## Reporting
 
-These terms are shared with the Worker; their full definitions live in [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#reporting).
-
-**Error telemetry**:
-The automatic report the app sends when a page throws: timestamp, URL, message and optional stack. The app sanitizes it once, dedups on that value, then sends it.
-_Avoid_: crash report, error log
-
-**User report**:
-The report a user writes in the Report an issue dialog: description, timestamp and URL. The dialog sanitizes it once before sending.
-_Avoid_: feedback, ticket
-
-**Report sanitizing**:
-Reducing a report's URLs to origin + path, redacting sensitive patterns to `[redacted]`, and truncating each field with a `… [truncated]` marker. In the app it runs once per report, before the API client sends it; the Worker runs it again (see [ADR-0002](../worker/docs/adr/0002-reports-are-redacted-before-storage.md)).
-_Avoid_: scrubbing, anonymizing
+- **Error telemetry**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#error-telemetry).
+- **User report**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#user-report).
+- **Report sanitizing**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#report-sanitizing).

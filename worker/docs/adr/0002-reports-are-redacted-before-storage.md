@@ -3,23 +3,28 @@ status: accepted
 date: 2026-11-07
 ---
 
-# Reports are reduced, redacted and truncated before storage, on both sides
+# Reports are sanitized fail-closed before storage, on both sides
 
-Error telemetry (`/api/errors`) and User reports (`/api/report-issue`) used to reach GitHub issues and Workers Logs as sent: full `location.href` with query string and fragment, raw messages, raw stacks, raw upstream response snippets. A resume builder's errors and free-text descriptions can easily carry an email address, a phone number, or a token. We decided that every report is **sanitized before it is stored**, by one shared module (`shared/telemetryRedaction.ts`, applied per field by `sanitizeErrorTelemetry` and `sanitizeUserIssueReport` in `shared/errorReporting.ts`):
+Error telemetry (`/api/errors`) and User reports (`/api/report-issue`) used to reach GitHub issues and Workers Logs as sent: full `location.href` with query string and fragment, raw messages, raw stacks, raw upstream response snippets. A resume builder's errors and free-text descriptions can easily carry an email address, a phone number, or a token.
 
-- URLs are reduced to origin + path: no credentials (`user:password@`), query string or fragment.
-- Free text (messages, stacks, descriptions, GitHub response snippets, the Worker entry's unhandled-error log) is redacted. Covered:
-  - email addresses, and phone numbers (international, North American, trunk-prefixed, 7-digit local);
-  - `Bearer` and `Basic` tokens in any case, JWTs, well-known key prefixes (`sk-`, `gh*_`, `xox*-`, `AKIA`), and long hex, base64 or base64url secrets;
-  - `name=value` and `name: value` pairs where a word of the name is a credential word: `token`, `key`, `secret`, `password`, `passphrase`, `passcode`, `pin`, `otp`, `auth`, `session`, `cookie`, … , or `code` qualified as a secret (`verification_code`, `mfaCode`, `reset-code`). `author`, `keyboard` and `error code` do not count. A quoted value is masked whole, however long, even if unterminated. After an auth scheme in any case (`bearer`, `Basic`, `Token`, `Digest`, `Negotiate`, …) the rest of the line is masked, and so is the whole value of `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie`, since those hold several `;`- or `,`-separated secrets;
-  - a lenient credential word that is common in error text (`token`, `key`, `session`, `auth`, …) followed by `: ` masks only a value that looks like a secret, so `Failed to refresh token: network error` stays readable. Password-class words (`password`, `secret`, `pin`, …) and JSON (`"token":`) mask any value;
-  - a credential name followed by a bare space, the way headers and prose write it. A multi-word name (`x-api-key abc`, `X-Auth-Token abc`) masks any value; a single word (`Password hunter2`, `Authorization abc123`, `pin 4417`) masks only a value that looks like a secret: 6+ characters with letters and digits, or a symbol, or 16+ mixed-case characters, or 4+ digits after a numeric word (`pin`, `otp`, `passcode`). Never when the next thing is `(` or `[`, as in a stack frame (`at fetchWithAuth (…)`), a path, or a date;
-  - the userinfo, query and fragment of anything URL-like inside the text: absolute, relative (`api/x?…`), schemeless (`www.example.com/x?…`) or `user:pass@host`. A trailing `:line:column` is kept.
-  
-  Each match becomes `[redacted]`. The GitHub response snippet is redacted before its 300-character cut, and a token split by the bounded read is dropped.
-- Every field is then truncated to a fixed limit with a visible `… [truncated]` marker (`REPORT_FIELD_MAX`: URL 2,000, message 1,000, stack 8,000, description 8,000 characters; a logged stack is capped at 4,000).
+A first design masked known-sensitive patterns (a denylist) and kept everything else. Five review rounds each found a new shape it missed: userinfo, long quoted values, lowercase auth schemes, cookie lists, colon-adjacent phone numbers, parens in URL paths, several URLs in one JSON run. A denylist fails open: every shape nobody thought of survives.
 
-The browser sanitizes in the API client before sending, so the data never crosses the wire. The Worker sanitizes again before building an issue body, a fingerprint, or a log line, because it never trusts the client. A second pass can only redact more, never less. The Worker sanitizes Error telemetry once per request (`SanitizedErrorTelemetry`) and uses that one value for the dedup lookup, the title and the body, so the fingerprint written into an issue always matches the one looked up. The fingerprint is computed on sanitized values, so dedup is not split by query strings or by redacted personal data.
+We decided that every report is **sanitized fail-closed before it is stored**: only shapes known to be safe survive, and everything else becomes `[redacted]`. One shared module does it (`shared/telemetryRedaction.ts` for URLs and free text, `shared/stackFrames.ts` for stack traces), applied per field by `sanitizeErrorTelemetry` and `sanitizeUserIssueReport` in `shared/errorReporting.ts`:
+
+- **URLs** (a report's `url`, a frame's file, a URL inside text) must parse as http(s). They are emitted as origin + path, with no userinfo, query or fragment, and only plain path segments (letters, digits, `.`, `_`, `-`, `~`, `+`, `()`, `[]`, an `@scope` prefix; no run of 5+ digits; at most 64 characters). Any other segment becomes `[redacted]`, and anything that is not an http(s) URL becomes `[redacted]` whole.
+- **Stack traces** are parsed line by line as V8 (`at fn (loc)`, `at loc`) or Firefox/Safari (`fn@loc`) frames. Each is re-emitted as `    at <fn> (<file>:<line>:<col>)`: the function name must be a plain identifier (else `<anonymous>`), and line and column are digits. A line that is not a frame becomes `    [frame omitted]`, with consecutive ones collapsed. The first line, `Name: message`, keeps the error name and sanitizes the message as free text.
+- **Free text** (messages, descriptions, the GitHub response snippet, logged error text) is split on whitespace, and only safe tokens survive:
+  - words of letters (any script) up to 24 characters, with inner apostrophes or hyphens;
+  - numbers of up to 4 digits, unless next to another token with a digit (`555 123 4567`);
+  - code identifiers of letters, `_`, `$` and `.` (`foo_bar`, `x.y`, `getElementById()`) up to 40 characters;
+  - punctuation, and any of these wrapped in or followed by it;
+  - http(s) URLs, emitted path-only.
+
+  Every other token becomes `[redacted]`, and consecutive ones collapse. That alone blocks emails (`@`), phone numbers and ids (digit runs), API keys and JWTs (mixed letters and digits, or length), and `key=value` pairs (`=`). One context rule remains: the value after a credential word (`password`, `secret`, `token`, `key`, `auth`, `authorization`, `bearer`, `basic`, `cookie`, `session`, `otp`, `pin`, `passcode`, `passphrase`, … and `name=` or `name:` forms) is always redacted, a quoted value through its closing quote. So a letters-only password such as `Password hunter` is caught too.
+- **Timestamps** are re-emitted as canonical `toISOString()`, or `[redacted]` if they do not parse.
+- Every field is then truncated to a fixed limit with a visible `… [truncated]` marker (`REPORT_FIELD_MAX`: URL 2,000, message 1,000, stack 8,000, description 8,000 characters; a logged stack is capped at 4,000 and cut at a frame boundary). Input past four times a field's limit is never read, and a token or frame cut in half by a bound is dropped. Every pass is linear in its input.
+
+The browser's callers sanitize once before sending (`reportErrorTelemetry`, the Report an issue dialog, the storage telemetry), so the data never crosses the wire. `app/api.ts` accepts only the branded `SanitizedErrorTelemetry` and `SanitizedUserIssueReport` types, so a raw payload is a compile error. The Worker sanitizes again before building an issue body, a fingerprint, or a log line, because it never trusts the client. It sanitizes Error telemetry once per request and uses that one value for the dedup lookup, the title and the body, so the fingerprint written into an issue always matches the one looked up. The fingerprint is computed on sanitized values, so dedup is not split by query strings or by redacted personal data.
 
 ## Where reports are stored and who can read them
 
@@ -36,9 +41,12 @@ Redaction runs before either store is written. It is pattern-based, so it lowers
 
 ## Consequences
 
-- Patterns keep ordinary messages and stack frames (file and function names, line and column) readable. Known gaps, accepted as the trade-off:
-  - Over-redaction: a password-class word followed by `:` in prose (`secret: santa`); a multi-word credential name in prose followed by a word (`call refreshToken now`); everything after `Authorization:`, `Cookie:` or an auth scheme to the end of the line, even text that is not part of the header (`Authorization: Bearer x, retrying in 5s`, or the URL after a quoted `curl -H "Cookie: …"`); long digit runs such as 10-digit epoch timestamps, which look like phone numbers; a `.`-containing word followed by a query-like `?x` (`foo.bar?baz`).
-  - Misses: a value that does not look like a secret after a single credential word and a space, or after a lenient word and `: ` — letters only and short (`Password hunter`, `token: abcdefgh`), or fewer than 4 digits (`pin 12`). This is what keeps `the token expired`, `password is required` and `Failed to refresh token: network error` readable. Also missed: credential names not in the word lists, names longer than 64 characters, and personal free text such as a name typed into a description.
-- Every pattern starts only at a run boundary and bounds its backtracking, so redaction is linear in input length. It also reads at most four times a field's limit, so an oversized field costs bounded CPU however large the request body was. Rejecting oversized requests at the schema is separate work (#248).
+- Reports carry less detail. Dates, times, ids, version strings (`v1.2.3`), long numbers, `key=value` text, compact JSON, file paths outside a frame, and stack lines that are not frames all arrive as `[redacted]` or `[frame omitted]`. The word after a credential word goes too, even in prose (`the token [redacted]`, `Basic [redacted] is required`). That is the price of failing closed. A maintainer who needs the detail reproduces the error rather than reading it from the report.
+- Residual risks, which an allowlist cannot close:
+  - personal data made only of letters survives: a name, a street or a company typed into a description (`my name is Jane Doe`), or a letters-only secret that does not follow a credential word;
+  - a multi-word secret after a credential word keeps every word but the first unless it is quoted (`password correct horse battery staple`);
+  - a plain path segment can still be personal (`/home/janedoe/…` in a dev stack, `/u/janedoe` in a URL).
+- The fingerprint format changed with the canonical frames, so an Error telemetry report raised before this change does not dedup against the new one: each such open issue gets one duplicate.
+- Rejecting oversized requests at the schema is separate work (#248).
 
 Decided in https://github.com/rymanacevedo/SCC/issues/250.

@@ -35,7 +35,7 @@ describe('createAutoReportedIssue', () => {
               body: [
                 '# Auto-reported application error',
                 '',
-                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at https://example.com/assets/app-[hash].js"}',
+                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at <anonymous> (https://example.com/assets/app-[hash].js)"}',
               ].join('\n'),
             },
           ]);
@@ -51,7 +51,7 @@ describe('createAutoReportedIssue', () => {
       token: 'token-123',
       payload: {
         timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/assets/app-a1b2c3d4.js:12:34',
+        url: 'https://example.com/assets/app-a1b2c3d4.js',
         message: 'Chunk failed',
         stackTrace:
           'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
@@ -89,7 +89,7 @@ describe('createAutoReportedIssue', () => {
               body: [
                 '# Auto-reported application error',
                 '',
-                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at https://example.com/assets/app-[hash].js"}',
+                '- Fingerprint: {"url":"https://example.com/assets/app-[hash].js","message":"Chunk failed","stackTrace":"TypeError: Chunk failed\\n    at <anonymous> (https://example.com/assets/app-[hash].js)"}',
               ].join('\n'),
             },
           ]);
@@ -105,7 +105,7 @@ describe('createAutoReportedIssue', () => {
       token: 'token-123',
       payload: {
         timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/assets/app-a1b2c3d4.js:12:34',
+        url: 'https://example.com/assets/app-a1b2c3d4.js',
         message: 'Chunk failed',
         stackTrace:
           'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
@@ -133,14 +133,14 @@ describe('issue bodies', () => {
     expect(body).toContain(
       'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
     );
-    expect(body).toContain('at fetchWithAuth (');
-    expect(body).toContain('GET https://localhost/api Authorization:');
-    expect(body).toContain('    Cookie: [redacted]\n    at retry (');
     expect(body).toContain(
-      'at loadPage (https://scc.example/assets/page.js:3:4)\n',
-    );
-    expect(body).toContain(
-      'GET https://scc.example/a(b) for phone:[redacted] and tel:[redacted]',
+      [
+        '    [frame omitted]',
+        '    at retry (https://scc.example/assets/api-1a2b3c4d.js:9:9)',
+        '    at loadPage (https://scc.example/assets/page.js:3:4)',
+        '    [frame omitted]',
+        '    at fn (https://scc.example/a(b).js:7:8)',
+      ].join('\n'),
     );
   });
 
@@ -154,8 +154,9 @@ describe('issue bodies', () => {
     expect(body).toContain('- URL: https://scc.example/summary\n');
     expect(body).toContain('then it broke.');
     expect(body).toContain(
-      'See https://scc.example/a(b) or call phone:[redacted].',
+      'See https://scc.example/a(b) or [redacted] or call [redacted].',
     );
+    expect(body).toContain('Authorization: [redacted]\nCookie: [redacted]');
   });
 
   test('over-long fields are truncated with a marker', () => {
@@ -236,18 +237,19 @@ describe('GitHub error snippet', () => {
 
   test('redacts before the 300-character cut, so a straddling email is masked', async () => {
     const snippet = await snippetFor(
-      `${'a'.repeat(290)} jane.doe@example.com tail`,
+      `${'word '.repeat(58)}jane.doe@example.com tail`,
     );
     expect(snippet).not.toContain('jane');
     expect(snippet.endsWith(TRUNCATED)).toBe(true);
   });
 
   test('drops the partial token the bounded read cut, even when redaction shrinks the rest', async () => {
-    // Fourteen 80-character tokens shrink to [redacted], pulling the email
-    // that straddles the 1,200-byte read boundary inside the 300 kept.
-    const body = `${`${'A1'.repeat(40)} `.repeat(14)}${'b'.repeat(55)} jane.doe@example.com tail`;
+    // Fourteen 80-character tokens shrink to [redacted], pulling the word
+    // that straddles the 1,200-byte read boundary inside the 300 kept. Cut,
+    // `hunterpassword` would be the letters-only (so safe-looking) `hunterpa`.
+    const body = `${`${'A1'.repeat(40)} `.repeat(14)}${'word '.repeat(11)}hunterpassword tail`;
     const snippet = await snippetFor(body);
-    expect(snippet).not.toContain('jane');
-    expect(snippet).toContain('b'.repeat(55));
+    expect(snippet).not.toContain('hunter');
+    expect(snippet).toContain('word word');
   });
 });

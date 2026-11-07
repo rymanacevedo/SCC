@@ -41,7 +41,7 @@ test('both report senders post an already-sanitized report unchanged', async () 
   const report = sanitizeUserIssueReport({
     timestamp,
     url: SENSITIVE_URL,
-    description: `${SENSITIVE_DESCRIPTION} ${'d'.repeat(9_000)}`,
+    description: `${SENSITIVE_DESCRIPTION} ${'word '.repeat(2_000)}`,
   });
   await reportError(telemetry);
   await reportIssue(report);

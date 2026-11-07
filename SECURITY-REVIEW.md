@@ -27,13 +27,16 @@ place today and what is still a gap.
   sanitized `payload.message`, cut to the 256-character GitHub limit;
   auto-reported issues are deduplicated by fingerprint before a create;
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
-  error log reduce URLs to origin + path, redact sensitive patterns and
-  truncate every field at write time (`shared/telemetryRedaction.ts`,
+  error log sanitize fail-closed at write time: URLs as http(s) origin +
+  path, stacks as canonical frames, free text as allowlisted tokens, every
+  other value `[redacted]`, and every field truncated
+  (`shared/telemetryRedaction.ts`, `shared/stackFrames.ts`,
   `worker/docs/adr/0002-reports-are-redacted-before-storage.md`). Gaps: the
   schemas in `shared/errorReporting.ts` set no maximum length on `message`,
   `stackTrace`, `url` or `description`, so oversized requests are accepted
-  (up to the 1 MiB body limit) and cut rather than refused; redaction is
-  pattern-based and cannot catch every piece of personal text; and the token's
+  (up to the 1 MiB body limit) and cut rather than refused; letters-only
+  personal text, such as a name typed into a description, passes the
+  allowlist; and the token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`, so text in them is a
   prompt-injection surface for those agents.

@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
 import { experience, info, summaryUser } from '../test/builder-fixtures.ts';
+import { captureFetchBodies } from '../test/capture-fetch.ts';
+import {
+  expectNoSensitiveValues,
+  SENSITIVE_URL,
+} from '../test/sensitive-reports.ts';
 import { createSessionStorageMock } from '../test/storage.ts';
 import {
   BACKUP_KEY,
@@ -131,6 +136,30 @@ test('unparseable envelope is backed up, replaced by a fresh User, and reported 
   storage.read();
   expect(events).toHaveLength(1);
   expect(events[0]).not.toContain(raw);
+});
+test('the default storage telemetry sends a path-only, sanitized URL', async () => {
+  const originalFetch = globalThis.fetch;
+  const previousUrl = window.location.href;
+  // happy-dom starts on about:blank; its setURL is the only way to navigate.
+  const { happyDOM } = window as unknown as {
+    happyDOM: { setURL(url: string): void };
+  };
+  try {
+    const bodies = captureFetchBodies();
+    happyDOM.setURL(SENSITIVE_URL);
+    const mock = createSessionStorageMock();
+    mock.setItem(STORAGE_KEY, '{private content');
+    createUserStorage(() => mock).read();
+    await new Promise((done) => setTimeout(done, 0));
+    expect(bodies).toHaveLength(1);
+    expectNoSensitiveValues(bodies[0] ?? '');
+    expect(JSON.parse(bodies[0] ?? '{}').url).toBe(
+      'https://scc.example/summary',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    happyDOM.setURL(previousUrl);
+  }
 });
 test('quota or inaccessible storage returns a failed Result', () => {
   const { mock, storage } = setup();

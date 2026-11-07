@@ -109,7 +109,8 @@ test('report modal validates, submits only explicit description, and shows failu
     path: '/api/report-issue',
     body: {
       description: 'The page failed',
-      url: window.location.href,
+      // happy-dom's about:blank is not an http(s) URL, so it fails closed.
+      url: '[redacted]',
       timestamp: expect.any(String),
     },
   });

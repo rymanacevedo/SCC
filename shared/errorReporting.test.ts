@@ -63,25 +63,24 @@ test('normalizes an oversized timestamp to a bounded canonical value in both rep
   expect(sanitizeReportTimestamp('2026-10-13T05:00:00+05:00')).toBe(
     '2026-10-13T00:00:00.000Z',
   );
-  const unparseable = sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`);
-  expect(unparseable.length).toBeLessThan(100);
-  expect(unparseable.endsWith('… [truncated]')).toBe(true);
+  expect(sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`)).toBe('[redacted]');
 });
 test('sanitizes every Error telemetry and User report field', () => {
   expect<unknown>(
     sanitizeErrorTelemetry({
       timestamp: telemetry.timestamp,
       url: 'https://scc.example/info?token=abc123#fragment',
-      message: `Call 555-123-4567 ${'m'.repeat(2_000)}`,
+      message: `Call 555-123-4567 ${'word '.repeat(400)}`,
       stackTrace:
         'Error\n    at save (https://scc.example/a.js:1:2) apiKey=s3cr3t',
     }),
   ).toEqual({
     timestamp: telemetry.timestamp,
     url: 'https://scc.example/info',
-    message: expect.stringMatching(/^Call \[redacted\] m+… \[truncated\]$/),
-    stackTrace:
-      'Error\n    at save (https://scc.example/a.js:1:2) apiKey=[redacted]',
+    message: expect.stringMatching(
+      /^Call \[redacted\] [word ]+… \[truncated\]$/,
+    ),
+    stackTrace: 'Error\n    [frame omitted]',
   });
   expect<unknown>(
     sanitizeUserIssueReport({

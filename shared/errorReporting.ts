@@ -1,4 +1,10 @@
-import { sanitizeTelemetryText, toPathOnlyUrl } from './telemetryRedaction.ts';
+import { sanitizeStackTrace } from './stackFrames.ts';
+import {
+  REDACTED,
+  sanitizeTelemetryText,
+  toPathOnlyUrl,
+  truncate,
+} from './telemetryRedaction.ts';
 import { z } from './zod.ts';
 
 export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
@@ -39,21 +45,22 @@ export type SanitizedUserIssueReport = UserIssueReportPayload & {
   readonly [sanitized]: true;
 };
 
-// The schema accepts any ISO datetime, including one with thousands of
-// fractional digits; an unparseable value is cut to this length.
-const REPORT_TIMESTAMP_MAX = 40;
-
-/** A report timestamp as a canonical ISO string, so its length is bounded. */
+/**
+ * A report timestamp as a canonical ISO string, so its length is bounded
+ * (the schema accepts thousands of fractional digits); otherwise
+ * `[redacted]`.
+ */
 export function sanitizeReportTimestamp(timestamp: string): string {
   const time = Date.parse(timestamp);
-  return Number.isNaN(time)
-    ? sanitizeTelemetryText(timestamp, REPORT_TIMESTAMP_MAX)
-    : new Date(time).toISOString();
+  return Number.isNaN(time) ? REDACTED : new Date(time).toISOString();
 }
 
-/** A report URL reduced to origin + path, redacted and truncated. */
+/** A report URL as http(s) origin + path, truncated; otherwise `[redacted]`. */
 export function sanitizeReportUrl(url: string): string {
-  return sanitizeTelemetryText(toPathOnlyUrl(url), REPORT_FIELD_MAX.url);
+  return truncate(
+    toPathOnlyUrl(url.slice(0, REPORT_FIELD_MAX.url * 4)),
+    REPORT_FIELD_MAX.url,
+  );
 }
 
 /** The only form of Error telemetry that may be sent, stored or fingerprinted. */
@@ -67,7 +74,7 @@ export function sanitizeErrorTelemetry(
     ...(telemetry.stackTrace === undefined
       ? {}
       : {
-          stackTrace: sanitizeTelemetryText(
+          stackTrace: sanitizeStackTrace(
             telemetry.stackTrace,
             REPORT_FIELD_MAX.stackTrace,
           ),
