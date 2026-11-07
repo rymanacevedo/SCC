@@ -1,5 +1,6 @@
 import {
   REPORT_FIELD_MAX,
+  sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
 import { sanitizeTelemetryText } from '../../shared/telemetryRedaction.ts';
@@ -18,6 +19,11 @@ export function redactForLog(
 /** Reduces a URL bound for Workers Logs to origin + path, redacted. */
 export function redactUrlForLog(value: unknown) {
   return typeof value === 'string' ? sanitizeReportUrl(value) : value;
+}
+
+/** A report timestamp bound for Workers Logs, as a bounded canonical value. */
+export function timestampForLog(value: unknown) {
+  return typeof value === 'string' ? sanitizeReportTimestamp(value) : value;
 }
 
 /** The redacted, truncated parts of a thrown value that a log line may carry. */

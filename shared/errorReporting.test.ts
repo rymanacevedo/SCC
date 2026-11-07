@@ -4,6 +4,7 @@ import {
   type ErrorTelemetryPayload,
   resetReportedTelemetryForTests,
   sanitizeErrorTelemetry,
+  sanitizeReportTimestamp,
   sanitizeUserIssueReport,
   shouldSkipDuplicateTelemetryReport,
 } from './errorReporting.ts';
@@ -49,6 +50,22 @@ test('fingerprint is not split by query strings, fragments or redacted values', 
       url: 'https://scc.example/info?token=abc123#fragment',
     }),
   ).not.toContain('abc123');
+});
+test('normalizes an oversized timestamp to a bounded canonical value in both reports', () => {
+  const oversized = `2026-10-13T00:00:00.${'1'.repeat(70_000)}Z`;
+  const base = { url: 'https://scc.example/x', message: 'm', description: 'd' };
+  expect(
+    sanitizeErrorTelemetry({ ...base, timestamp: oversized }).timestamp,
+  ).toBe('2026-10-13T00:00:00.111Z');
+  expect(
+    sanitizeUserIssueReport({ ...base, timestamp: oversized }).timestamp,
+  ).toBe('2026-10-13T00:00:00.111Z');
+  expect(sanitizeReportTimestamp('2026-10-13T05:00:00+05:00')).toBe(
+    '2026-10-13T00:00:00.000Z',
+  );
+  const unparseable = sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`);
+  expect(unparseable.length).toBeLessThan(100);
+  expect(unparseable.endsWith('… [truncated]')).toBe(true);
 });
 test('sanitizes every Error telemetry and User report field', () => {
   expect<unknown>(

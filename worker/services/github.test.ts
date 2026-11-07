@@ -136,6 +136,9 @@ describe('issue bodies', () => {
     expect(body).toContain('at fetchWithAuth (');
     expect(body).toContain('GET https://localhost/api Authorization:');
     expect(body).toContain('    Cookie: [redacted]\n    at retry (');
+    expect(body).toContain(
+      'at loadPage (https://scc.example/assets/page.js:3:4)\n',
+    );
   });
 
   test('the user-reported body is path-only and redacted', () => {
@@ -150,18 +153,21 @@ describe('issue bodies', () => {
   });
 
   test('over-long fields are truncated with a marker', () => {
+    const timestamp = `2026-04-27T12:00:00.${'9'.repeat(70_000)}Z`;
     const auto = buildAutoReportedIssueBody({
       ...telemetry,
+      timestamp,
       message: 'm'.repeat(50_000),
       stackTrace: 's'.repeat(50_000),
     });
     const user = buildUserReportedIssueBody({
-      timestamp: '2026-04-27T12:00:00.000Z',
+      timestamp,
       url: `https://scc.example/${'p'.repeat(50_000)}`,
       description: 'd'.repeat(50_000),
     });
     for (const body of [auto, user]) {
       expect(body).toContain(TRUNCATED);
+      expect(body).toContain('- Timestamp: 2026-04-27T12:00:00.999Z\n');
       expect(body.length).toBeLessThan(65_536);
     }
     expect(auto).not.toContain('m'.repeat(1_001));

@@ -57,6 +57,17 @@ test('logged report metadata, error text and provider URLs are path-only and red
   expect(String(entry.stack)).toContain(
     'request headers: authorization=[redacted]\n    Cookie: [redacted]\n    at retry (',
   );
+  expect(String(entry.stack)).toContain(
+    'at loadPage (https://scc.example/assets/page.js:3:4)',
+  );
+});
+
+test('an oversized report timestamp is logged as a bounded canonical value', async () => {
+  const entry = await logFor(new Error('Broken'), {
+    timestamp: `2026-10-13T00:00:00.${'1'.repeat(70_000)}Z`,
+    url: SENSITIVE_URL,
+  });
+  expect(entry.timestamp).toBe('2026-10-13T00:00:00.111Z');
 });
 
 test('an over-long logged stack is truncated with a marker', async () => {

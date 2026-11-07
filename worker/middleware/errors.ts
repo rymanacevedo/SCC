@@ -6,6 +6,7 @@ import {
   describeErrorForLog,
   redactForLog,
   redactUrlForLog,
+  timestampForLog,
 } from '../lib/log.ts';
 import { apiError } from '../lib/response.ts';
 import { GitHubIssueCreationError } from '../services/github.ts';
@@ -35,8 +36,8 @@ export function createRouteErrorMiddleware<T>(
         'timestamp' in payload &&
         'url' in payload
           ? {
-              // Schema-validated ISO datetime: logged as it is.
-              timestamp: payload.timestamp,
+              // Valid ISO, but unbounded in length: logged in canonical form.
+              timestamp: timestampForLog(payload.timestamp),
               url: redactUrlForLog(payload.url),
             }
           : {};

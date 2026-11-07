@@ -14,6 +14,10 @@ export const TRUNCATED = '… [truncated]';
 // field costs bounded CPU however large the request body was.
 const REDACTION_INPUT_FACTOR = 4;
 const WHITESPACE = /\s/;
+const HAS_DIGIT = /\d/;
+const HAS_LETTER = /[A-Za-z]/;
+const LOWER = /[a-z]/;
+const UPPER = /[A-Z]/;
 
 const QUERY_START = /[?#]/;
 // `user:password@` at the start of a schemeless authority.
@@ -53,25 +57,76 @@ export function toPathOnlyUrl(value: string): string {
   return end === -1 ? withoutUserinfo : withoutUserinfo.slice(0, end);
 }
 
-// A run of URL-ish characters. Each one is checked once, by reduceUrlToken.
-const URL_TOKEN_PATTERN = /[^\s()'"<>`]+/g;
+// A run of URL-ish characters: where a URL's path ends. Its query may go on
+// past these delimiters, so queryEnd finds the real end.
+const URL_TOKEN_PATTERN = /[^\s()[\]{}'"<>`]+/g;
 const STACK_COORDINATE_SUFFIX = /:\d+:\d+$/;
 // A path part with a `/` or a `.` looks like a URL, a path or a file name.
 const URL_LIKE_PATH = /[/.]/;
+// The delimiter that closes a URL opened by the character before it.
+const CLOSERS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '<': '>',
+  '{': '}',
+  '"': '"',
+  "'": "'",
+  '`': '`',
+};
+
+/**
+ * Where a query that starts at `start` ends: the next whitespace, or the
+ * delimiter matching `opener` (the character before the URL), counting
+ * nested brackets, so `(https://x/a.js?v=(1):10:5)` ends at the frame's `)`.
+ */
+function queryEnd(text: string, start: number, opener: string): number {
+  const closer = CLOSERS[opener];
+  const nests = closer !== undefined && closer !== opener;
+  let depth = 1;
+  let end = start;
+  for (; end < text.length; end += 1) {
+    const char = text[end] ?? '';
+    if (WHITESPACE.test(char)) break;
+    if (nests && char === opener) depth += 1;
+    else if (char === closer && (depth -= 1) === 0) break;
+  }
+  return end;
+}
 
 /**
  * Drops the userinfo, query and fragment of anything URL-like (absolute,
  * relative or schemeless), keeping a trailing `:line:column` so stack frames
- * stay readable. Prose such as `What?` or `issue #12` has no path part.
+ * stay readable. Prose such as `What?` or `issue #12` has no path part. Each
+ * character is scanned once.
  */
-function reduceUrlToken(value: string): string {
-  const token = stripUserinfo(value);
-  const start = token.search(QUERY_START);
-  if (start === -1) return token;
-  const path = token.slice(0, start);
-  const rest = token.slice(start);
-  if (!path || rest.length < 2 || !URL_LIKE_PATH.test(path)) return token;
-  return `${path}${STACK_COORDINATE_SUFFIX.exec(rest)?.[0] ?? ''}`;
+function stripUrlQueries(text: string): string {
+  let output = '';
+  let cursor = 0;
+  URL_TOKEN_PATTERN.lastIndex = 0;
+  for (
+    let match = URL_TOKEN_PATTERN.exec(text);
+    match;
+    match = URL_TOKEN_PATTERN.exec(text)
+  ) {
+    const token = match[0];
+    const tokenStart = match.index;
+    const queryOffset = token.search(QUERY_START);
+    const path = token.slice(0, Math.max(queryOffset, 0));
+    let end = tokenStart + token.length;
+    let reduced = stripUserinfo(token);
+    if (queryOffset !== -1 && path && URL_LIKE_PATH.test(path)) {
+      const queryStart = tokenStart + queryOffset;
+      end = queryEnd(text, queryStart, text[tokenStart - 1] ?? '');
+      const query = text.slice(queryStart, end);
+      if (query.length >= 2)
+        reduced = `${stripUserinfo(path)}${STACK_COORDINATE_SUFFIX.exec(query)?.[0] ?? ''}`;
+      else end = tokenStart + token.length;
+    }
+    output += `${text.slice(cursor, tokenStart)}${reduced}`;
+    cursor = end;
+    URL_TOKEN_PATTERN.lastIndex = end;
+  }
+  return `${output}${text.slice(cursor)}`;
 }
 
 // `name=value`, `name: value`, or `name value` (a header written with a
@@ -87,8 +142,9 @@ const REST_OF_LINE_VALUE = /[^\n]+/y;
 const REST_OF_LINE_NAME_WORDS = new Set(['authorization', 'cookie', 'cookies']);
 // An auth scheme in any case, then its credentials to the end of the line
 // (Digest and AWS put several comma-separated secrets there).
-const AUTH_SCHEME_VALUE =
-  /(?:bearer|basic|token|digest|negotiate|ntlm|hoba|mutual|aws4-hmac-sha256)\s+[^\n]+/iy;
+const AUTH_SCHEMES =
+  'bearer|basic|token|digest|negotiate|ntlm|hoba|mutual|aws4-hmac-sha256';
+const AUTH_SCHEME_VALUE = new RegExp(`(?:${AUTH_SCHEMES})\\s+[^\\n]+`, 'iy');
 // After `=` or `:` a value stops at `&` and `;` (query and cookie syntax).
 // After a bare space it runs to whitespace, so `Tr0ub4dor&3` goes whole.
 const PAIR_PLAIN_VALUE = /\[redacted\]|[^\s&"',;)}\]]+/y;
@@ -111,8 +167,6 @@ const LENIENT_NAME_WORDS = new Set([
 const NUMERIC_VALUE = /^[\d\s.:/-]+$/;
 const DIGITS = /\d/g;
 const SECRET_SYMBOL = /[_+=~!@#$%^&*]/;
-const LOWER = /[a-z]/;
-const UPPER = /[A-Z]/;
 // Credential words whose value is often a short number (`pin 4417`).
 const NUMERIC_SECRET_NAME_WORDS = new Set([
   'code',
@@ -312,8 +366,10 @@ function redactSecretPairs(value: string): string {
 }
 
 // `Bearer x` / `Basic x` outside a name=value pair.
-const AUTH_SCHEME_TOKEN_PATTERN =
-  /\b(Bearer|Basic)\s+(?!\[redacted\])([\w.~+/=-]+)/gi;
+const AUTH_SCHEME_TOKEN_PATTERN = new RegExp(
+  `\\b(${AUTH_SCHEMES})\\s+(?!\\[redacted\\])([\\w.~+/=-]+)`,
+  'gi',
+);
 const TOKEN_SYMBOL = /[\d.~+/=_-]/;
 
 /**
@@ -321,9 +377,10 @@ const TOKEN_SYMBOL = /[\d.~+/=_-]/;
  * `Bearer of the message` stays. Any other spelling (`the bearer of bad
  * news`, `Basic information`) masks only a token that looks like a
  * credential: a digit or symbol, mixed case past the first letter, or 20+
- * characters.
+ * characters. A path (`token /api/session/refresh failed`) is never one.
  */
 function redactAuthSchemeToken(match: string, scheme: string, token: string) {
+  if (token.startsWith('/')) return match;
   const headerSpelling = scheme === 'Bearer' || scheme === 'BEARER';
   const credential =
     (headerSpelling && (token.length >= 4 || TOKEN_SYMBOL.test(token))) ||
@@ -345,8 +402,6 @@ const PHONE_PATTERN =
   /(?<![\w+:./-])(?:\+\d[\d\s().-]{6,}\d|(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}|0\d{2,4}[\s-]?\d{3,4}(?:[\s-]?\d{3,4})?|\d{3}-\d{4})(?![\w-])/g;
 // Long runs of letters and digits: hex digests, API keys, base64 secrets.
 const LONG_TOKEN_PATTERN = /(?<![\w+/=-])[\w+/-]{32,}={0,2}(?![\w+/=-])/g;
-const HAS_DIGIT = /\d/;
-const HAS_LETTER = /[A-Za-z]/;
 
 function isRandomToken(value: string) {
   return value.length >= 32 && HAS_DIGIT.test(value) && HAS_LETTER.test(value);
@@ -364,7 +419,7 @@ function redactLongToken(match: string): string {
 
 /** Masks known sensitive patterns, leaving messages and stack frames readable. */
 export function redactTelemetryText(value: string): string {
-  return redactSecretPairs(value.replace(URL_TOKEN_PATTERN, reduceUrlToken))
+  return redactSecretPairs(stripUrlQueries(value))
     .replace(AUTH_SCHEME_TOKEN_PATTERN, redactAuthSchemeToken)
     .replace(JWT_PATTERN, REDACTED)
     .replace(PREFIXED_KEY_PATTERN, REDACTED)

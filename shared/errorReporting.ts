@@ -39,6 +39,18 @@ export type SanitizedUserIssueReport = UserIssueReportPayload & {
   readonly [sanitized]: true;
 };
 
+// The schema accepts any ISO datetime, including one with thousands of
+// fractional digits; an unparseable value is cut to this length.
+const REPORT_TIMESTAMP_MAX = 40;
+
+/** A report timestamp as a canonical ISO string, so its length is bounded. */
+export function sanitizeReportTimestamp(timestamp: string): string {
+  const time = Date.parse(timestamp);
+  return Number.isNaN(time)
+    ? sanitizeTelemetryText(timestamp, REPORT_TIMESTAMP_MAX)
+    : new Date(time).toISOString();
+}
+
 /** A report URL reduced to origin + path, redacted and truncated. */
 export function sanitizeReportUrl(url: string): string {
   return sanitizeTelemetryText(toPathOnlyUrl(url), REPORT_FIELD_MAX.url);
@@ -49,7 +61,7 @@ export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
 ): SanitizedErrorTelemetry {
   return {
-    timestamp: telemetry.timestamp,
+    timestamp: sanitizeReportTimestamp(telemetry.timestamp),
     url: sanitizeReportUrl(telemetry.url),
     message: sanitizeTelemetryText(telemetry.message, REPORT_FIELD_MAX.message),
     ...(telemetry.stackTrace === undefined
@@ -68,7 +80,7 @@ export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,
 ): SanitizedUserIssueReport {
   return {
-    timestamp: report.timestamp,
+    timestamp: sanitizeReportTimestamp(report.timestamp),
     url: sanitizeReportUrl(report.url),
     description: sanitizeTelemetryText(
       report.description,

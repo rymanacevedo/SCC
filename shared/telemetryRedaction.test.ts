@@ -194,6 +194,56 @@ describe('redactTelemetryText: URLs, quoted values and credential names', () => 
     const prose = 'What? Really?! See issue #12 in C# or e.g.?';
     expect(redactTelemetryText(prose)).toBe(prose);
   });
+
+  test('drops a whole query that contains delimiters, up to the URL’s own closer', () => {
+    const cases: [string, string][] = [
+      [
+        'GET https://scc.example/api?q=(private-value)&other=visible done',
+        'GET https://scc.example/api done',
+      ],
+      [
+        'GET https://scc.example/api?q=\'private-value\'&b="x"&c=`y` done',
+        'GET https://scc.example/api done',
+      ],
+      [
+        'GET https://scc.example/api?q=[private-value]<x>{y} done',
+        'GET https://scc.example/api done',
+      ],
+      [
+        '    at load (https://scc.example/a.js?q=(private-value):10:5)',
+        '    at load (https://scc.example/a.js:10:5)',
+      ],
+      [
+        '    at load (https://scc.example/a.js?q=((private-value)):10:5)\n    at next (x.js:1:2)',
+        '    at load (https://scc.example/a.js:10:5)\n    at next (x.js:1:2)',
+      ],
+      [
+        'see "https://scc.example/a?q=(private-value)" and more',
+        'see "https://scc.example/a" and more',
+      ],
+      [
+        "see 'https://scc.example/a#private-value(x)' and more",
+        "see 'https://scc.example/a' and more",
+      ],
+      [
+        'see [https://scc.example/a?q=[private-value]] and more',
+        'see [https://scc.example/a] and more',
+      ],
+      [
+        'see <https://scc.example/a?q=<private-value>> and more',
+        'see <https://scc.example/a> and more',
+      ],
+      [
+        'see `https://scc.example/a?q=private-value` and more',
+        'see `https://scc.example/a` and more',
+      ],
+      ['GET /api/x?q=(private-value) done', 'GET /api/x done'],
+    ];
+    for (const [input, expected] of cases) {
+      expect(redactTelemetryText(input)).toBe(expected);
+      expect(redactTelemetryText(input)).not.toContain('private-value');
+    }
+  });
 });
 
 describe('redactTelemetryText', () => {

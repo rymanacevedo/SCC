@@ -35,6 +35,7 @@ export const SENSITIVE_STACK = [
   '    request headers: authorization=basic short-secret',
   '    Cookie: theme=dark; sid=private-value',
   '    at retry (https://scc.example/assets/api-1a2b3c4d.js:9:9)',
+  '    at loadPage (https://scc.example/assets/page.js?q=(private-value)&other=(x):3:4)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = `I typed jane.doe@example.com and (555) 123-4567, then it broke. It called ${SENSITIVE_EMBEDDED_URL} with my apiKey=s3cr3t-api-key. My Password Tr0ub4dor&3 stopped working.`;
