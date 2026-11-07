@@ -1,18 +1,15 @@
-<!-- standard:draft -->
 # Coding Standards
 
 - The rules a reviewer applies by judgement. A rule a tool enforces is not
   repeated here.
-- `bun run check` (oxfmt, oxlint), `bun run typecheck` and `bun test` run in
-  the `ci` workflow. Pre-commit runs lint-staged on the staged files;
-  pre-push runs typecheck and the tests.
+- `bun run check` (oxfmt, oxlint), `bun run typecheck`, `bun test` and
+  `bun run build` run in the `ci` workflow. Pre-commit runs lint-staged on
+  the staged files; pre-push runs typecheck and the tests.
 - `.oxlintrc.json`, `.oxfmtrc.json` and `tsconfig*.json` are the source of
   truth for formatting, lint and type rules.
 - The Review section is the Standard's fixed text. The ruleset it describes
   lives in repository settings (`gh api repos/rymanacevedo/SCC/rulesets`),
   not in this repo.
-- The owner reviews this file and deletes the first line (the draft marker)
-  to adopt it.
 
 ## Tests
 
@@ -29,8 +26,9 @@ Source: `docs/agents/domain.md`.
 - Names in code, tests and issues use the terms in the context's
   `GLOSSARY.md` (`worker/`, `app/`, via `GLOSSARY-MAP.md`), not synonyms the
   glossary avoids. A new concept gets a glossary entry in the same PR.
-- A change that contradicts an ADR in `docs/adr/` or `<context>/docs/adr/`
-  says so and records the new decision; it does not override silently.
+- ADRs live in `docs/adr/` (system-wide) and `<context>/docs/adr/`; the
+  directories are created with the first ADR. A change that contradicts an
+  ADR says so and records the new decision; it does not override silently.
 
 ## Review
 
