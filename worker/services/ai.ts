@@ -8,6 +8,9 @@ import {
 } from 'ai';
 import { z } from 'zod';
 import {
+  BoundedExperienceSchema,
+  BoundedSkillsSchema,
+  BoundedSummarySchema,
   ExperienceSchema,
   SkillsSchema,
   SummarySchema,
@@ -126,6 +129,25 @@ async function generateSection<OUTPUT>({
   );
 }
 
+/** A section generator's result has an array or string over its limit. */
+export class GeneratedOutputLimitError extends Error {
+  constructor() {
+    super('Generated output exceeds its limits.');
+    this.name = 'GeneratedOutputLimitError';
+  }
+}
+
+/**
+ * Returns a section generator's result, or throws if it fails the bounded
+ * schema for that generator (the Generated output limits). Each generator
+ * applies its own, so a result never leaves unbounded.
+ */
+function boundGeneratedOutput<T>(schema: z.core.$ZodType, output: T): T {
+  if (!z.safeParse(schema, output).success)
+    throw new GeneratedOutputLimitError();
+  return output;
+}
+
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
 
@@ -185,7 +207,7 @@ export const createSummaries = async (
       `,
   });
 
-  return output.summaries;
+  return boundGeneratedOutput(BoundedSummarySchema, output.summaries);
 };
 
 export const createSkills = async (
@@ -216,7 +238,7 @@ export const createSkills = async (
           `,
   });
 
-  return output;
+  return boundGeneratedOutput(BoundedSkillsSchema, output);
 };
 
 export const createExperience = async (
@@ -254,5 +276,5 @@ export const createExperience = async (
     Use your best judgement if someone gives a term that doesn't look like a job, just send back general experience like soft skills.
     `,
   });
-  return output;
+  return boundGeneratedOutput(BoundedExperienceSchema, output);
 };

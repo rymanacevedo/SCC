@@ -4,7 +4,10 @@ import { isClientAbort } from '../lib/abort.ts';
 import { UpstreamTimeoutError } from '../lib/deadline.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { apiError } from '../lib/response.ts';
-import { SectionTokenLimitError } from '../services/ai.ts';
+import {
+  GeneratedOutputLimitError,
+  SectionTokenLimitError,
+} from '../services/ai.ts';
 import {
   GitHubIssueCreationError,
   type GitHubIssueCreationErrorKind,
@@ -66,6 +69,7 @@ type RouteErrorCategory =
   | `github_${GitHubIssueCreationErrorKind}`
   | 'provider'
   | 'token_limit'
+  | 'generated_output_limit'
   | 'unknown';
 
 type RouteErrorClassification = {
@@ -131,6 +135,10 @@ function classifyRouteError(
         outputTokens: error.outputTokens,
       },
     };
+  }
+  // The model answered, but with more than a section can hold: a bad upstream result.
+  if (error instanceof GeneratedOutputLimitError) {
+    return { category: 'generated_output_limit', status: 502, details: {} };
   }
   return { category: 'unknown', status: generation ? 500 : 502, details: {} };
 }

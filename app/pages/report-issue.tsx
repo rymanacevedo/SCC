@@ -1,5 +1,9 @@
 import { type Handle, on, ref } from 'remix/component';
-import { userIssueReportSchema } from '../../shared/errorReporting.ts';
+import {
+  REPORT_FIELD_LIMITS,
+  userIssueReportSchema,
+} from '../../shared/errorReporting.ts';
+import { truncateText } from '../../shared/text.ts';
 import { reportIssue } from '../api.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, type ButtonVariant } from '../ui/button.tsx';
@@ -42,7 +46,7 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
     try {
       const parsed = userIssueReportSchema.safeParse({
         description: new FormData(form).get('description'),
-        url: window.location.href,
+        url: truncateText(window.location.href, REPORT_FIELD_LIMITS.url),
         timestamp: new Date().toISOString(),
       });
       if (!parsed.success) {
@@ -123,6 +127,7 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
               id={`${handle.id}-description`}
               name="description"
               required
+              maxLength={REPORT_FIELD_LIMITS.description}
               rows={6}
               placeholder="Describe the issue you ran into."
               aria-invalid={fieldError ? 'true' : undefined}

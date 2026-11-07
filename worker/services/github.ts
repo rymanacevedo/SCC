@@ -5,6 +5,7 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { truncateText } from '../../shared/text.ts';
 import { readBoundedText } from '../lib/body.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
 
@@ -12,6 +13,8 @@ export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
 
 const GITHUB_ISSUE_TITLE_MAX = 256;
+/** GitHub refuses an issue body longer than this many characters. */
+export const GITHUB_ISSUE_BODY_MAX = 65_536;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
 const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
 const GITHUB_USER_AGENT = 'scc-backend-worker';
@@ -48,11 +51,32 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
-export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
+/**
+ * The fingerprint an issue body carries and deduplication searches for: the
+ * SHA-256 hex digest of the complete telemetry fingerprint. A fixed 64
+ * characters however long or escape-heavy the report, so it never crowds the
+ * body past GitHub's limit, and distinct reports never share a prefix match.
+ * Issues filed before the digest carried the raw JSON; deduplication still
+ * matches that legacy form (see `fingerprintMarkers`).
+ */
+export async function issueFingerprint(payload: ErrorTelemetry) {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(buildTelemetryFingerprint(payload)),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+export function buildAutoReportedIssueBody(
+  payload: ErrorTelemetry,
+  fingerprint: string,
+) {
   return [
     '# Auto-reported application error',
     '',
-    `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
+    `${FINGERPRINT_LABEL}${fingerprint}`,
     `- Timestamp: ${payload.timestamp}`,
     `- URL: ${payload.url}`,
     `- Message: ${payload.message}`,
@@ -178,19 +202,39 @@ async function createGitHubIssue({
     token,
     path: `/repos/${repo}/issues`,
     method: 'POST',
-    body: { title, body, labels },
+    body: {
+      title,
+      // The field limits already fit; this holds GitHub's limit for any body.
+      body: truncateText(body, GITHUB_ISSUE_BODY_MAX),
+      labels,
+    },
     read: (response) => response.json(),
   });
+}
+
+/**
+ * The fingerprint lines an open issue for `payload` may carry: the digest this
+ * code files, and the raw-JSON fingerprint of issues filed before the digest.
+ */
+async function fingerprintMarkers(payload: ErrorTelemetry) {
+  const fingerprint = await issueFingerprint(payload);
+  return {
+    fingerprint,
+    markers: [
+      `${FINGERPRINT_LABEL}${fingerprint}`,
+      `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
+    ],
+  };
 }
 
 async function findMatchingOpenAutoReportedIssue({
   repo,
   token,
-  fingerprint,
+  markers,
 }: {
   repo: string;
   token: string;
-  fingerprint: string;
+  markers: string[];
 }) {
   for (let page = 1; ; page += 1) {
     const params = new URLSearchParams({
@@ -211,7 +255,7 @@ async function findMatchingOpenAutoReportedIssue({
         }[],
     });
     const matchingIssue = issues.find((issue) =>
-      issue.body?.includes(`${FINGERPRINT_LABEL}${fingerprint}`),
+      markers.some((marker) => issue.body?.includes(marker)),
     );
 
     if (matchingIssue || issues.length < GITHUB_ISSUES_PAGE_SIZE) {
@@ -229,11 +273,11 @@ export async function createAutoReportedIssue({
   token: string;
   payload: ErrorTelemetry;
 }) {
-  const fingerprint = buildTelemetryFingerprint(payload);
+  const { fingerprint, markers } = await fingerprintMarkers(payload);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
-    fingerprint,
+    markers,
   });
 
   if (matchingIssue) {
@@ -244,7 +288,7 @@ export async function createAutoReportedIssue({
     repo,
     token,
     title: `${AUTO_REPORTED_TITLE_PREFIX}${payload.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
-    body: buildAutoReportedIssueBody(payload),
+    body: buildAutoReportedIssueBody(payload, fingerprint),
     labels: ['bug', 'auto-reported'],
   });
 }

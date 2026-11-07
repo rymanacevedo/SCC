@@ -19,7 +19,7 @@ A guard on the three generation routes that refuses a Generation request whose p
 ## API surface
 
 ### Generation request
-The body a builder page sends to a generation route: `{ prompt }` with a non-empty string prompt, the section answers already serialized by the frontend. The Worker never sees the User, only the prompt.
+The body a builder page sends to a generation route: `{ prompt }` with a non-empty string prompt of at most `MAX_PROMPT_LENGTH` (50,000) code units, the section answers already serialized by the frontend. The Worker never sees the User, only the prompt.
 
 ### Error envelope
 The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues` on every 400: Zod 4 `flattenError` output, `{ formErrors, fieldErrors }` (validation details, or both empty for a filtered prompt). The status code is the discriminator; the `error` text is for logs and tests, never shown to the user verbatim.
@@ -28,7 +28,10 @@ The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues
 The middleware that replaces CORS now that UI and API share one origin: rejects requests marked `Sec-Fetch-Site: cross-site` with 403 and bodies without the `application/json` content type with 415. Absent fetch-site metadata is accepted, including command-line callers. No configuration, no allowed-origin variable.
 
 ### Body limit
-The 1 MiB cap on any `/api/*` JSON body (`MAX_JSON_BODY_BYTES`). The Worker reads at most that many bytes and cancels the rest, so a body never has to fit in memory whole. A larger body gets a 413 Error envelope before validation or any model call.
+The per-route cap on an `/api/*` JSON body, derived by `jsonBodyLimit` from the string caps the route's schema enforces (the prompt cap, or the report field limits) at the worst-case six bytes per code unit, so every body the schema would accept fits. A declared `Content-Length` over the limit is refused before any byte is read; otherwise the Worker counts streamed bytes, reads at most the limit and cancels the rest, so a body never has to fit in memory whole. A larger body gets a 413 Error envelope before validation or any model call.
+
+### Generated output limit
+The caps on a section generator's result (`GENERATED_OUTPUT_LIMITS` in the shared context): at most 50 entries in any array and 2,000 code units in any string. Each generator also asks the model for at most its Section output-token limit (`SECTION_MAX_OUTPUT_TOKENS`). Each output shape is declared once and built twice: the unbounded schema (`SkillsSchema`, …) goes to the provider, because strict-mode JSON Schema may reject `maxItems` and `maxLength`, and the bounded schema (`BoundedSkillsSchema`, …) is the server-side enforcement. Each generator validates its result against its own bounded schema after the model returns, before the route responds; an over-limit result is a 502 Error envelope, logged as `generated_output_limit`, like any other bad upstream result.
 
 ### Client cancellation
 A request whose client disconnected before the response. `request.signal` aborts, the generation route passes that signal to the provider so the call stops, and the Worker entry logs it once as `client_aborted` with a 499. It is not a route failure: the router rethrows the abort reason once the signal fires, and the route error middleware rethrows it rather than log it.
