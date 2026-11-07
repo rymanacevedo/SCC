@@ -16,9 +16,6 @@ export const TRUNCATED = '… [truncated]';
 export const SANITIZE_INPUT_FACTOR = 4;
 const WHITESPACE = /\s/;
 
-// A URL path segment: a plain file or directory name, `@scope` allowed, at
-// most 64 characters.
-const SAFE_SEGMENT = /^@?[\w.~+()[\]-]{1,64}$/;
 // Five digits, however separated, may be a phone number or an id:
 // `555-123-4567`, `555.123.4567`, `1a2b3c4d5e`.
 const DIGIT = /\d/g;
@@ -29,15 +26,55 @@ export function hasTooManyDigits(value: string): boolean {
   return (value.match(DIGIT)?.length ?? 0) > MAX_DIGITS;
 }
 
+// The safe word and number shapes, shared by free text and path segments.
+const WORD = /^\p{L}+(?:['’-]\p{L}+)*$/u;
+const WORD_MAX = 24;
+const NUMBER = /^\d{1,4}$/;
+
+function isWord(value: string): boolean {
+  return WORD.test(value) && value.length <= WORD_MAX;
+}
+
+// A URL path segment: its characters, then its parts split at `-_.~+`.
+const SEGMENT_CHARACTERS = /^@?[\w.~+()[\]-]{1,64}$/;
+const SEGMENT_PART_SEPARATORS = /[-_.~+]+/;
+const SEGMENT_WRAPPERS = /[()[\]]/g;
+// `v1`, `v2`: an API version.
+const VERSION = /^v\d{1,3}$/i;
+// A file extension (`.js`, `.map`), and the content hash a build puts in a
+// file name (`index-C4kL9x.js`): accepted only in a name with an extension.
+const FILE_EXTENSION = /\.[A-Za-z]{1,5}$/;
+const CONTENT_HASH = /^[A-Za-z0-9]{4,16}$/;
+
+function isSafeSegmentPart(part: string): boolean {
+  return isWord(part) || NUMBER.test(part) || VERSION.test(part);
+}
+
+/**
+ * A plain path segment: every part a word, a short number or an API version
+ * (`api`, `v1`, `users`, `1234`), or a file name whose parts may also be a
+ * content hash (`index-C4kL9x.js`). At most 4 digits in total, `@scope`,
+ * `(group)` and `[slug]` allowed. A random-looking token such as
+ * `XkfQpLmZr9Ab` is not.
+ */
+function isSafeSegment(segment: string): boolean {
+  if (!SEGMENT_CHARACTERS.test(segment) || hasTooManyDigits(segment))
+    return false;
+  const bare = segment.replace(/^@/, '').replace(SEGMENT_WRAPPERS, '');
+  const parts = bare.split(SEGMENT_PART_SEPARATORS).filter(Boolean);
+  const isFileName = FILE_EXTENSION.test(bare);
+  return parts.every(
+    (part) =>
+      isSafeSegmentPart(part) || (isFileName && CONTENT_HASH.test(part)),
+  );
+}
+
 /** Keeps a path's plain segments; any other segment becomes `[redacted]`. */
 export function sanitizePathSegments(path: string, separator: RegExp): string {
   return path
     .split(separator)
     .map((segment) =>
-      segment === '' ||
-      (SAFE_SEGMENT.test(segment) && !hasTooManyDigits(segment))
-        ? segment
-        : REDACTED,
+      segment === '' || isSafeSegment(segment) ? segment : REDACTED,
     )
     .join('/');
 }
@@ -59,51 +96,21 @@ export function toPathOnlyUrl(value: string): string {
   return `${url.origin}${sanitizePathSegments(url.pathname, /\//)}`;
 }
 
+// --- Tokens ---------------------------------------------------------------
+
 // A token is split into leading wrappers, a core and trailing wrappers.
 const LEADING_WRAPPERS = new Set('([{<"\'`!¡¿');
 const TRAILING_WRAPPERS = new Set(')]}>"\'`.,:;!?…');
-// Kept after a redacted token, so sentences still read.
-const SENTENCE_PUNCTUATION = /[.,;:!?…]+$/;
-// The safe core shapes.
-// Punctuation is safe only as short ordinary punctuation (`'<',`, `"…"`,
-// `- [ ]`) or a run of one mark (`##`, `\`\`\``, `...`). A mixed symbol run
-// such as `!@#$%^&*()` can be a password, so it is redacted.
-const ORDINARY_PUNCTUATION = /^[.,;:!?()[\]{}<>'"`\-–—…/]{1,4}$/u;
-const REPEATED_MARK = /^([\p{P}\p{S}])\1{0,15}$/u;
-
-function isSafePunctuation(raw: string): boolean {
-  return ORDINARY_PUNCTUATION.test(raw) || REPEATED_MARK.test(raw);
-}
-const WORD = /^\p{L}+(?:['’-]\p{L}+)*$/u;
-const WORD_MAX = 24;
-const NUMBER = /^\d{1,4}$/;
-// `foo()` arrives as `foo(`: its `)` is a trailing wrapper.
-const IDENTIFIER = /^[A-Za-z_$]+(?:\.[A-Za-z_$]+)*(?:\(\)?)?$/;
-const IDENTIFIER_MAX = 40;
-const HTTP_URL = /^https?:\/\//i;
-const HAS_DIGIT = /\d/;
-// The token after one of these is always redacted, whatever its shape.
-const CREDENTIAL_WORDS = new Set([
-  'apikey',
-  'auth',
-  'authorization',
-  'basic',
-  'bearer',
-  'cookie',
-  'key',
-  'otp',
-  'pass',
-  'passcode',
-  'passphrase',
-  'passwd',
-  'password',
-  'pin',
-  'pwd',
-  'secret',
-  'session',
-  'token',
-]);
-const NAME_PARTS = /[-_]/;
+// The closer for each opener a URL may be wrapped in.
+const CLOSERS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '{': '}',
+  '<': '>',
+  '"': '"',
+  "'": "'",
+  '`': '`',
+};
 
 type Token = {
   leading: string;
@@ -125,29 +132,138 @@ function splitToken(raw: string): Token {
   };
 }
 
-// A credential name is a plain name: letters, `-` and `_`, no digits.
-const PLAIN_NAME = /^[a-z][a-z_-]{0,63}$/;
+/** Whitespace-separated tokens and the whitespace between them. */
+function tokenize(value: string) {
+  const parts = value.split(/(\s+)/);
+  const tokens: (Token | undefined)[] = [];
+  const separators: string[] = [];
+  for (let index = 0; index < parts.length; index += 2) {
+    const raw = parts[index] ?? '';
+    tokens.push(raw ? splitToken(raw) : undefined);
+    separators.push(index === 0 ? '' : (parts[index - 1] ?? ''));
+  }
+  return { tokens, separators };
+}
+
+// --- Safe shapes ----------------------------------------------------------
+
+// Punctuation is safe only as short ordinary punctuation (`'<',`, `"…"`,
+// `- [ ]`) or a run of one mark (`##`, three backticks, `...`). A mixed
+// symbol run such as `!@#$%^&*()` can be a password, so it is redacted.
+const ORDINARY_PUNCTUATION = /^[.,;:!?()[\]{}<>'"`\-–—…/]{1,4}$/u;
+const REPEATED_MARK = /^([\p{P}\p{S}])\1{0,15}$/u;
+// `foo()` arrives as `foo(`: its `)` is a trailing wrapper.
+const IDENTIFIER = /^[A-Za-z_$]+(?:\.[A-Za-z_$]+)*(?:\(\)?)?$/;
+const IDENTIFIER_MAX = 40;
+const HTTP_URL = /^https?:\/\//i;
+const QUERY_START = /[?#]/;
+
+function isSafePunctuation(raw: string): boolean {
+  return ORDINARY_PUNCTUATION.test(raw) || REPEATED_MARK.test(raw);
+}
+
+// One mark of sentence punctuation after a wrapper's closer: `(url).`
+const AFTER_CLOSER = /[.,;:]$/;
+
+/**
+ * A URL token path-only. With no query or fragment its trailing wrappers
+ * come back; with one, everything after `?` or `#` is dropped, and only the
+ * closers of openers before the URL return (plus one `.,;:` after them):
+ * `(https://x/a?q=1).` keeps `).`, but `https://x/a?q=?!` keeps nothing.
+ */
+function renderUrl({ leading, core, trailing }: Token): string | undefined {
+  const text = `${core}${trailing}`;
+  if (!QUERY_START.test(text)) {
+    const url = toPathOnlyUrl(core);
+    return url === REDACTED ? undefined : `${leading}${url}${trailing}`;
+  }
+  const after = AFTER_CLOSER.exec(text)?.[0] ?? '';
+  let rest = text.slice(0, text.length - after.length);
+  let closers = '';
+  for (const opener of [...leading].reverse()) {
+    const closer = CLOSERS[opener];
+    if (!closer || !rest.endsWith(closer)) break;
+    closers = `${closer}${closers}`;
+    rest = rest.slice(0, rest.length - closer.length);
+  }
+  const url = toPathOnlyUrl(rest);
+  if (url === REDACTED) return undefined;
+  // Text after the URL counts only if a closer marks where the URL ended.
+  return `${leading}${url}${closers}${closers ? after : ''}`;
+}
+
+/** The safe rendering of a token, or undefined when it must be redacted. */
+function renderSafe(token: Token): string | undefined {
+  const { core, raw } = token;
+  if (isSafePunctuation(raw)) return raw;
+  if (HTTP_URL.test(core)) return renderUrl(token);
+  if (
+    isWord(core) ||
+    NUMBER.test(core) ||
+    (IDENTIFIER.test(core) && core.length <= IDENTIFIER_MAX)
+  )
+    return raw;
+  return undefined;
+}
+
+// --- Credential context ---------------------------------------------------
+
+// A name is a credential name if any of its words is one of these.
+const CREDENTIAL_WORDS = new Set([
+  'apikey',
+  'auth',
+  'authorization',
+  'basic',
+  'bearer',
+  'cookie',
+  'key',
+  'otp',
+  'pass',
+  'passcode',
+  'passphrase',
+  'passwd',
+  'password',
+  'pin',
+  'pwd',
+  'secret',
+  'session',
+  'token',
+]);
+// A name: letters, `_`, `$`, `.` and `-`, no digits (`s3cr3t-api-key` is a
+// value, not a name).
+const NAME = /^[A-Za-z_$][A-Za-z_$.-]{0,63}$/;
+const NAME_SEPARATORS = /[._$-]+/;
+const NAME_WORDS = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+/g;
 // Auth schemes: after `Authorization: bearer` the credential is next.
 const AUTH_SCHEMES = new Set(['basic', 'bearer', 'digest', 'token']);
 // A separator written as its own token keeps the credential context.
 const SEPARATOR_TOKENS = new Set([':', '=', ':=', '->', '=>', '-', '–', '—']);
 // An opening quote alone after a credential word opens its quoted value.
-const LONE_QUOTES = new Set(['"', "'"]);
+const QUOTES = new Set(['"', "'"]);
+// `password="…`, `token:=`: a credential name joined to its value.
+const JOINED_CREDENTIAL = /^([\w.$-]{1,64}?)[:=]+(.*)$/s;
+// What may follow a joined name without being a value (`password=`, `pin:,`).
+const NO_VALUE = /^[)\]}>.,;:!?…]*$/;
 
-/** `password`, `Password:`, `api_key=`, `x-api-key:` and `set-cookie` count. */
+/**
+ * True when any word of the name is a credential word, however the name is
+ * written: `password`, `Password:`, `x-api-key`, `api_key=`, `accessToken`,
+ * `clientSecret`, `config.password`, `set-cookie`.
+ */
 function isCredentialName(value: string): boolean {
-  const name = value.replace(/[:=]+$/, '').toLowerCase();
-  if (!PLAIN_NAME.test(name)) return false;
+  const name = value.replace(/[:=]+$/, '');
+  if (!NAME.test(name)) return false;
+  const words = name
+    .split(NAME_SEPARATORS)
+    .flatMap((part) => part.match(NAME_WORDS) ?? [])
+    .map((word) => word.toLowerCase());
   return (
-    CREDENTIAL_WORDS.has(name) ||
-    CREDENTIAL_WORDS.has(name.replace(/[-_]/g, '')) ||
-    CREDENTIAL_WORDS.has(name.split(NAME_PARTS).at(-1) ?? '')
+    words.some((word) => CREDENTIAL_WORDS.has(word)) ||
+    words.some((word, index) =>
+      CREDENTIAL_WORDS.has(`${word}${words[index + 1] ?? ''}`),
+    )
   );
 }
-
-// `password="…` or `token:'…`: a credential name joined to its value.
-const JOINED_CREDENTIAL = /^([\w-]{1,64})[:=]+(.*)$/s;
-const QUOTES = new Set(['"', "'"]);
 
 /**
  * The quote a credential value opens and does not close in this token, so
@@ -160,104 +276,121 @@ function openedQuote(value: string): string | undefined {
     : undefined;
 }
 
-/** The safe rendering of a token, or undefined when it must be redacted. */
-function renderSafe({ leading, core, trailing, raw }: Token) {
-  if (isSafePunctuation(raw)) return raw;
-  if (HTTP_URL.test(core)) {
-    const url = toPathOnlyUrl(core);
-    return url === REDACTED ? undefined : `${leading}${url}${trailing}`;
+/**
+ * Renders each token, or marks it undefined to redact, applying the one
+ * context rule: the value after a credential name is always redacted.
+ * Only a separator token or a lone opening quote keeps the context alive;
+ * the first token after that goes whatever its shape, punctuation included,
+ * and a quoted value goes through its closing quote or the end of the line.
+ */
+function renderWithCredentialContext(
+  tokens: (Token | undefined)[],
+  separators: string[],
+): (string | undefined)[] {
+  const rendered: (string | undefined)[] = [];
+  let quote: string | undefined;
+  let credentialNext = false;
+  for (const [index, token] of tokens.entries()) {
+    const afterCredential = credentialNext;
+    credentialNext = false;
+    if (quote && (separators[index] ?? '').includes('\n')) quote = undefined;
+    if (!token) {
+      rendered.push('');
+      continue;
+    }
+    const { raw, core } = token;
+    if (quote) {
+      rendered.push(undefined);
+      if (raw.includes(quote)) quote = undefined;
+      continue;
+    }
+    const joined = JOINED_CREDENTIAL.exec(core);
+    if (joined && isCredentialName(joined[1] ?? '')) {
+      // `password=x` goes whole; `password=` and `token:=` leave the value
+      // for the next token, and `password="` opens a quoted one.
+      rendered.push(undefined);
+      const value = `${joined[2] ?? ''}${token.trailing}`;
+      quote = openedQuote(value);
+      credentialNext = !quote && NO_VALUE.test(value);
+    } else if (afterCredential && SEPARATOR_TOKENS.has(raw)) {
+      rendered.push(raw);
+      credentialNext = true;
+    } else if (afterCredential && QUOTES.has(raw)) {
+      rendered.push(raw);
+      quote = raw;
+    } else if (afterCredential) {
+      rendered.push(undefined);
+      quote = openedQuote(raw);
+      credentialNext = AUTH_SCHEMES.has(core.toLowerCase());
+    } else {
+      rendered.push(renderSafe(token));
+      credentialNext = isCredentialName(core);
+    }
   }
-  if (
-    (WORD.test(core) && core.length <= WORD_MAX) ||
-    NUMBER.test(core) ||
-    (IDENTIFIER.test(core) && core.length <= IDENTIFIER_MAX)
-  )
-    return raw;
-  return undefined;
+  return rendered;
+}
+
+// --- Numbers and rendering ------------------------------------------------
+
+const HAS_DIGIT = /\d/;
+
+/** A short number beside anything else with a digit is part of a longer one. */
+function suppressDigitNeighbours(
+  tokens: (Token | undefined)[],
+  rendered: (string | undefined)[],
+): void {
+  for (const [index, token] of tokens.entries()) {
+    if (!token || !NUMBER.test(token.core)) continue;
+    const neighbours = [tokens[index - 1], tokens[index + 1]];
+    if (neighbours.some((other) => other && HAS_DIGIT.test(other.core)))
+      rendered[index] = undefined;
+  }
+}
+
+// Kept after a redacted token, so sentences still read.
+const SENTENCE_PUNCTUATION = /[.,;:!?…]+$/;
+const TRAILING_SENTENCE_PUNCTUATION = /[.,;:!?…]*$/;
+
+/**
+ * Joins the rendered tokens with their original whitespace. A redacted
+ * token becomes `[redacted]`, collapsing into the one before it; its
+ * sentence punctuation stays, unless the token was all punctuation.
+ */
+function renderTokens(
+  tokens: (Token | undefined)[],
+  separators: string[],
+  rendered: (string | undefined)[],
+): string {
+  let output = '';
+  for (const [index, token] of tokens.entries()) {
+    const separator = separators[index] ?? '';
+    const text = rendered[index];
+    if (text !== undefined) {
+      output += `${separator}${text}`;
+      continue;
+    }
+    const punctuation = token?.core
+      ? (SENTENCE_PUNCTUATION.exec(token.raw)?.[0] ?? '')
+      : '';
+    if (index > 0 && rendered[index - 1] === undefined)
+      output = `${output.replace(TRAILING_SENTENCE_PUNCTUATION, '')}${punctuation}`;
+    else output += `${separator}${REDACTED}${punctuation}`;
+  }
+  return output;
 }
 
 /**
  * Keeps only safe tokens (words, short numbers, code identifiers,
  * punctuation, path-only http(s) URLs); every other token becomes
  * `[redacted]`, and consecutive ones collapse. The value after a credential
- * word is always redacted unless it is punctuation (one token, or a quoted
- * value up to its closing quote or the end of the line), and a short number
- * next to another number (`555 123 4567`) is redacted with it.
+ * name is always redacted, and a short number next to another number
+ * (`555 123 4567`) is redacted with it.
  */
 export function redactTelemetryText(value: string): string {
-  const parts = value.split(/(\s+)/);
-  const tokens: (Token | undefined)[] = [];
-  const rendered: (string | undefined)[] = [];
-  let quote: string | undefined;
-  // Set when the previous token was a credential name, or an auth scheme
-  // that was itself a credential's value (`Authorization: bearer x`).
-  let credentialNext = false;
-  for (let index = 0; index < parts.length; index += 2) {
-    const raw = parts[index] ?? '';
-    const token = raw ? splitToken(raw) : undefined;
-    const afterCredential: boolean = credentialNext;
-    credentialNext = false;
-    tokens.push(token);
-    if (quote && (parts[index - 1] ?? '').includes('\n')) quote = undefined;
-    if (!token) {
-      rendered.push('');
-      continue;
-    }
-    if (quote) {
-      rendered.push(undefined);
-      if (raw.includes(quote)) quote = undefined;
-      continue;
-    }
-    const joined = JOINED_CREDENTIAL.exec(token.core);
-    if (joined && isCredentialName(joined[1] ?? '')) {
-      rendered.push(undefined);
-      quote = openedQuote(`${joined[2] ?? ''}${token.trailing}`);
-    } else if (afterCredential && SEPARATOR_TOKENS.has(raw)) {
-      // `password : x`: the separator keeps the context for the value.
-      rendered.push(raw);
-      credentialNext = true;
-    } else if (afterCredential && LONE_QUOTES.has(raw)) {
-      // `secret " two words "`: the value runs to the closing quote.
-      rendered.push(raw);
-      quote = raw;
-    } else if (afterCredential) {
-      // The first value token goes, whatever its shape, punctuation included.
-      rendered.push(undefined);
-      quote = openedQuote(raw);
-      credentialNext = AUTH_SCHEMES.has(token.core.toLowerCase());
-    } else {
-      rendered.push(renderSafe(token));
-      credentialNext = isCredentialName(token.core);
-    }
-  }
-  // A number beside anything else with a digit is part of a longer number.
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (!token || !NUMBER.test(token.core)) continue;
-    const neighbours = [tokens[index - 1], tokens[index + 1]];
-    if (neighbours.some((other) => other && HAS_DIGIT.test(other.core)))
-      rendered[index] = undefined;
-  }
-  let output = '';
-  for (let index = 0; index < tokens.length; index += 1) {
-    const separator = index === 0 ? '' : (parts[index * 2 - 1] ?? '');
-    const token = tokens[index];
-    const text = rendered[index];
-    if (text !== undefined) {
-      output += `${separator}${text}`;
-      continue;
-    }
-    // Redacted: collapse into the previous [redacted] if there is one. Its
-    // sentence punctuation stays, unless the token was all punctuation.
-    const punctuation = token?.core
-      ? (SENTENCE_PUNCTUATION.exec(token.raw)?.[0] ?? '')
-      : '';
-    const previousRedacted = index > 0 && rendered[index - 1] === undefined;
-    if (previousRedacted)
-      output = `${output.replace(/[.,;:!?…]*$/, '')}${punctuation}`;
-    else output += `${separator}${REDACTED}${punctuation}`;
-  }
-  return output;
+  const { tokens, separators } = tokenize(value);
+  const rendered = renderWithCredentialContext(tokens, separators);
+  suppressDigitNeighbours(tokens, rendered);
+  return renderTokens(tokens, separators, rendered);
 }
 
 /**

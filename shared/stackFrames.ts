@@ -1,5 +1,6 @@
 import {
   cutAtLastBreak,
+  hasTooManyDigits,
   REDACTED,
   redactTelemetryText,
   SANITIZE_INPUT_FACTOR,
@@ -20,7 +21,13 @@ import {
 export const FRAME_OMITTED = '    [frame omitted]';
 // A line longer than this is not a frame anyone wrote.
 const FRAME_LINE_MAX = 1_000;
-const FUNCTION_NAME = /^[\w$.<>[\] ]{1,80}$/;
+// An identifier (`saveSummary`, `Array.map`, `Object.<anonymous>`), with
+// at most one `new ` or `async ` prefix and V8's `[as alias]` suffix.
+const FUNCTION_NAME =
+  /^(?:(?:new|async) )?[A-Za-z_$][\w$.<>]*(?: \[as [A-Za-z_$][\w$]*\])?$/;
+const FUNCTION_NAME_MAX = 80;
+// Safari's name for top-level script code.
+const KNOWN_FUNCTION_NAMES = new Set(['global code']);
 const LOCATION = /^(.+):(\d{1,9}):(\d{1,9})$/;
 // Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
@@ -28,7 +35,6 @@ const URL_PREFIX = /^https?:\/\//i;
 // `node:`, `file://`, `webpack-internal:///` or a drive letter, then a path.
 const SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:(?:\/\/\/?)?/i;
 const QUERY_START = /[?#]/;
-const HEADER = /^([A-Za-z_$][\w$.]{0,63})(?::\s?([\s\S]*))?$/;
 
 /** A frame's file: path-only for http(s), plain path segments otherwise. */
 function sanitizeFile(file: string): string {
@@ -53,8 +59,17 @@ function sanitizeLocation(location: string): string | undefined {
 function frame(name: string, location: string): string | undefined {
   const sanitized = sanitizeLocation(location);
   if (sanitized === undefined) return undefined;
-  const safeName = FUNCTION_NAME.test(name) ? name : '<anonymous>';
-  return `    at ${safeName} (${sanitized})`;
+  return `    at ${sanitizeFunctionName(name)} (${sanitized})`;
+}
+
+/** A frame's function name if it is an identifier shape, else `<anonymous>`. */
+function sanitizeFunctionName(name: string): string {
+  if (KNOWN_FUNCTION_NAMES.has(name)) return name;
+  return name.length <= FUNCTION_NAME_MAX &&
+    FUNCTION_NAME.test(name) &&
+    !hasTooManyDigits(name)
+    ? name
+    : '<anonymous>';
 }
 
 /** One stack line as a canonical frame, or undefined if it is not one. */
@@ -75,13 +90,13 @@ function parseFrame(line: string): string | undefined {
   return frame(trimmed.slice(0, at), trimmed.slice(at + 1));
 }
 
+/**
+ * The first line, `Name: message`, goes whole through free-text sanitizing:
+ * a known error name (`TypeError`) is a safe word anyway, and a credential
+ * name (`apiKey: x`, `TokenError: x`) keeps its context for the value.
+ */
 function sanitizeHeader(line: string): string {
-  const match = HEADER.exec(line);
-  if (!match) return redactTelemetryText(line);
-  const [, name = '', message] = match;
-  return message === undefined
-    ? name
-    : `${name}: ${redactTelemetryText(message)}`;
+  return redactTelemetryText(line);
 }
 
 /**

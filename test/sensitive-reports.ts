@@ -34,6 +34,15 @@ export const SENSITIVE_VALUES = [
   '1111111111',
   '555-987-6543',
   '!@#$%^&*()',
+  'correcthorsebattery',
+  'tokenvalueabc',
+  'XkfQpLmZr9Ab',
+  'abc123def',
+  'accesstokenvalue',
+  'clientsecretvalue',
+  'configpasswordvalue',
+  '?!?!!',
+  'headersecretvalue',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -71,6 +80,7 @@ export const SENSITIVE_STACK = [
   `    body ${SENSITIVE_COMPACT_JSON}`,
   '    at fn (https://alice:hunter2@scc.example/a(b).js?token=abc123#fragment:7:8)',
   '    at dial (https://scc.example/call/555-987-6543/a.js:9:9)',
+  '    at token abc123def 5551234567 (https://scc.example/reset/XkfQpLmZr9Ab/a.js:1:2)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [
@@ -83,6 +93,8 @@ export const SENSITIVE_DESCRIPTION = [
   'Authorization: bearer short-secret',
   'Cookie: theme=dark; sid=private-value; b=second-cookie',
   'Then password: !@#$%^&*() and https://scc.example/call/555-987-6543 failed too.',
+  'Later password= correcthorsebattery and token:= tokenvalueabc and https://scc.example/reset/XkfQpLmZr9Ab broke.',
+  'Also accessToken accesstokenvalue, clientSecret clientsecretvalue, config.password configpasswordvalue and GET https://scc.example/x?token=?!?!! next.',
 ].join('\n');
 
 export function expectNoSensitiveValues(output: string) {

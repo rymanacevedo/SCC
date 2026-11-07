@@ -70,6 +70,46 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
+  test('the header line keeps credential context: the whole line is free text', () => {
+    expect(sanitizeStackTrace('apiKey: short-secret', 8_000)).toBe(
+      'apiKey: [redacted]',
+    );
+    expect(
+      sanitizeStackTrace(
+        'TokenError: correcthorse\n    at f (https://scc.example/a.js:1:2)',
+        8_000,
+      ),
+    ).toBe('TokenError: [redacted]\n    at f (https://scc.example/a.js:1:2)');
+    expect(
+      sanitizeStackTrace('DOMException: The operation was aborted.', 8_000),
+    ).toBe('DOMException: The operation was aborted.');
+  });
+
+  test('a function name must be an identifier shape, else <anonymous>', () => {
+    const stack = [
+      'Error: Broken',
+      '    at token abc123def 5551234567 (https://scc.example/a.js:1:2)',
+      'user 5551234567@https://scc.example/a.js:3:4',
+      '    at user5551234567 (https://scc.example/a.js:5:6)',
+      '    at hunter2 (https://scc.example/a.js:7:8)',
+      '    at new Builder (https://scc.example/a.js:9:9)',
+      '    at async loadUser (https://scc.example/a.js:9:9)',
+      '    at Object.<anonymous> [as run] (https://scc.example/a.js:9:9)',
+    ].join('\n');
+    expect(sanitizeStackTrace(stack, 8_000)).toBe(
+      [
+        'Error: Broken',
+        '    at <anonymous> (https://scc.example/a.js:1:2)',
+        '    at <anonymous> (https://scc.example/a.js:3:4)',
+        '    at <anonymous> (https://scc.example/a.js:5:6)',
+        '    at hunter2 (https://scc.example/a.js:7:8)',
+        '    at new Builder (https://scc.example/a.js:9:9)',
+        '    at async loadUser (https://scc.example/a.js:9:9)',
+        '    at Object.<anonymous> [as run] (https://scc.example/a.js:9:9)',
+      ].join('\n'),
+    );
+  });
+
   test('a file path segment with 5+ digits in total becomes [redacted]', () => {
     const stack = [
       'Error: Broken',

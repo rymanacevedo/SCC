@@ -245,6 +245,7 @@ describe('issue bodies sent to GitHub', () => {
         '    [frame omitted]',
         '    at fn (https://scc.example/a(b).js:7:8)',
         '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
+        '    at <anonymous> (https://scc.example/reset/[redacted]/a.js:1:2)',
         '```',
       ].join('\n'),
     );
@@ -271,6 +272,18 @@ describe('issue bodies sent to GitHub', () => {
     expect(body).toContain(
       'Then password: [redacted] and https://scc.example/call/[redacted] failed too.',
     );
+  });
+
+  test('a credential in the stack header reaches neither body nor fingerprint', async () => {
+    const sent = captureCreatedIssues();
+    const stackTrace =
+      'apiKey: headersecretvalue\n    at f (https://scc.example/a.js:1:2)';
+    await createAutoReportedIssue({
+      ...auth,
+      payload: { ...chunkFailure, stackTrace },
+    });
+    expectNoSensitiveValues(`${sent[0]?.title}\n${sent[0]?.body}`);
+    expect(sent[0]?.body).toContain('\napiKey: [redacted]\n');
   });
 
   test('a formatted phone number in a report URL path reaches neither body nor fingerprint', async () => {

@@ -50,6 +50,30 @@ describe('toPathOnlyUrl', () => {
     ).toBe('https://scc.example/node_modules/@scope/pkg/main-abc123.js');
   });
 
+  test('a path segment must be a word, identifier, short number or hashed asset name', () => {
+    for (const path of [
+      '/api/v1/users/me',
+      '/assets/index-C4kL9x.js',
+      '/assets/main-abcdef12.js.map',
+      '/node_modules/@scope/pkg/error-reporting.test.ts',
+      '/w/Foo_(bar)/[slug]/(group)/page',
+      '/orders/1234/items',
+    ])
+      expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
+        `https://scc.example${path}`,
+      );
+    for (const [path, expected] of [
+      ['/reset/XkfQpLmZr9Ab', '/reset/[redacted]'],
+      ['/invite/a1b2c3/accept', '/invite/[redacted]/accept'],
+      ['/u/jane_doe2/x', '/u/[redacted]/x'],
+      ['/t/abc-123x-zz/x', '/t/[redacted]/x'],
+      ['/assets/NotAHash9-12345678.js', '/assets/[redacted]'],
+    ])
+      expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
+        `https://scc.example${expected}`,
+      );
+  });
+
   test('a segment or host with 5+ digits in total becomes [redacted], however separated', () => {
     for (const [input, expected] of [
       [
@@ -93,6 +117,38 @@ describe('redactTelemetryText keeps safe shapes', () => {
       'getElementById() returned null; e.g. a read-only field',
     ])
       expect(redactTelemetryText(message)).toBe(message);
+  });
+
+  test('nothing after a query or fragment comes back, unless it closes a wrapper', () => {
+    for (const [input, expected] of [
+      [
+        'GET https://scc.example/x?token=?!?!! next',
+        'GET https://scc.example/x next',
+      ],
+      ['GET https://scc.example/x#?!. next', 'GET https://scc.example/x next'],
+      [
+        'GET https://scc.example/x?q=a). next',
+        'GET https://scc.example/x next',
+      ],
+      // `?!` after the `)` may be query text, so the `)` cannot be trusted.
+      [
+        'see (https://scc.example/x?q=a)?! next',
+        'see (https://scc.example/x next',
+      ],
+      [
+        'see (https://scc.example/x?q=a) next',
+        'see (https://scc.example/x) next',
+      ],
+      [
+        'see "https://scc.example/x#frag", next',
+        'see "https://scc.example/x", next',
+      ],
+      [
+        'see (https://scc.example/x). next',
+        'see (https://scc.example/x). next',
+      ],
+    ])
+      expect(redactTelemetryText(input)).toBe(expected);
   });
 
   test('an http(s) URL in text is emitted path-only', () => {
@@ -204,6 +260,17 @@ describe('redactTelemetryText replaces everything else', () => {
       ['with apiKey=s3cr3t-api-key.\nMy page', 'with [redacted].\nMy page'],
       ['token short-secret then more', 'token [redacted] then more'],
       ['password : hunter', 'password : [redacted]'],
+      ['password= correcthorse', '[redacted]'],
+      ['accessToken correcthorse', 'accessToken [redacted]'],
+      ['clientSecret correcthorse', 'clientSecret [redacted]'],
+      ['config.password correcthorse', 'config.password [redacted]'],
+      ['AUTH_TOKEN correcthorse', 'AUTH_TOKEN [redacted]'],
+      ['session_id: correcthorse', 'session_id: [redacted]'],
+      ['user.apiKey= correcthorse', '[redacted]'],
+      ['token:= abcdef', '[redacted]'],
+      ['Password: = hunter', 'Password: = [redacted]'],
+      ['password= " two words " next', '[redacted] " [redacted] next'],
+      ["secret=' hunter' next", '[redacted] next'],
       ['password = hunter', 'password = [redacted]'],
       ['secret — hunter', 'secret — [redacted]'],
     ];

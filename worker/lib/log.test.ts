@@ -49,8 +49,20 @@ test('an Error is logged with redacted name, message, cause and stack', () => {
       '    [frame omitted]',
       '    at fn (https://scc.example/a(b).js:7:8)',
       '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
+      '    at <anonymous> (https://scc.example/reset/[redacted]/a.js:1:2)',
     ].join('\n'),
   );
+});
+
+test('a credential in the stack header is redacted in the log', () => {
+  const error = new Error('Broken');
+  error.stack =
+    'apiKey: headersecretvalue\n    at f (https://scc.example/a.js:1:2)';
+  const described = describeErrorForLog(error);
+  expectNoSensitiveValues(JSON.stringify(described));
+  expect(described).toMatchObject({
+    stack: 'apiKey: [redacted]\n    at f (https://scc.example/a.js:1:2)',
+  });
 });
 
 test('a logged stack is capped at 4,000 characters with a marker', () => {
