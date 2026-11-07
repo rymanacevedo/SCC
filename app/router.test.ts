@@ -146,7 +146,7 @@ test('router errors return 500 and auto-report once without waiting for reportin
     expect((await router.fetch(builderRequest('/throw'))).status).toBe(500);
     expect(reports).toEqual([
       {
-        url: 'https://scc.example/throw',
+        url: 'https://app.invalid/throw',
         message: `[message omitted: ${error.message.length} characters]`,
         timestamp: expect.any(String),
         // A real stack, as canonical frames; the checkout path may be redacted.

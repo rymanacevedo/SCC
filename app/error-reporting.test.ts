@@ -28,7 +28,7 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   await reportErrorTelemetry(new Response(null, { status: 404 }));
   expect(bodies).toHaveLength(1);
   expect(JSON.parse(bodies[0] ?? '{}')).toEqual({
-    url: 'https://scc.example/info',
+    url: 'https://app.invalid/info',
     message: `[message omitted: ${error.message.length} characters]`,
     // A real stack, as canonical frames; the checkout path may be redacted.
     stackTrace: expect.stringMatching(
@@ -47,12 +47,12 @@ test('auto-report sends a path-only URL and a redacted message and stack', async
   expect(bodies).toHaveLength(1);
   expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
-  expect(sent.url).toBe('https://scc.example/summary');
+  expect(sent.url).toBe('https://app.invalid/summary');
   expect(sent.message).toBe(
     `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   );
   expect(sent.stackTrace).toContain(
-    'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
+    'at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
   );
 });
 test('errors that differ only by query string or redacted data are sent once', async () => {
@@ -69,7 +69,7 @@ test('errors that differ only by query string or redacted data are sent once', a
   );
   expect(bodies).toHaveLength(1);
   expect(JSON.parse(bodies[0] ?? '{}')).toMatchObject({
-    url: 'https://scc.example/summary',
+    url: 'https://app.invalid/summary',
     message: '[message omitted: 32 characters]',
   });
 });

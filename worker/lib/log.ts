@@ -7,6 +7,7 @@ import {
   omittedText,
   REDACTED,
   sanitizeErrorName,
+  toPathOnlyUrl,
 } from '../../shared/telemetryRedaction.ts';
 
 // A logged stack is shorter than a stored one: Workers Logs lines stay small.
@@ -27,6 +28,11 @@ export function logToken(value: unknown) {
 /** Reduces a URL bound for Workers Logs to origin + plain path. */
 export function redactUrlForLog(value: unknown) {
   return typeof value === 'string' ? sanitizeReportUrl(value) : value;
+}
+
+/** A request's path bound for Workers Logs, with only plain segments. */
+export function pathForLog(url: string): string {
+  return new URL(toPathOnlyUrl(url)).pathname;
 }
 
 /** A report timestamp bound for Workers Logs, as a bounded canonical value. */

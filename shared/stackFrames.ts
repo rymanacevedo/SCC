@@ -1,6 +1,7 @@
 import {
   cutAtLastBreak,
   hasTooManyDigits,
+  isSensitiveToken,
   REDACTED,
   SANITIZE_INPUT_FACTOR,
   sanitizeErrorName,
@@ -63,9 +64,11 @@ function frame(name: string, location: string): string | undefined {
 /** A frame's function name if it is an identifier shape, else `<anonymous>`. */
 function sanitizeFunctionName(name: string): string {
   if (KNOWN_FUNCTION_NAMES.has(name)) return name;
+  // `isSensitiveToken` finds a key in any dotted part or `[as alias]`.
   return name.length <= FUNCTION_NAME_MAX &&
     FUNCTION_NAME.test(name) &&
-    !hasTooManyDigits(name)
+    !hasTooManyDigits(name) &&
+    !isSensitiveToken(name)
     ? name
     : '<anonymous>';
 }
@@ -88,14 +91,17 @@ function parseFrame(line: string): string | undefined {
   return frame(trimmed.slice(0, at), trimmed.slice(at + 1));
 }
 
-// The first line of a V8 stack, `Name: message`: only the name is kept.
-const HEADER_NAME = /^\s*([^:\s]+)/;
+// The first line of a V8 stack, `Name: message` or a bare `Name`: only the
+// name is kept. An identifier then `:` or the end of the line, which no
+// frame line starts with (`at …`, `fn@…`, `global code@…`).
+const HEADER = /^\s*([A-Za-z_$][\w$.]*)(?::|\s*$)/;
 const FRAME_PREFIX = '    at ';
 
 /**
  * Sanitizes a stack trace into canonical frames, then truncates it at a
  * frame boundary to at most `max` characters, visible marker included.
- * The first line, when it is not a frame, is `Name: message`; it becomes the
+ * The first line is read as `Name: message` before it is tried as a frame,
+ * so `Error: …@host:1:2` is not taken for a Firefox frame; it becomes the
  * error name alone (`TypeError`), or `[redacted]` if that is not an error
  * class name. Input past four times `max` is never read, and a frame the
  * bound cut in half is dropped.
@@ -110,10 +116,11 @@ export function sanitizeStackTrace(stack: string, max: number): string {
   const output: string[] = [];
   for (const [index, line] of lines.entries()) {
     if (!line.trim()) continue;
-    const parsed = parseFrame(line);
-    if (parsed) output.push(parsed);
-    else if (index === 0)
-      output.push(sanitizeErrorName(HEADER_NAME.exec(line)?.[1] ?? ''));
+    const header = index === 0 ? HEADER.exec(line)?.[1] : undefined;
+    const parsed = header === undefined ? parseFrame(line) : undefined;
+    if (header !== undefined) output.push(sanitizeErrorName(header));
+    else if (parsed) output.push(parsed);
+    else if (index === 0) output.push(REDACTED);
     else if (output.at(-1) !== FRAME_OMITTED) output.push(FRAME_OMITTED);
   }
   const sanitized = output.join('\n');

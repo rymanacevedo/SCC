@@ -115,7 +115,7 @@ export function sanitizeReportTimestamp(timestamp: string): string {
 
 /**
  * A report URL as origin + plain path, cut to its limit. Always a valid URL
- * (an origin that cannot be kept becomes `https://redacted.invalid`), so a
+ * (under the synthetic `https://app.invalid` origin; no host is kept), so a
  * sanitized report always passes its schema.
  */
 export function sanitizeReportUrl(url: string): string {

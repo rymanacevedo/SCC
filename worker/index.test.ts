@@ -4,6 +4,7 @@ import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
 import {
   expectNoSensitiveValues,
+  SENSITIVE_KEY_SEGMENT,
   SENSITIVE_MESSAGE,
   SENSITIVE_URL,
 } from '../test/sensitive-reports.ts';
@@ -98,6 +99,32 @@ test('the Worker redacts an unhandled error before logging it', async () => {
       name: 'Error',
       message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
       causeName: 'Error',
+    });
+  } finally {
+    log.mockRestore();
+  }
+});
+
+test('a client disconnect logs its path sanitized, like every other log sink', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const request = withSignal(
+    new Request(
+      `https://scc.example/api/x/${SENSITIVE_KEY_SEGMENT}/5551234567`,
+    ),
+    controller.signal,
+  );
+  const log = spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const worker = createWorker({
+      fetch: async () => {
+        throw controller.signal.reason;
+      },
+    });
+    expect((await worker.fetch(request)).status).toBe(499);
+    expect(log).toHaveBeenCalledWith({
+      category: 'client_aborted',
+      path: '/api/x/[redacted]/[redacted]',
     });
   } finally {
     log.mockRestore();

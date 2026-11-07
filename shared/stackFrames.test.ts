@@ -16,8 +16,8 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
         'TypeError',
-        '    at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
-        '    at <anonymous> (https://scc.example/assets/index-Bx9q.js:1:113)',
+        '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+        '    at <anonymous> (https://app.invalid/assets/index-Bx9q.js:1:113)',
         '    at Array.map (<anonymous>)',
         '    at async Promise.all (index 0)',
         '    at new Builder (/srv/app/src/builder.ts:40:7)',
@@ -37,10 +37,10 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        '    at saveSummary (https://scc.example/assets/main.js:12:34)',
-        '    at <anonymous> (https://scc.example/assets/main.js:5:6)',
-        '    at <anonymous> (https://scc.example/assets/main.js:7:8)',
-        '    at global code (https://scc.example/:1:1)',
+        '    at saveSummary (https://app.invalid/assets/main.js:12:34)',
+        '    at <anonymous> (https://app.invalid/assets/main.js:5:6)',
+        '    at <anonymous> (https://app.invalid/assets/main.js:7:8)',
+        '    at global code (https://app.invalid/:1:1)',
         '    [frame omitted]',
       ].join('\n'),
     );
@@ -61,11 +61,11 @@ describe('sanitizeStackTrace', () => {
       [
         'Error',
         '    [frame omitted]',
-        '    at retry (https://scc.example/a.js:9:9)',
+        '    at retry (https://app.invalid/a.js:9:9)',
         '    [frame omitted]',
-        '    at fn (https://scc.example/a.js:1:2)',
+        '    at fn (https://app.invalid/a.js:1:2)',
         '    at fn ([redacted]:1:2)',
-        '    at <anonymous> (https://scc.example/a.js:1:2)',
+        '    at <anonymous> (https://app.invalid/a.js:1:2)',
       ].join('\n'),
     );
   });
@@ -79,7 +79,7 @@ describe('sanitizeStackTrace', () => {
         'TokenError: correcthorse\n    at f (https://scc.example/a.js:1:2)',
         8_000,
       ),
-    ).toBe('TokenError\n    at f (https://scc.example/a.js:1:2)');
+    ).toBe('TokenError\n    at f (https://app.invalid/a.js:1:2)');
     expect(
       sanitizeStackTrace('DOMException: The operation was aborted.', 8_000),
     ).toBe('DOMException');
@@ -100,8 +100,8 @@ describe('sanitizeStackTrace', () => {
     expect(stackSummary(stack, 2)).toEqual({
       name: 'TypeError',
       frames: [
-        '    at a (https://scc.example/a.js:1:2)',
-        '    at b (https://scc.example/b.js:3:4)',
+        '    at a (https://app.invalid/a.js:1:2)',
+        '    at b (https://app.invalid/b.js:3:4)',
       ],
     });
     expect(
@@ -123,15 +123,52 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
         'Error',
-        '    at <anonymous> (https://scc.example/a.js:1:2)',
-        '    at <anonymous> (https://scc.example/a.js:3:4)',
-        '    at <anonymous> (https://scc.example/a.js:5:6)',
-        '    at hunter2 (https://scc.example/a.js:7:8)',
-        '    at new Builder (https://scc.example/a.js:9:9)',
-        '    at async loadUser (https://scc.example/a.js:9:9)',
-        '    at Object.<anonymous> [as run] (https://scc.example/a.js:9:9)',
+        '    at <anonymous> (https://app.invalid/a.js:1:2)',
+        '    at <anonymous> (https://app.invalid/a.js:3:4)',
+        '    at <anonymous> (https://app.invalid/a.js:5:6)',
+        '    at hunter2 (https://app.invalid/a.js:7:8)',
+        '    at new Builder (https://app.invalid/a.js:9:9)',
+        '    at async loadUser (https://app.invalid/a.js:9:9)',
+        '    at Object.<anonymous> [as run] (https://app.invalid/a.js:9:9)',
       ].join('\n'),
     );
+  });
+
+  test('a key-shaped function name, dotted part or alias becomes <anonymous>', () => {
+    const key = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
+    const stack = [
+      // A normal message, then a frame-shaped line holding the key.
+      'Error: hi',
+      `    at ${key} (https://scc.example/a.js:1:2)`,
+      `    at Object.${key} (https://scc.example/a.js:3:4)`,
+      `    at run [as ${key}] (https://scc.example/a.js:5:6)`,
+      `${key}@https://scc.example/a.js:7:8`,
+    ].join('\n');
+    const sanitized = sanitizeStackTrace(stack, 8_000);
+    expect(sanitized).not.toContain(key);
+    expect(sanitized).toBe(
+      [
+        'Error',
+        '    at <anonymous> (https://app.invalid/a.js:1:2)',
+        '    at <anonymous> (https://app.invalid/a.js:3:4)',
+        '    at <anonymous> (https://app.invalid/a.js:5:6)',
+        '    at <anonymous> (https://app.invalid/a.js:7:8)',
+      ].join('\n'),
+    );
+  });
+
+  test('the first line is read as a header before it is tried as a frame', () => {
+    // `Error: …@host:1:2` would otherwise parse as a Firefox frame.
+    expect(
+      sanitizeStackTrace(
+        'Error: failed for jane@example.com:1:2\n    at f (https://scc.example/a.js:1:2)',
+        8_000,
+      ),
+    ).toBe('Error\n    at f (https://app.invalid/a.js:1:2)');
+    // A Firefox stack has no header: its first line is still a frame.
+    expect(
+      sanitizeStackTrace('saveSummary@https://scc.example/a.js:1:2', 8_000),
+    ).toBe('    at saveSummary (https://app.invalid/a.js:1:2)');
   });
 
   test('a file path segment with 5+ digits in total becomes [redacted]', () => {
@@ -144,9 +181,9 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
         'Error',
-        '    at call (https://scc.example/call/[redacted]/a.js:1:2)',
+        '    at call (https://app.invalid/call/[redacted]/a.js:1:2)',
         '    at call (/srv/users/[redacted]/a.js:3:4)',
-        '    at main (https://scc.example/assets/index-C4kL9x.js:5:6)',
+        '    at main (https://app.invalid/assets/index-C4kL9x.js:5:6)',
       ].join('\n'),
     );
   });

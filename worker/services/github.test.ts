@@ -11,7 +11,9 @@ import {
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
+  SENSITIVE_AT_HEADER_STACK,
   SENSITIVE_DESCRIPTION,
+  SENSITIVE_KEY_URL,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_TIMESTAMP,
@@ -90,7 +92,7 @@ const chunkFailureNextBuild = {
 
 describe('issueFingerprint', () => {
   test('is the SHA-256 hex digest of the sanitized telemetry fingerprint', async () => {
-    // The digest of {"name":"","url":"https://example.com/","frames":[]}.
+    // The digest of {"name":"","url":"https://app.invalid/","frames":[]}.
     expect(
       await issueFingerprint(
         sanitizeErrorTelemetry({
@@ -99,7 +101,7 @@ describe('issueFingerprint', () => {
           message: 'Broken',
         }),
       ),
-    ).toBe('2ab460f696ce1fb342c1453cc9bb56a1f4ab9e68265e7cc1da608876d8a393d3');
+    ).toBe('1fd1c3386d5b693285f573e2d94316876eeaefc00aaf3776cd2efd390efa0474');
   });
 
   test('queries, fragments and messages do not split it', async () => {
@@ -114,7 +116,7 @@ describe('issueFingerprint', () => {
       ),
     ).toBe(
       await fingerprint(
-        'https://scc.example/summary?token=two#other',
+        'https://app.invalid/summary?token=two#other',
         'Save failed for sam@example.org',
       ),
     );
@@ -133,7 +135,7 @@ describe('GitHub issue body rendering', () => {
         '# User-reported issue',
         '',
         '- Timestamp: 2026-04-27T12:00:00.000Z',
-        '- URL: `https://example.com/builder`',
+        '- URL: `https://app.invalid/builder`',
       ].join('\n'),
     );
   });
@@ -148,7 +150,7 @@ describe('GitHub issue body rendering', () => {
 
     expect(body.split('\n').slice(3)).toEqual([
       '- Timestamp: 2026-04-27T12:00:00.000Z',
-      '- URL: `https://example.com/`',
+      '- URL: `https://app.invalid/`',
       '- Message: `[message omitted: 30 characters]`',
       '',
       '## Stack trace',
@@ -175,7 +177,7 @@ describe('GitHub issue body rendering', () => {
         '',
         '- Fingerprint: abc123',
         '- Timestamp: 2026-04-27T12:00:00.000Z',
-        '- URL: `https://example.com/`',
+        '- URL: `https://app.invalid/`',
         '- Message: `[message omitted: 12 characters]`',
         '',
         '## Stack trace',
@@ -203,7 +205,7 @@ describe('issue bodies sent to GitHub', () => {
     expectNoSensitiveValues(`${title}\n${body}`);
     expect(title).toBe('Auto-reported error: TypeError at /summary');
     expect(body).toContain('- Timestamp: 2026-10-13T00:00:00.111Z\n');
-    expect(body).toContain('- URL: `https://scc.example/summary`\n');
+    expect(body).toContain('- URL: `https://app.invalid/summary`\n');
     expect(body).toContain(
       `- Message: \`[message omitted: ${SENSITIVE_MESSAGE.length} characters]\`\n`,
     );
@@ -211,15 +213,18 @@ describe('issue bodies sent to GitHub', () => {
       [
         '```',
         'TypeError',
-        '    at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
+        '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
         '    [frame omitted]',
-        '    at retry (https://scc.example/assets/api-1a2b3c4d.js:9:9)',
-        '    at loadPage (https://scc.example/assets/page.js:3:4)',
+        '    at retry (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
+        '    at loadPage (https://app.invalid/assets/page.js:3:4)',
         '    [frame omitted]',
-        '    at fn (https://scc.example/a(b).js:7:8)',
-        '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
-        '    at <anonymous> (https://scc.example/reset/[redacted]/a.js:1:2)',
-        '    at keyed (https://scc.example/k/[redacted]/a.js:1:2)',
+        '    at fn (https://app.invalid/a(b).js:7:8)',
+        '    at dial (https://app.invalid/call/[redacted]/a.js:9:9)',
+        '    at <anonymous> (https://app.invalid/reset/[redacted]/a.js:1:2)',
+        '    at keyed (https://app.invalid/k/[redacted]/a.js:1:2)',
+        '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
+        '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
+        '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
         '```',
       ].join('\n'),
     );
@@ -243,7 +248,7 @@ describe('issue bodies sent to GitHub', () => {
         '# User-reported issue',
         '',
         '- Timestamp: 2026-10-13T00:00:00.000Z',
-        '- URL: `https://scc.example/summary`',
+        '- URL: `https://app.invalid/summary`',
       ].join('\n'),
     );
   });
@@ -263,6 +268,34 @@ describe('issue bodies sent to GitHub', () => {
     expect(sent[0]?.body).toContain('\n[redacted]\n    at f (');
   });
 
+  test('a key in the page URL or a header ending like a frame reaches no issue', async () => {
+    const sent = captureCreatedIssues();
+    await createAutoReportedIssue({
+      ...auth,
+      payload: {
+        ...chunkFailure,
+        url: SENSITIVE_KEY_URL,
+        stackTrace: SENSITIVE_AT_HEADER_STACK,
+      },
+    });
+    await createUserReportedIssue({
+      ...auth,
+      payload: { timestamp: chunkFailure.timestamp, url: SENSITIVE_KEY_URL },
+    });
+    for (const { title, body } of sent) {
+      expectNoSensitiveValues(`${title}\n${body}`);
+      expect(body).toContain(
+        '- URL: `https://app.invalid/k/[redacted]/[redacted]/[redacted]`',
+      );
+    }
+    expect(sent[0]?.title).toBe(
+      'Auto-reported error: Error at /k/[redacted]/[redacted]/[redacted]',
+    );
+    expect(sent[0]?.body).toContain(
+      '\nError\n    at save (https://app.invalid/a.js:1:2)\n',
+    );
+  });
+
   test('a formatted phone number in a report URL path reaches neither body nor fingerprint', async () => {
     const sent = captureCreatedIssues();
     const url = 'https://scc.example/call/555-987-6543';
@@ -279,7 +312,7 @@ describe('issue bodies sent to GitHub', () => {
     });
     for (const { title, body } of sent) {
       expectNoSensitiveValues(`${title}\n${body}`);
-      expect(body).toContain('- URL: `https://scc.example/call/[redacted]`');
+      expect(body).toContain('- URL: `https://app.invalid/call/[redacted]`');
     }
     expect(
       buildSanitizedTelemetryFingerprint(
@@ -297,7 +330,7 @@ describe('issue bodies sent to GitHub', () => {
         url: 'http://127.0.0.1:5173/info',
       },
     });
-    expect(sent[0]?.body).toEndWith('\n- URL: `https://redacted.invalid/info`');
+    expect(sent[0]?.body).toEndWith('\n- URL: `https://app.invalid/info`');
   });
 
   test('an over-long stack is cut at a frame boundary with a marker', async () => {
@@ -312,7 +345,9 @@ describe('issue bodies sent to GitHub', () => {
       },
     });
     const body = sent[0]?.body ?? '';
-    expect(body).toContain(`${frame}\n${TRUNCATED}\n`);
+    expect(body).toContain(
+      `${frame.replace('https://scc.example', 'https://app.invalid')}\n${TRUNCATED}\n`,
+    );
     expect(body).toContain('- Message: `[message omitted: 50000 characters]`');
     expect(body.length).toBeLessThan(GITHUB_ISSUE_BODY_MAX);
   });
@@ -478,7 +513,7 @@ describe('GitHub issue body size', () => {
         url: `a:${'`'.repeat(REPORT_FIELD_LIMITS.url - 2)}`,
       },
     });
-    expect(sent[0]?.body).toEndWith('\n- URL: `https://redacted.invalid/`');
+    expect(sent[0]?.body).toEndWith('\n- URL: `https://app.invalid/`');
   });
 });
 

@@ -26,8 +26,8 @@ test('fingerprint is the error name, path and top frames, normalized across buil
   expect(buildTelemetryFingerprint(telemetry)).toBe(
     JSON.stringify({
       name: 'TypeError',
-      url: 'https://scc.example/info',
-      frames: ['    at render (https://scc.example/assets/main-[hash].js)'],
+      url: 'https://app.invalid/info',
+      frames: ['    at render (https://app.invalid/assets/main-[hash].js)'],
     }),
   );
   // Another build, another time, another message: the same error.
@@ -107,7 +107,7 @@ test('sanitizing keeps structure only: free text is reduced to its length', () =
     }),
   ).toEqual({
     timestamp: telemetry.timestamp,
-    url: 'https://scc.example/info',
+    url: 'https://app.invalid/info',
     message: '[message omitted: 17 characters]',
     stackTrace: 'Error\n    [frame omitted]',
   });
@@ -118,7 +118,7 @@ test('sanitizing keeps structure only: free text is reduced to its length', () =
     }),
   ).toEqual({
     timestamp: telemetry.timestamp,
-    url: 'https://scc.example/info',
+    url: 'https://app.invalid/info',
   });
 });
 

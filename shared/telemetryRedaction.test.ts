@@ -1,34 +1,35 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  isSensitiveToken,
   omittedText,
   REDACTED,
-  REDACTED_ORIGIN,
+  REPORT_ORIGIN,
   sanitizeErrorName,
   TRUNCATED,
   toPathOnlyUrl,
   truncateWithMarker,
 } from './telemetryRedaction.ts';
 
+// A key, assembled at runtime so none sits in source.
+const KEY = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
+
 describe('toPathOnlyUrl', () => {
-  test('keeps origin and path of an http(s) URL, nothing else', () => {
-    expect(
-      toPathOnlyUrl(
+  test('keeps only the path of an http(s) URL, under the one synthetic origin', () => {
+    expect(REPORT_ORIGIN).toBe('https://app.invalid');
+    for (const [input, expected] of [
+      [
         'https://user:pw@scc.example:8443/info/step?token=abc123#fragment',
-      ),
-    ).toBe('https://scc.example:8443/info/step');
-    expect(toPathOnlyUrl('http://scc.example')).toBe('http://scc.example/');
-    expect(toPathOnlyUrl('https://scc.example/a(b)/[c]?q=(x)#y')).toBe(
-      'https://scc.example/a(b)/[c]',
-    );
+        '/info/step',
+      ],
+      ['http://scc.example', '/'],
+      ['https://scc.example/a(b)/[c]?q=(x)#y', '/a(b)/[c]'],
+      ['http://127.0.0.1:5173/info?x=1', '/info'],
+      ['https://janedoe.example/x', '/x'],
+    ])
+      expect(toPathOnlyUrl(input)).toBe(`${REPORT_ORIGIN}${expected}`);
   });
 
-  test('an origin that cannot be kept becomes the placeholder; the path stays', () => {
-    expect(toPathOnlyUrl('http://127.0.0.1:5173/info?x=1')).toBe(
-      `${REDACTED_ORIGIN}/info`,
-    );
-    expect(toPathOnlyUrl('https://555-123-4567.example/x')).toBe(
-      `${REDACTED_ORIGIN}/x`,
-    );
+  test('anything that is not an http(s) URL is the synthetic origin alone', () => {
     for (const value of [
       '/info?email=a@b.co',
       'unknown',
@@ -38,7 +39,7 @@ describe('toPathOnlyUrl', () => {
       'mailto:jane@example.com',
       'about:blank',
     ])
-      expect(toPathOnlyUrl(value)).toBe(`${REDACTED_ORIGIN}/`);
+      expect(toPathOnlyUrl(value)).toBe(`${REPORT_ORIGIN}/`);
   });
 
   test('the result is always a valid URL', () => {
@@ -49,6 +50,24 @@ describe('toPathOnlyUrl', () => {
       'https://scc.example/u/jane@example.com',
     ])
       expect(() => new URL(toPathOnlyUrl(value))).not.toThrow();
+  });
+
+  test('a key-shaped segment is redacted however it is wrapped or suffixed', () => {
+    for (const segment of [
+      KEY,
+      `(${KEY})`,
+      `[${KEY}]`,
+      `@${KEY}`,
+      `${KEY}.js`,
+      `${KEY}.js.map`,
+      `x-${KEY}`,
+      ['pk', 'test', 'abcdefghijklmnopqrstuvwx'].join('_'),
+      ['ghp', 'abcdefghijklmnopqrstuvwxyzabcdefghij'].join('_'),
+      ['xoxb', 'abcdefghijklmnopqrstuvwx'].join('-'),
+    ])
+      expect(toPathOnlyUrl(`https://scc.example/k/${segment}/a`)).toBe(
+        `${REPORT_ORIGIN}/k/[redacted]/a`,
+      );
   });
 
   test('a path segment must be a word, short number, version or hashed file name', () => {
@@ -66,7 +85,7 @@ describe('toPathOnlyUrl', () => {
       '/README.md',
     ])
       expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
-        `https://scc.example${path}`,
+        `${REPORT_ORIGIN}${path}`,
       );
     for (const [path, expected] of [
       ['/reset/XkfQpLmZr9Ab', '/reset/[redacted]'],
@@ -96,8 +115,37 @@ describe('toPathOnlyUrl', () => {
       ['/reset/XkfQpLmZrAbWy', '/reset/[redacted]'],
     ])
       expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
-        `https://scc.example${expected}`,
+        `${REPORT_ORIGIN}${expected}`,
       );
+  });
+});
+
+describe('isSensitiveToken', () => {
+  test('finds a key shape anywhere, bounded by anything not a letter or digit', () => {
+    for (const value of [
+      KEY,
+      `(${KEY})`,
+      `@${KEY}`,
+      `${KEY}.js`,
+      `Object.${KEY}`,
+      `x [as ${KEY}]`,
+      `$${KEY}`,
+    ])
+      expect(isSensitiveToken(value)).toBe(true);
+  });
+
+  test('ordinary names and segments are not keys', () => {
+    for (const value of [
+      'saveSummary',
+      'Object.<anonymous> [as run]',
+      'node_modules',
+      'error-reporting.test.ts',
+      'index-C4kL9x.js',
+      'getElementsByClassName',
+      'user_settings',
+      'api_v1',
+    ])
+      expect(isSensitiveToken(value)).toBe(false);
   });
 });
 

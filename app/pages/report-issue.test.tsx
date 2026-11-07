@@ -110,8 +110,8 @@ test('report modal submits the page and time once, and shows failure then succes
   expect(requests[0]).toEqual({
     path: '/api/report-issue',
     body: {
-      // happy-dom's about:blank is not an http(s) URL: the placeholder origin.
-      url: 'https://redacted.invalid/',
+      // happy-dom's about:blank is not an http(s) URL: the synthetic origin alone.
+      url: 'https://app.invalid/',
       timestamp: expect.any(String),
     },
   });
@@ -158,7 +158,7 @@ test('the report sends only a path-only URL and the time', async () => {
   expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
   expect(Object.keys(sent).sort()).toEqual(['timestamp', 'url']);
-  expect(sent.url).toBe('https://scc.example/summary');
+  expect(sent.url).toBe('https://app.invalid/summary');
 });
 
 test('a network failure shows plain failure copy and leaves the modal usable', async () => {

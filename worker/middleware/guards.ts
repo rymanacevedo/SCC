@@ -3,6 +3,7 @@ import { createContextKey, type Middleware } from 'remix/router';
 import { z } from 'zod';
 import type { GenerationRequest } from '../../shared/schemas/generation.ts';
 import { type BoundedJson, readBoundedJson } from '../lib/body.ts';
+import { pathForLog } from '../lib/log.ts';
 import { apiError } from '../lib/response.ts';
 
 export const sameOriginGuard: Middleware = ({ request }, next) => {
@@ -40,7 +41,7 @@ export function createGeoRestrictionMiddleware({
         event: 'geo_blocked',
         category: 'geo_blocked',
         country: normalizedCountry,
-        path: new URL(request.url).pathname,
+        path: pathForLog(request.url),
         method: request.method,
         timestamp: new Date().toISOString(),
       });
@@ -140,7 +141,7 @@ export function createProfanityFilter(
       console.log({
         category: 'filtered',
         term: match.term,
-        path: new URL(context.request.url).pathname,
+        path: pathForLog(context.request.url),
       });
       return apiError(400, `Inappropriate term: ${match.term}`);
     }

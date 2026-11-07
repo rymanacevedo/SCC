@@ -42,7 +42,7 @@ test('both report senders post an already-sanitized report unchanged', async () 
   expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
   for (const body of bodies) {
     expectNoSensitiveValues(body);
-    expect(JSON.parse(body).url).toBe('https://scc.example/summary');
+    expect(JSON.parse(body).url).toBe('https://app.invalid/summary');
   }
 });
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {

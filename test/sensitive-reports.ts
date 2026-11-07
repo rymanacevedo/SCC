@@ -71,6 +71,16 @@ export const SENSITIVE_URL =
 export const SENSITIVE_PAREN_URL =
   'https://scc.example/a(b)?q=(private-value)#private-fragment';
 
+/** A page URL whose path holds the key wrapped, behind a sigil and suffixed. */
+export const SENSITIVE_KEY_URL = `https://scc.example/k/(${SENSITIVE_KEY_SEGMENT})/@${SENSITIVE_KEY_SEGMENT}/${SENSITIVE_KEY_SEGMENT}.js`;
+
+/**
+ * A stack whose header message ends like a Firefox frame location, so it
+ * must be read as a header before it is tried as a frame.
+ */
+export const SENSITIVE_AT_HEADER_STACK =
+  'Error: failed for jane.doe@example.com:1:2\n    at save (https://scc.example/a.js:1:2)';
+
 /** A URL with userinfo and a query, embedded in free text. */
 export const SENSITIVE_EMBEDDED_URL =
   'https://alice:hunter2@localhost/api?debug=true';
@@ -100,6 +110,11 @@ export const SENSITIVE_STACK = [
   '    at dial (https://scc.example/call/555-987-6543/a.js:9:9)',
   '    at token abc123def 5551234567 (https://scc.example/reset/XkfQpLmZr9Ab/a.js:1:2)',
   `    at keyed (https://scc.example/k/${SENSITIVE_KEY_SEGMENT}/a.js:1:2)`,
+  // A frame-shaped line holding the key as a function name, a dotted part
+  // and an alias, with wrapped, sigil and suffixed path segments.
+  `    at ${SENSITIVE_KEY_SEGMENT} (https://scc.example/k/(${SENSITIVE_KEY_SEGMENT})/a.js:1:2)`,
+  `    at Object.${SENSITIVE_KEY_SEGMENT} (https://scc.example/k/@${SENSITIVE_KEY_SEGMENT}/a.js:3:4)`,
+  `    at run [as ${SENSITIVE_KEY_SEGMENT}] (https://scc.example/k/${SENSITIVE_KEY_SEGMENT}.js:5:6)`,
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [

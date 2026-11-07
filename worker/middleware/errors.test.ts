@@ -47,16 +47,16 @@ test('logged report metadata, error text and provider URLs are path-only and red
   expectNoSensitiveValues(JSON.stringify(entry));
   expect(entry).toMatchObject({
     category: 'provider',
-    url: 'https://scc.example/summary',
-    providerUrl: 'https://scc.example/summary',
+    url: 'https://app.invalid/summary',
+    providerUrl: 'https://app.invalid/summary',
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   });
   expect(String(entry.stack)).toContain(
-    'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
+    'at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
   );
   expect(String(entry.stack)).toContain('    [frame omitted]\n    at retry (');
   expect(String(entry.stack)).toContain(
-    'at loadPage (https://scc.example/assets/page.js:3:4)',
+    'at loadPage (https://app.invalid/assets/page.js:3:4)',
   );
 });
 

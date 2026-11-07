@@ -29,7 +29,8 @@ place today and what is still a gap.
   auto-reported issues are deduplicated by fingerprint before a create;
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
   error log store structure only: a canonical timestamp, the URL as
-  origin + plain path, the error class name and canonical stack frames.
+  plain path under a synthetic origin, the error class name and canonical
+  stack frames.
   Error messages and GitHub error bodies are free text and are never
   stored, only their length, and a User report asks for no text at all
   (`shared/telemetryRedaction.ts`,
@@ -37,7 +38,8 @@ place today and what is still a gap.
   `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); every
   field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
   that cap, and the route body limit is derived from them. Gaps: a plain-word
-  path segment or a hostname can still be personal (`/u/janedoe`); and the
+  path segment can still be personal (`/u/janedoe`); no real host is kept;
+  and the
   token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`; with free text gone,

@@ -423,7 +423,7 @@ test('a browser-sanitized report from a dev URL with an IP host is accepted by b
   };
   const telemetry = sanitizeErrorTelemetry({ ...fields, message: 'Broken' });
   const report = sanitizeUserIssueReport(fields);
-  expect(report.url).toBe('https://redacted.invalid/info');
+  expect(report.url).toBe('https://app.invalid/info');
   for (const [path, body] of [
     ['/api/errors', telemetry],
     ['/api/report-issue', report],
@@ -508,7 +508,7 @@ test('report route failure logs are path-only, redacted and truncated', async ()
       const entry = log.mock.calls[0]?.[0] as Record<string, unknown>;
       const output = JSON.stringify(entry);
       expectNoSensitiveValues(output);
-      expect(entry.url).toBe('https://scc.example/summary');
+      expect(entry.url).toBe('https://app.invalid/summary');
       expect(entry.category).toBe(`github_${failure}`);
       if (failure === 'network') {
         expect(entry.causeName).toBe('Error');

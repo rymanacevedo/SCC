@@ -154,7 +154,7 @@ test('the default storage telemetry sends a path-only, sanitized URL', async () 
     expect(bodies).toHaveLength(1);
     expectNoSensitiveValues(bodies[0] ?? '');
     expect(JSON.parse(bodies[0] ?? '{}').url).toBe(
-      'https://scc.example/summary',
+      'https://app.invalid/summary',
     );
   } finally {
     globalThis.fetch = originalFetch;

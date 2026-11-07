@@ -12,11 +12,11 @@ import { truncateText } from './text.ts';
 export const REDACTED = '[redacted]';
 export const TRUNCATED = '… [truncated]';
 /**
- * The origin a sanitized URL carries when its own cannot be kept (not
- * http(s), a host with digits such as `127.0.0.1`, or unparseable), so the
- * result is still a valid URL for the report schemas.
+ * The one origin every sanitized report URL carries. A real host is never
+ * kept (it can name a person or a private network); only the path is. The
+ * synthetic origin keeps the result a valid URL for the report schemas.
  */
-export const REDACTED_ORIGIN = 'https://redacted.invalid';
+export const REPORT_ORIGIN = 'https://app.invalid';
 
 // Sanitizing reads at most this many times a field's limit, so an oversized
 // field costs bounded CPU however large the request body was.
@@ -57,11 +57,21 @@ const SEGMENT_NUMBER = /^\d{1,4}$/;
 const VERSION = /^v\d{1,3}$/i;
 const FILE_EXTENSION = /\.[A-Za-z]{1,5}$/;
 const CONTENT_HASH = /^[A-Za-z0-9]{4,16}$/;
-// The whole segment shaped like a key: a short lower-case prefix, an
-// optional short tag, then 16+ letters or digits (`sk_live_…`, `pk_test_…`,
-// `ghp_…`, `xoxb-…`). One structural rule rather than a list of prefixes.
-const KEY_SHAPED_SEGMENT =
-  /^[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[A-Za-z0-9]{16,}$/;
+// A key shape anywhere in a value: a short lower-case prefix, an optional
+// short tag, then 16+ letters or digits (`sk_live_…`, `pk_test_…`, `ghp_…`,
+// `xoxb-…`), bounded by anything that is not a letter or digit. So wrappers,
+// a sigil, a file extension, a dotted part or an alias cannot hide it. One
+// structural rule rather than a list of prefixes.
+const KEY_SHAPE =
+  /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[A-Za-z0-9]{16,}(?![A-Za-z0-9])/;
+
+/**
+ * True when a value holds a key-shaped token. The one check shared by URL
+ * path segments and stack-frame function names, so they cannot drift.
+ */
+export function isSensitiveToken(value: string): boolean {
+  return KEY_SHAPE.test(value);
+}
 // A word with this share of upper-case letters, past this length, looks
 // random rather than written (`AbCdEfGh…`, `XkfQpLmZrAb`); `UserProfile`,
 // `getElementById` and `XMLHttpRequest` stay. All-capitals is a word too.
@@ -87,13 +97,14 @@ function isSafeSegmentPart(part: string): boolean {
  * A plain path segment (`api`, `v1`, `users`, `1234`, `index-C4kL9x.js`,
  * `@scope`, `(group)`, `[slug]`) with at most 4 digits in total. It is
  * judged whole as well as by its parts: a random-looking token such as
- * `XkfQpLmZr9Ab`, or a key-shaped one such as `sk_live_…`, is not.
+ * `XkfQpLmZr9Ab`, or one holding a key (`sk_live_…`, `(sk_live_…)`,
+ * `sk_live_….js`), is not.
  */
 function isSafeSegment(segment: string): boolean {
   if (
     !SEGMENT_CHARACTERS.test(segment) ||
     hasTooManyDigits(segment) ||
-    KEY_SHAPED_SEGMENT.test(segment)
+    isSensitiveToken(segment)
   )
     return false;
   const bare = segment.replace(/^@/, '').replace(SEGMENT_WRAPPERS, '');
@@ -116,22 +127,20 @@ export function sanitizePathSegments(path: string, separator: RegExp): string {
 }
 
 /**
- * A URL as origin + path: no credentials, query string or fragment, and
- * only plain path segments. An origin that is not http(s), or whose host
- * holds 5+ digits, becomes `https://redacted.invalid`, so the result is
- * always a valid URL.
+ * An http(s) URL's path, under the synthetic `https://app.invalid` origin:
+ * no host, credentials, query string or fragment, and only plain path
+ * segments. Anything else is the origin alone. Always a valid URL.
  */
 export function toPathOnlyUrl(value: string): string {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
-    return `${REDACTED_ORIGIN}/`;
+    return `${REPORT_ORIGIN}/`;
   }
   const http = url.protocol === 'http:' || url.protocol === 'https:';
-  if (!http) return `${REDACTED_ORIGIN}/`;
-  const origin = hasTooManyDigits(url.hostname) ? REDACTED_ORIGIN : url.origin;
-  return `${origin}${sanitizePathSegments(url.pathname, /\//)}`;
+  if (!http) return `${REPORT_ORIGIN}/`;
+  return `${REPORT_ORIGIN}${sanitizePathSegments(url.pathname, /\//)}`;
 }
 
 /**

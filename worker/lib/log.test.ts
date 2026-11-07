@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
+  SENSITIVE_AT_HEADER_STACK,
+  SENSITIVE_KEY_URL,
   SENSITIVE_MESSAGE,
   SENSITIVE_PAREN_URL,
   SENSITIVE_STACK,
@@ -58,15 +60,18 @@ test('an Error is logged as its class name, frames, cause class and message leng
     causeName: 'TypeError',
     stack: [
       'TypeError',
-      '    at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
+      '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
       '    [frame omitted]',
-      '    at retry (https://scc.example/assets/api-1a2b3c4d.js:9:9)',
-      '    at loadPage (https://scc.example/assets/page.js:3:4)',
+      '    at retry (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
+      '    at loadPage (https://app.invalid/assets/page.js:3:4)',
       '    [frame omitted]',
-      '    at fn (https://scc.example/a(b).js:7:8)',
-      '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
-      '    at <anonymous> (https://scc.example/reset/[redacted]/a.js:1:2)',
-      '    at keyed (https://scc.example/k/[redacted]/a.js:1:2)',
+      '    at fn (https://app.invalid/a(b).js:7:8)',
+      '    at dial (https://app.invalid/call/[redacted]/a.js:9:9)',
+      '    at <anonymous> (https://app.invalid/reset/[redacted]/a.js:1:2)',
+      '    at keyed (https://app.invalid/k/[redacted]/a.js:1:2)',
+      '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
+      '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
+      '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
     ].join('\n'),
   });
 });
@@ -80,8 +85,24 @@ test('an error name or stack header that is not an error class is [redacted]', (
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described).toMatchObject({
     name: '[redacted]',
-    stack: '[redacted]\n    at f (https://scc.example/a.js:1:2)',
+    stack: '[redacted]\n    at f (https://app.invalid/a.js:1:2)',
   });
+});
+
+test('a header ending like a frame location is logged as the error name', () => {
+  const error = new Error('x');
+  error.stack = SENSITIVE_AT_HEADER_STACK;
+  const described = describeErrorForLog(error);
+  expectNoSensitiveValues(JSON.stringify(described));
+  expect(described.stack).toBe(
+    'Error\n    at save (https://app.invalid/a.js:1:2)',
+  );
+});
+
+test('a key in a logged URL is redacted however it is wrapped', () => {
+  expect(redactUrlForLog(SENSITIVE_KEY_URL)).toBe(
+    'https://app.invalid/k/[redacted]/[redacted]/[redacted]',
+  );
 });
 
 test('a logged stack is capped at 4,000 characters with a marker', () => {
@@ -89,7 +110,7 @@ test('a logged stack is capped at 4,000 characters with a marker', () => {
   error.stack = `Error: Broken\n${'    at frame (https://scc.example/a.js:1:2)\n'.repeat(500)}`;
   const { stack } = describeErrorForLog(error) as { stack: string };
   // Cut at the last whole frame inside 4,000 characters.
-  expect(stack.endsWith(`(https://scc.example/a.js:1:2)\n${TRUNCATED}`)).toBe(
+  expect(stack.endsWith(`(https://app.invalid/a.js:1:2)\n${TRUNCATED}`)).toBe(
     true,
   );
   expect(stack.length).toBeLessThanOrEqual(4_000);
