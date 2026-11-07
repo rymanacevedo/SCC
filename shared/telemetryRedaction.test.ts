@@ -180,9 +180,20 @@ describe('sanitizeTelemetryText', () => {
     );
   });
 
-  test('truncates over-long text to the limit with a visible marker', () => {
-    const sanitized = sanitizeTelemetryText('word '.repeat(50), 10);
+  test('truncates over-long text to the limit, visible marker included', () => {
+    const sanitized = sanitizeTelemetryText('word '.repeat(50), 23);
     expect(sanitized).toBe(`word word ${TRUNCATED}`);
+    expect(sanitized).toHaveLength(23);
+  });
+
+  test('never splits a surrogate pair at the cut', () => {
+    // Ten code units fit before the marker; the emoji at 9-10 straddles it.
+    const sanitized = sanitizeTelemetryText(
+      `${'a'.repeat(8)} ${'😀😀 '.repeat(10)}`,
+      23,
+    );
+    expect(sanitized).toBe(`${'a'.repeat(8)} ${TRUNCATED}`);
+    expect(sanitized.isWellFormed()).toBe(true);
   });
 
   test('redacts before the final cut, so a value straddling it is masked', () => {

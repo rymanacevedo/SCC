@@ -1,5 +1,9 @@
 import { afterEach, expect, test } from 'bun:test';
-import { resetReportedTelemetryForTests } from '../shared/errorReporting.ts';
+import {
+  errorTelemetrySchema,
+  REPORT_FIELD_LIMITS,
+  resetReportedTelemetryForTests,
+} from '../shared/errorReporting.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
@@ -72,4 +76,20 @@ test('reporting failure resolves to a failed Result', async () => {
     ok: false,
     error: 'network',
   });
+});
+test('auto-report cuts oversized telemetry instead of sending a body the Worker refuses', async () => {
+  const bodies = captureFetchBodies();
+  const error = new Error('word '.repeat(2_000));
+  error.stack = `Error: Broken\n${'    at frame (https://scc.example/a.js:1:2)\n'.repeat(1_000)}`;
+  await reportErrorTelemetry(
+    error,
+    `https://scc.example/${'a/'.repeat(2_500)}`,
+  );
+  const sent = JSON.parse(bodies[0] ?? '{}');
+  expect(sent.message.length).toBeLessThanOrEqual(REPORT_FIELD_LIMITS.message);
+  expect(sent.stackTrace.length).toBeLessThanOrEqual(
+    REPORT_FIELD_LIMITS.stackTrace,
+  );
+  expect(sent.url.length).toBeLessThanOrEqual(REPORT_FIELD_LIMITS.url);
+  expect(errorTelemetrySchema.safeParse(sent).success).toBe(true);
 });

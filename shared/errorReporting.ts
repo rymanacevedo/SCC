@@ -1,39 +1,96 @@
 import { sanitizeStackTrace } from './stackFrames.ts';
 import {
   REDACTED,
+  SANITIZE_INPUT_FACTOR,
   sanitizeTelemetryText,
   toPathOnlyUrl,
-  truncate,
+  truncateWithMarker,
 } from './telemetryRedaction.ts';
 import { z } from './zod.ts';
 
 export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
 
-export const errorTelemetrySchema = z.object({
-  timestamp: z.iso.datetime(),
-  url: z.string().check(z.minLength(1)),
-  message: z.string().check(z.minLength(1)),
-  stackTrace: z.optional(z.string()),
-});
+/**
+ * The longest each report field may be, in UTF-16 code units. Well above real
+ * values. The schemas refuse anything longer, and sanitizing cuts every field
+ * to fit, marker included. The Worker separately bounds the GitHub issue body
+ * it renders.
+ */
+export const REPORT_FIELD_LIMITS = {
+  /** An ISO datetime is under 40; the cap stops unbounded fractional seconds. */
+  timestamp: 64,
+  url: 2_048,
+  message: 1_000,
+  stackTrace: 16_000,
+  description: 10_000,
+} as const;
 
-export const userIssueReportSchema = z.object({
-  description: z.string().check(z.trim(), z.minLength(1)),
-  timestamp: z.iso.datetime(),
-  url: z.url(),
+type CappedField = {
+  maxLength: number;
+  /** Builds the field's schema with `maxLength` applied. */
+  schema: (maxLength: number) => z.ZodMiniType;
+};
+
+/**
+ * Builds a report schema and the most code units its strings can hold together
+ * from one field map, so the schema and its total cannot drift apart.
+ */
+function cappedReport<const F extends Record<string, CappedField>>(fields: F) {
+  const entries = Object.entries(fields);
+  const shape = Object.fromEntries(
+    entries.map(([key, field]) => [key, field.schema(field.maxLength)]),
+  ) as { [K in keyof F]: ReturnType<F[K]['schema']> };
+  return {
+    schema: z.object(shape),
+    maxLength: entries.reduce((total, [, field]) => total + field.maxLength, 0),
+  };
+}
+
+const timestampField = {
+  maxLength: REPORT_FIELD_LIMITS.timestamp,
+  schema: (maxLength: number) => z.iso.datetime().check(z.maxLength(maxLength)),
+};
+
+const errorTelemetry = cappedReport({
+  timestamp: timestampField,
+  url: {
+    maxLength: REPORT_FIELD_LIMITS.url,
+    schema: (maxLength: number) =>
+      z.string().check(z.minLength(1), z.maxLength(maxLength)),
+  },
+  message: {
+    maxLength: REPORT_FIELD_LIMITS.message,
+    schema: (maxLength: number) =>
+      z.string().check(z.minLength(1), z.maxLength(maxLength)),
+  },
+  stackTrace: {
+    maxLength: REPORT_FIELD_LIMITS.stackTrace,
+    schema: (maxLength: number) =>
+      z.optional(z.string().check(z.maxLength(maxLength))),
+  },
 });
+export const errorTelemetrySchema = errorTelemetry.schema;
+/** The most code units an error telemetry body's strings can hold together. */
+export const ERROR_TELEMETRY_MAX_LENGTH = errorTelemetry.maxLength;
+
+const userIssueReport = cappedReport({
+  description: {
+    maxLength: REPORT_FIELD_LIMITS.description,
+    schema: (maxLength: number) =>
+      z.string().check(z.trim(), z.minLength(1), z.maxLength(maxLength)),
+  },
+  timestamp: timestampField,
+  url: {
+    maxLength: REPORT_FIELD_LIMITS.url,
+    schema: (maxLength: number) => z.url().check(z.maxLength(maxLength)),
+  },
+});
+export const userIssueReportSchema = userIssueReport.schema;
+/** The most code units a user issue report body's strings can hold together. */
+export const USER_ISSUE_REPORT_MAX_LENGTH = userIssueReport.maxLength;
 
 export type ErrorTelemetryPayload = z.infer<typeof errorTelemetrySchema>;
 export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;
-
-// Per-field caps applied at write time, before a report is sent, stored in a
-// GitHub issue, or fingerprinted. Together they stay far below GitHub's
-// 65,536-character issue body limit.
-export const REPORT_FIELD_MAX = {
-  url: 2_000,
-  message: 1_000,
-  stackTrace: 8_000,
-  description: 8_000,
-} as const;
 
 declare const sanitized: unique symbol;
 /** Error telemetry that has been through sanitizeErrorTelemetry. */
@@ -47,36 +104,44 @@ export type SanitizedUserIssueReport = UserIssueReportPayload & {
 
 /**
  * A report timestamp as a canonical ISO string, so its length is bounded
- * (the schema accepts thousands of fractional digits); otherwise
- * `[redacted]`.
+ * (the schema accepts long fractional seconds); otherwise `[redacted]`.
  */
 export function sanitizeReportTimestamp(timestamp: string): string {
   const time = Date.parse(timestamp);
   return Number.isNaN(time) ? REDACTED : new Date(time).toISOString();
 }
 
-/** A report URL as http(s) origin + path, truncated; otherwise `[redacted]`. */
+/** A report URL as http(s) origin + path, cut to its limit; else `[redacted]`. */
 export function sanitizeReportUrl(url: string): string {
-  return truncate(
-    toPathOnlyUrl(url.slice(0, REPORT_FIELD_MAX.url * 4)),
-    REPORT_FIELD_MAX.url,
+  return truncateWithMarker(
+    toPathOnlyUrl(
+      url.slice(0, REPORT_FIELD_LIMITS.url * SANITIZE_INPUT_FACTOR),
+    ),
+    REPORT_FIELD_LIMITS.url,
   );
 }
 
-/** The only form of Error telemetry that may be sent, stored or fingerprinted. */
+/**
+ * The only form of Error telemetry that may be sent, stored or fingerprinted.
+ * Every field fits its schema limit, so an unusually long error is still
+ * reported instead of refused by the Worker.
+ */
 export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
 ): SanitizedErrorTelemetry {
   return {
     timestamp: sanitizeReportTimestamp(telemetry.timestamp),
     url: sanitizeReportUrl(telemetry.url),
-    message: sanitizeTelemetryText(telemetry.message, REPORT_FIELD_MAX.message),
+    message: sanitizeTelemetryText(
+      telemetry.message,
+      REPORT_FIELD_LIMITS.message,
+    ),
     ...(telemetry.stackTrace === undefined
       ? {}
       : {
           stackTrace: sanitizeStackTrace(
             telemetry.stackTrace,
-            REPORT_FIELD_MAX.stackTrace,
+            REPORT_FIELD_LIMITS.stackTrace,
           ),
         }),
   } as SanitizedErrorTelemetry;
@@ -91,7 +156,7 @@ export function sanitizeUserIssueReport(
     url: sanitizeReportUrl(report.url),
     description: sanitizeTelemetryText(
       report.description,
-      REPORT_FIELD_MAX.description,
+      REPORT_FIELD_LIMITS.description,
     ),
   } as SanitizedUserIssueReport;
 }

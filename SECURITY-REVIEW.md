@@ -29,17 +29,18 @@ place today and what is still a gap.
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
   error log sanitize fail-closed at write time: URLs as http(s) origin +
   path, stacks as canonical frames, free text as allowlisted tokens, every
-  other value `[redacted]`, and every field truncated
-  (`shared/telemetryRedaction.ts`, `shared/stackFrames.ts`,
-  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`). Gaps: the
-  schemas in `shared/errorReporting.ts` set no maximum length on `message`,
-  `stackTrace`, `url` or `description`, so oversized requests are accepted
-  (up to the 1 MiB body limit) and cut rather than refused; letters-only
-  personal text, such as a name typed into a description, passes the
-  allowlist; and the token's
+  other value `[redacted]`, and every field cut to its
+  `REPORT_FIELD_LIMITS` cap (`shared/telemetryRedaction.ts`,
+  `shared/stackFrames.ts`,
+  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); the
+  schemas refuse a field over that cap, and the route body limit is derived
+  from them. Gaps: letters-only personal text, such as a name typed into a
+  description, passes the allowlist; and the token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`, so text in them is a
-  prompt-injection surface for those agents.
+  prompt-injection surface for those agents. Both body builders fence
+  reported text as code (`worker/lib/markdown.ts`), so it cannot fake issue
+  structure, though agents must still treat it as untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.

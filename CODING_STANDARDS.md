@@ -17,6 +17,9 @@ Source: the repo layout (`app/`, `shared/`, `worker/`).
 
 - Tests sit beside the module they cover, as `<module>.test.ts` or
   `.test.tsx`, not in a separate tree.
+  - Exception: `bun test` skips dot-directories, so tests for code under
+    `.claude/` sit in `test/` at the same relative path (e.g.
+    `test/hooks/` for `.claude/hooks/`).
 - A behaviour change comes with a test in that file.
 
 ## Domain vocabulary

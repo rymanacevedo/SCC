@@ -16,7 +16,7 @@ afterEach(() => mock.restore());
 
 async function logFor(error: unknown, payload?: unknown) {
   const log = spyOn(console, 'error').mockImplementation(() => {});
-  const { key } = bodyValidation(errorTelemetrySchema);
+  const { key } = bodyValidation(errorTelemetrySchema, 1_024);
   const middleware = createRouteErrorMiddleware('/api/errors', key, {
     errorMessage: 'Failed',
   });

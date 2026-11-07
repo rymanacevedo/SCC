@@ -3,25 +3,37 @@ import {
   type ErrorTelemetryPayload as ErrorTelemetry,
   errorTelemetrySchema,
   type SanitizedErrorTelemetry,
+  type SanitizedUserIssueReport,
   sanitizeErrorTelemetry,
   sanitizeUserIssueReport,
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
 import { sanitizeTelemetryText } from '../../shared/telemetryRedaction.ts';
+import { truncateText } from '../../shared/text.ts';
 import { readBoundedText } from '../lib/body.ts';
+import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
+import { fencedBlock, inlineCode } from '../lib/markdown.ts';
 
 export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
 
 const GITHUB_ISSUE_TITLE_MAX = 256;
+/** GitHub refuses an issue body longer than this many characters. */
+export const GITHUB_ISSUE_BODY_MAX = 65_536;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
 const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
 const GITHUB_USER_AGENT = 'scc-backend-worker';
 const FINGERPRINT_LABEL = '- Fingerprint: ';
 const GITHUB_ISSUES_PAGE_SIZE = 100;
+/**
+ * Longest one GitHub API call may take, response body included. GitHub
+ * answers in well under a second; past this it is degraded, and holding the
+ * request open would not help.
+ */
+export const GITHUB_REQUEST_DEADLINE_MS = 10_000;
 
-export type GitHubIssueCreationErrorKind = 'http' | 'network';
+export type GitHubIssueCreationErrorKind = 'http' | 'network' | 'timeout';
 
 export class GitHubIssueCreationError extends Error {
   kind: GitHubIssueCreationErrorKind;
@@ -45,7 +57,32 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
-function renderAutoReportedIssueBody(
+/**
+ * The fingerprint an issue body carries and deduplication searches for: the
+ * SHA-256 hex digest of the complete sanitized telemetry fingerprint. A fixed
+ * 64 characters however long or escape-heavy the report, so it never crowds
+ * the body past GitHub's limit, and distinct reports never share a prefix
+ * match. Issues filed before the digest carried the raw JSON; deduplication
+ * still matches that legacy form, computed from sanitized values (see
+ * `fingerprintMarkers`).
+ */
+export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(buildSanitizedTelemetryFingerprint(telemetry)),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+/**
+ * The issue body for auto-reported telemetry. It takes sanitized telemetry, so
+ * redaction runs before rendering. The URL, message and stack trace come from
+ * the browser, so they render as code and cannot fake issue structure; the
+ * fingerprint line stays outside, where deduplication finds it.
+ */
+export function buildAutoReportedIssueBody(
   payload: SanitizedErrorTelemetry,
   fingerprint: string,
 ) {
@@ -54,35 +91,28 @@ function renderAutoReportedIssueBody(
     '',
     `${FINGERPRINT_LABEL}${fingerprint}`,
     `- Timestamp: ${payload.timestamp}`,
-    `- URL: ${payload.url}`,
-    `- Message: ${payload.message}`,
+    `- URL: ${inlineCode(payload.url)}`,
+    `- Message: ${inlineCode(payload.message)}`,
     '',
     '## Stack trace',
-    '```',
-    payload.stackTrace ?? 'No stack trace available.',
-    '```',
+    fencedBlock(payload.stackTrace ?? 'No stack trace available.'),
   ].join('\n');
 }
 
-export function buildAutoReportedIssueBody(telemetry: ErrorTelemetry) {
-  // Never trust the client to have sanitized: reduce, redact and truncate again.
-  const payload = sanitizeErrorTelemetry(telemetry);
-  return renderAutoReportedIssueBody(
-    payload,
-    buildSanitizedTelemetryFingerprint(payload),
-  );
-}
-
-export function buildUserReportedIssueBody(report: UserIssueReport) {
-  const payload = sanitizeUserIssueReport(report);
+/**
+ * The issue body for a user report. It takes a sanitized report, so redaction
+ * runs before rendering. The description and URL are the reporter's text, so
+ * they render as code and cannot fake issue structure.
+ */
+export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   return [
     '# User-reported issue',
     '',
     `- Timestamp: ${payload.timestamp}`,
-    `- URL: ${payload.url}`,
+    `- URL: ${inlineCode(payload.url)}`,
     '',
     '## Description',
-    payload.description,
+    fencedBlock(payload.description),
   ].join('\n');
 }
 
@@ -90,9 +120,9 @@ export function buildUserReportedIssueBody(report: UserIssueReport) {
 const GITHUB_ERROR_BODY_SNIPPET_BYTES = GITHUB_ERROR_BODY_SNIPPET_MAX * 4;
 
 /**
- * Keeps the redacted start of a GitHub error body without buffering the rest
- * of it. Redaction runs before the 300-character cut, and a token the bounded
- * read split is dropped, so no half-secret survives either boundary.
+ * Keeps the sanitized start of a GitHub error body without buffering the rest
+ * of it. Sanitizing runs before the 300-character cut, and a token the bounded
+ * read split is dropped, so no half-value survives either boundary.
  */
 async function readErrorSnippet(response: Response) {
   const { text, truncated } = await readBoundedText(
@@ -102,6 +132,78 @@ async function readErrorSnippet(response: Response) {
   return sanitizeTelemetryText(text, GITHUB_ERROR_BODY_SNIPPET_MAX, {
     inputWasCut: truncated,
   });
+}
+
+/**
+ * The one way the service calls GitHub: under `GITHUB_REQUEST_DEADLINE_MS`,
+ * with failures classified by kind. Never retries, so a creation that timed
+ * out (and may have landed) is never sent twice.
+ */
+async function requestGitHub<T>({
+  action,
+  token,
+  path,
+  method,
+  body,
+  read,
+}: {
+  /** Names the call in error messages, e.g. `issue creation`. */
+  action: string;
+  token: string;
+  /** Path under `https://api.github.com`, query string included. */
+  path: string;
+  method: 'GET' | 'POST';
+  /** Sent as JSON. */
+  body?: unknown;
+  read: (response: Response) => Promise<T>;
+}): Promise<T> {
+  const init: RequestInit = {
+    method,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': GITHUB_USER_AGENT,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  };
+  try {
+    return await withDeadline(
+      { upstream: 'github', timeoutMs: GITHUB_REQUEST_DEADLINE_MS },
+      async (signal) => {
+        let response: Response;
+        try {
+          response = await fetch(`https://api.github.com${path}`, {
+            ...init,
+            signal,
+          });
+        } catch (error) {
+          throw new GitHubIssueCreationError(
+            `GitHub ${action} request failed.`,
+            { kind: 'network', cause: error },
+          );
+        }
+        if (!response.ok) {
+          const details = await readErrorSnippet(response);
+          throw new GitHubIssueCreationError(`GitHub ${action} failed.`, {
+            kind: 'http',
+            status: response.status,
+            details,
+          });
+        }
+        return read(response);
+      },
+    );
+  } catch (error) {
+    if (error instanceof UpstreamTimeoutError) {
+      throw new GitHubIssueCreationError(`GitHub ${action} timed out.`, {
+        kind: 'timeout',
+        cause: error,
+      });
+    }
+    throw error;
+  }
 }
 
 async function createGitHubIssue({
@@ -117,102 +219,68 @@ async function createGitHubIssue({
   body: string;
   labels: string[];
 }) {
-  let response: Response;
+  return requestGitHub({
+    action: 'issue creation',
+    token,
+    path: `/repos/${repo}/issues`,
+    method: 'POST',
+    body: {
+      title,
+      // The field limits already fit; this holds GitHub's limit for any body.
+      body: truncateText(body, GITHUB_ISSUE_BODY_MAX),
+      labels,
+    },
+    read: (response) => response.json(),
+  });
+}
 
-  try {
-    response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': GITHUB_USER_AGENT,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      body: JSON.stringify({
-        title,
-        body,
-        labels,
-      }),
-    });
-  } catch (error) {
-    throw new GitHubIssueCreationError(
-      'GitHub issue creation request failed.',
-      {
-        kind: 'network',
-        cause: error,
-      },
-    );
-  }
-
-  if (!response.ok) {
-    const details = await readErrorSnippet(response);
-    throw new GitHubIssueCreationError('GitHub issue creation failed.', {
-      kind: 'http',
-      status: response.status,
-      details,
-    });
-  }
-
-  return response.json();
+/**
+ * The fingerprint lines an open issue for `telemetry` may carry: the digest
+ * this code files, and the raw-JSON form issues carried before the digest.
+ * Both come from sanitized values, so no raw report text is ever compared or
+ * sent; an issue filed from unsanitized values before sanitizing does not
+ * match, and gets one duplicate.
+ */
+async function fingerprintMarkers(telemetry: SanitizedErrorTelemetry) {
+  const fingerprint = await issueFingerprint(telemetry);
+  return {
+    fingerprint,
+    markers: [
+      `${FINGERPRINT_LABEL}${fingerprint}`,
+      `${FINGERPRINT_LABEL}${buildSanitizedTelemetryFingerprint(telemetry)}`,
+    ],
+  };
 }
 
 async function findMatchingOpenAutoReportedIssue({
   repo,
   token,
-  fingerprint,
+  markers,
 }: {
   repo: string;
   token: string;
-  fingerprint: string;
+  markers: string[];
 }) {
   for (let page = 1; ; page += 1) {
-    let response: Response;
-
-    try {
-      const params = new URLSearchParams({
-        state: 'open',
-        labels: 'auto-reported',
-        per_page: String(GITHUB_ISSUES_PAGE_SIZE),
-        page: String(page),
-      });
-      response = await fetch(
-        `https://api.github.com/repos/${repo}/issues?${params}`,
-        {
-          method: 'GET',
-          headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'User-Agent': GITHUB_USER_AGENT,
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        },
-      );
-    } catch (error) {
-      throw new GitHubIssueCreationError(
-        'GitHub issue deduplication request failed.',
-        {
-          kind: 'network',
-          cause: error,
-        },
-      );
-    }
-
-    if (!response.ok) {
-      const details = await readErrorSnippet(response);
-      throw new GitHubIssueCreationError('GitHub issue deduplication failed.', {
-        kind: 'http',
-        status: response.status,
-        details,
-      });
-    }
-
-    const issues = (await response.json()) as {
-      number?: number;
-      body?: string | null;
-    }[];
+    const params = new URLSearchParams({
+      state: 'open',
+      labels: 'auto-reported',
+      per_page: String(GITHUB_ISSUES_PAGE_SIZE),
+      page: String(page),
+    });
+    const issues = await requestGitHub({
+      action: 'issue deduplication',
+      token,
+      path: `/repos/${repo}/issues?${params}`,
+      method: 'GET',
+      read: async (response) =>
+        (await response.json()) as {
+          number?: number;
+          body?: string | null;
+        }[],
+    });
     const matchingIssue = issues.find((issue) =>
-      issue.body?.includes(`${FINGERPRINT_LABEL}${fingerprint}`),
+      markers.some((marker) => issue.body?.includes(marker)),
     );
 
     if (matchingIssue || issues.length < GITHUB_ISSUES_PAGE_SIZE) {
@@ -230,13 +298,14 @@ export async function createAutoReportedIssue({
   token: string;
   payload: ErrorTelemetry;
 }) {
-  // Sanitize once: the lookup, title and body all use the same values.
+  // Never trust the client to have sanitized. Sanitize once: the lookup,
+  // title and body all use the same values.
   const telemetry = sanitizeErrorTelemetry(payload);
-  const fingerprint = buildSanitizedTelemetryFingerprint(telemetry);
+  const { fingerprint, markers } = await fingerprintMarkers(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
-    fingerprint,
+    markers,
   });
 
   if (matchingIssue) {
@@ -246,8 +315,8 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `${AUTO_REPORTED_TITLE_PREFIX}${telemetry.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
-    body: renderAutoReportedIssueBody(telemetry, fingerprint),
+    title: `${AUTO_REPORTED_TITLE_PREFIX}${truncateText(telemetry.message, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
+    body: buildAutoReportedIssueBody(telemetry, fingerprint),
     labels: ['bug', 'auto-reported'],
   });
 }
@@ -265,7 +334,7 @@ export async function createUserReportedIssue({
     repo,
     token,
     title: 'User-reported issue',
-    body: buildUserReportedIssueBody(payload),
+    body: buildUserReportedIssueBody(sanitizeUserIssueReport(payload)),
     labels: ['bug', 'user-reported'],
   });
 }

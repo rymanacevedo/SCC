@@ -5,7 +5,8 @@ import {
   SANITIZE_INPUT_FACTOR,
   sanitizePathSegments,
   toPathOnlyUrl,
-  truncate,
+  TRUNCATED,
+  truncateWithMarker,
 } from './telemetryRedaction.ts';
 
 /**
@@ -85,7 +86,7 @@ function sanitizeHeader(line: string): string {
 
 /**
  * Sanitizes a stack trace into canonical frames, then truncates it at a
- * frame boundary to `max` characters with a visible marker. Input past four
+ * frame boundary to at most `max` characters, visible marker included. Input past four
  * times `max` is never read, and a frame the bound cut in half is dropped.
  */
 export function sanitizeStackTrace(stack: string, max: number): string {
@@ -106,8 +107,9 @@ export function sanitizeStackTrace(stack: string, max: number): string {
   }
   const sanitized = output.join('\n');
   if (!cut && sanitized.length <= max) return sanitized;
-  return truncate(
-    cutAtLastBreak(sanitized.slice(0, max + 1), 0, (char) => char === '\n'),
+  const room = max - TRUNCATED.length;
+  return truncateWithMarker(
+    cutAtLastBreak(sanitized.slice(0, room + 1), 0, (char) => char === '\n'),
     max,
     true,
   );

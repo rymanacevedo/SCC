@@ -1,5 +1,10 @@
-import { afterEach, expect, mock, spyOn, test } from 'bun:test';
+import { afterEach, expect, jest, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
+import {
+  ERROR_TELEMETRY_MAX_LENGTH,
+  USER_ISSUE_REPORT_MAX_LENGTH,
+} from '../shared/errorReporting.ts';
+import { MAX_PROMPT_LENGTH } from '../shared/schemas/generation.ts';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
@@ -10,7 +15,7 @@ import {
   SENSITIVE_STACK,
   SENSITIVE_URL,
 } from '../test/sensitive-reports.ts';
-import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
+import { jsonBodyLimit } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
 const env = {
@@ -21,6 +26,7 @@ const env = {
 };
 const originalFetch = globalThis.fetch;
 afterEach(() => {
+  jest.useRealTimers();
   mock.restore();
   globalThis.fetch = originalFetch;
 });
@@ -217,6 +223,158 @@ test('config failures are 500 and provider APICallError is 502', async () => {
   );
 });
 
+test('generated output at its limits is returned; one item or character over is a 502', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const generate = (path: string, output: unknown) =>
+    createApiRouter(env, {
+      resolveModel: () => createMockJsonModel(output),
+    }).fetch(contractRequest(path));
+  const items = (count: number, length = 10) =>
+    Array.from({ length: count }, () => 'x'.repeat(length));
+  const summaries = (count: number, length = 10) =>
+    items(count, length).map((text) => ({ title: text, text }));
+  // [path, model output at the limit, its route response, model outputs over it]
+  const cases = [
+    [
+      '/api/skills',
+      { expertRecommended: items(50, 2_000), other: items(50, 2_000) },
+      undefined,
+      [
+        { expertRecommended: items(51), other: [] },
+        { expertRecommended: [], other: items(1, 2_001) },
+      ],
+    ],
+    [
+      '/api/experience',
+      { expertRecommended: items(50, 2_000), other: items(50, 2_000) },
+      undefined,
+      [
+        { expertRecommended: [], other: items(51) },
+        { expertRecommended: items(1, 2_001), other: [] },
+      ],
+    ],
+    [
+      '/api/summaries',
+      { summaries: summaries(50, 2_000) },
+      summaries(50, 2_000),
+      [{ summaries: summaries(51) }, { summaries: summaries(1, 2_001) }],
+    ],
+  ] as const;
+  for (const [path, atLimit, response, overLimit] of cases) {
+    const expected: unknown = response ?? atLimit;
+    expect(await assertResponse(await generate(path, atLimit), 200)).toEqual(
+      expected as Record<string, unknown>,
+    );
+    for (const output of overLimit) {
+      const body = await assertResponse(await generate(path, output), 502);
+      expect(body.error).toBe('Failed to generate content');
+    }
+  }
+  expect(log).toHaveBeenCalledTimes(6);
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({ category: 'generated_output_limit' }),
+  );
+});
+
+test('a provider that stays rate-limited through the retry is a 502 logged as provider with its status', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const model = createMockJsonModel({});
+  let attempts = 0;
+  model.doGenerate = async () => {
+    attempts += 1;
+    throw new APICallError({
+      message: 'rate limited',
+      url: 'https://provider.example',
+      requestBodyValues: {},
+      statusCode: 429,
+      // Keeps the SDK's backoff short so the test stays fast.
+      responseHeaders: { 'retry-after-ms': '1' },
+      isRetryable: true,
+    });
+  };
+  await assertResponse(
+    await createApiRouter(env, { resolveModel: () => model }).fetch(
+      contractRequest('/api/summaries'),
+    ),
+    502,
+  );
+  expect(attempts).toBe(2);
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      category: 'provider',
+      providerStatus: 429,
+      isRetryable: true,
+      attempts: 2,
+    }),
+  );
+});
+
+test('a generation route answers 504 when the model never answers within the deadline', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  jest.useFakeTimers();
+  const model = createMockJsonModel({});
+  const started = Promise.withResolvers<void>();
+  model.doGenerate = () => {
+    started.resolve();
+    return new Promise(() => {});
+  };
+  const response = createApiRouter(env, { resolveModel: () => model }).fetch(
+    contractRequest('/api/skills'),
+  );
+  await started.promise;
+  jest.advanceTimersByTime(45_000);
+  const body = await assertResponse(await response, 504);
+  expect(body.error).toBe('Failed to generate content');
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      route: '/api/skills',
+      category: 'timeout',
+      upstream: 'provider',
+      timeoutMs: 45_000,
+    }),
+  );
+});
+
+test.each([
+  ['truncated JSON', '{"summaries":[{"title":"Dev'],
+  // A reasoning model can spend the whole budget before writing any text.
+  ['no text at all', ''],
+])(
+  'a generation cut off at its output-token limit with %s is a 502 logged as token_limit',
+  async (_case, text) => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    const model = createMockJsonModel({});
+    model.doGenerate = async () => ({
+      content: text ? [{ type: 'text', text }] : [],
+      finishReason: { unified: 'length', raw: 'length' },
+      usage: {
+        inputTokens: {
+          total: 10,
+          noCache: 10,
+          cacheRead: undefined,
+          cacheWrite: undefined,
+        },
+        outputTokens: { total: 6000, text: 6000, reasoning: undefined },
+      },
+      warnings: [],
+    });
+    await assertResponse(
+      await createApiRouter(env, { resolveModel: () => model }).fetch(
+        contractRequest('/api/summaries'),
+      ),
+      502,
+    );
+    expect(log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: '/api/summaries',
+        category: 'token_limit',
+        maxOutputTokens: 6000,
+        outputTokens: 6000,
+      }),
+    );
+  },
+);
+
 const report = {
   timestamp: '2026-10-13T00:00:00.000Z',
   url: 'https://scc.example/summary',
@@ -320,6 +478,27 @@ test('report route failure logs are path-only, redacted and truncated', async ()
   }
 });
 
+test('a GitHub call that never answers is a 502 logged as github_timeout, with one attempt', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  jest.useFakeTimers();
+  for (const path of ['/api/errors', '/api/report-issue']) {
+    const hung = Promise.withResolvers<void>();
+    const calls = mock(() => {
+      hung.resolve();
+      return new Promise<Response>(() => {});
+    });
+    globalThis.fetch = calls as unknown as typeof fetch;
+    const response = createApiRouter(env).fetch(contractRequest(path, report));
+    await hung.promise;
+    jest.advanceTimersByTime(10_000);
+    await assertResponse(await response, 502);
+    expect(calls).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenLastCalledWith(
+      expect.objectContaining({ route: path, category: 'github_timeout' }),
+    );
+  }
+});
+
 test('GET /api/flags returns every known flag and rejects other methods', async () => {
   const router = createApiRouter({});
   const response = await router.fetch(
@@ -337,16 +516,91 @@ test('GET /api/flags returns every known flag and rejects other methods', async 
   }
 });
 
-test('oversized bodies are 413 before validation or the model', async () => {
+// Each route's Body limit, in bytes; body.test.ts pins the jsonBodyLimit formula.
+const bodyLimits = {
+  '/api/summaries': jsonBodyLimit(MAX_PROMPT_LENGTH),
+  '/api/errors': jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH),
+  '/api/report-issue': jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH),
+} as const;
+/** A valid body padded with trailing JSON whitespace to exactly `bytes`. */
+const paddedBody = (payload: unknown, bytes: number) => {
+  const json = JSON.stringify(payload);
+  return json + ' '.repeat(bytes - json.length);
+};
+const streamed = (text: string) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      const bytes = new TextEncoder().encode(text);
+      for (let start = 0; start < bytes.length; start += 16_384)
+        controller.enqueue(bytes.subarray(start, start + 16_384));
+      controller.close();
+    },
+  });
+
+test('each route accepts a body of exactly its limit and refuses one byte over with 413', async () => {
+  globalThis.fetch = mock(async (input: string | URL | Request) =>
+    String(input).includes('?')
+      ? Response.json([])
+      : Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const resolveModel = mock(() => createMockJsonModel({ summaries: [] }));
+  const router = createApiRouter(env, { resolveModel });
+  const payloads = {
+    '/api/summaries': { prompt: '<job>Software Developer</job>' },
+    '/api/errors': report,
+    '/api/report-issue': report,
+  };
+  for (const [path, limit] of Object.entries(bodyLimits)) {
+    const payload = payloads[path as keyof typeof payloads];
+    const exact = paddedBody(payload, limit);
+    const over = paddedBody(payload, limit + 1);
+    await assertResponse(
+      await router.fetch(contractRequest(path, {}, { body: exact })),
+      200,
+    );
+    // Content-Length declared; neither the schema nor the model is reached.
+    expect(
+      (
+        await assertResponse(
+          await router.fetch(
+            contractRequest(
+              path,
+              {},
+              {
+                body: over,
+                headers: { 'Content-Length': String(over.length) },
+              },
+            ),
+          ),
+          413,
+        )
+      ).error,
+    ).toBe('Request body too large');
+    // No Content-Length: the streamed byte count holds on both sides of the limit.
+    const exactChunked = contractRequest(path, {}, { body: streamed(exact) });
+    expect(exactChunked.headers.get('Content-Length')).toBeNull();
+    await assertResponse(await router.fetch(exactChunked), 200);
+    const chunked = contractRequest(path, {}, { body: streamed(over) });
+    expect(chunked.headers.get('Content-Length')).toBeNull();
+    await assertResponse(await router.fetch(chunked), 413);
+  }
+  expect(resolveModel).toHaveBeenCalledTimes(1);
+});
+
+test('a prompt over its cap is a 400 validation failure, not a model call', async () => {
   const resolveModel = mock(() => createMockJsonModel({}));
-  const response = await createApiRouter(env, { resolveModel }).fetch(
-    contractRequest('/api/summaries', {
-      prompt: 'x'.repeat(MAX_JSON_BODY_BYTES),
-    }),
+  const body = await assertResponse(
+    await createApiRouter(env, { resolveModel }).fetch(
+      contractRequest('/api/summaries', {
+        prompt: 'x'.repeat(MAX_PROMPT_LENGTH + 1),
+      }),
+    ),
+    400,
   );
-  expect((await assertResponse(response, 413)).error).toBe(
-    'Request body too large',
-  );
+  expect(
+    (body.issues as { fieldErrors: Record<string, unknown> }).fieldErrors
+      .prompt,
+  ).toBeDefined();
   expect(resolveModel).not.toHaveBeenCalled();
 });
 

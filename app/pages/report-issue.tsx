@@ -1,5 +1,6 @@
 import { type Handle, on, ref } from 'remix/component';
 import {
+  REPORT_FIELD_LIMITS,
   sanitizeUserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
@@ -43,12 +44,11 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
     event.preventDefault();
     if (pending) return;
     try {
-      const parsed = userIssueReportSchema.safeParse({
-        description: new FormData(form).get('description'),
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-      });
-      if (!parsed.success) {
+      // Only the description is the user's to fix; sanitizing bounds the rest.
+      const description = userIssueReportSchema.shape.description.safeParse(
+        new FormData(form).get('description'),
+      );
+      if (!description.success) {
         fieldError = 'Please describe what happened.';
         await handle.update();
         form.querySelector('textarea')?.focus();
@@ -59,7 +59,11 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
       fieldError = '';
       await handle.update();
       const result = await reportIssue(
-        sanitizeUserIssueReport(parsed.data),
+        sanitizeUserIssueReport({
+          description: description.data,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        }),
         handle.signal,
       );
       if (handle.signal.aborted) return;
@@ -129,6 +133,7 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
               id={`${handle.id}-description`}
               name="description"
               required
+              maxLength={REPORT_FIELD_LIMITS.description}
               rows={6}
               placeholder="Describe the issue you ran into."
               aria-invalid={fieldError ? 'true' : undefined}

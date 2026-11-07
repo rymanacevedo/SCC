@@ -1,5 +1,5 @@
 import {
-  REPORT_FIELD_MAX,
+  REPORT_FIELD_LIMITS,
   sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
@@ -12,7 +12,7 @@ const LOG_STACK_MAX = 4_000;
 /** Redacts and truncates text bound for Workers Logs; other values pass through. */
 export function redactForLog(
   value: unknown,
-  max: number = REPORT_FIELD_MAX.message,
+  max: number = REPORT_FIELD_LIMITS.message,
 ) {
   return typeof value === 'string' ? sanitizeTelemetryText(value, max) : value;
 }

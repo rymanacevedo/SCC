@@ -32,7 +32,8 @@ export async function reportErrorTelemetry(
   try {
     if (isNotFoundResponse(error)) return { ok: true, value: { ok: true } };
     // Explicit allowlist: never serialize the thrown object or the User.
-    // Sanitized once; the dedup check and the sender share the result.
+    // Sanitized once, which also bounds every field to its schema limit;
+    // the dedup check and the sender share the result.
     const telemetry = sanitizeErrorTelemetry({
       url,
       timestamp: new Date().toISOString(),

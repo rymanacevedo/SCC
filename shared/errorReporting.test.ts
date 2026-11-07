@@ -2,11 +2,14 @@ import { afterEach, expect, test } from 'bun:test';
 import {
   buildSanitizedTelemetryFingerprint,
   type ErrorTelemetryPayload,
+  errorTelemetrySchema,
+  REPORT_FIELD_LIMITS,
   resetReportedTelemetryForTests,
   sanitizeErrorTelemetry,
   sanitizeReportTimestamp,
   sanitizeUserIssueReport,
   shouldSkipDuplicateTelemetryReport,
+  userIssueReportSchema,
 } from './errorReporting.ts';
 
 const telemetry = {
@@ -117,4 +120,82 @@ test('dedupes through one second, expires afterwards, and reset permits reportin
       1_102,
     ),
   ).toBe(false);
+});
+
+const report = {
+  timestamp: '2026-10-14T00:00:00.000Z',
+  url: 'https://scc.example/info',
+  description: 'The page failed',
+};
+const longUrl = (length: number) =>
+  `https://scc.example/${'a'.repeat(length - 'https://scc.example/'.length)}`;
+
+test('error telemetry fields are accepted at their caps and refused one character over', () => {
+  const caps = {
+    url: longUrl(2_048),
+    message: 'm'.repeat(1_000),
+    stackTrace: 's'.repeat(16_000),
+  };
+  expect(
+    errorTelemetrySchema.safeParse({ ...telemetry, ...caps }).success,
+  ).toBe(true);
+  for (const [field, value] of Object.entries(caps))
+    expect(
+      errorTelemetrySchema.safeParse({
+        ...telemetry,
+        ...caps,
+        [field]: `${value}x`,
+      }).success,
+    ).toBe(false);
+  expect(
+    errorTelemetrySchema.safeParse({
+      ...telemetry,
+      timestamp: `2026-10-14T00:00:00.${'0'.repeat(100)}Z`,
+    }).success,
+  ).toBe(false);
+});
+
+test('user issue report fields are accepted at their caps and refused one character over', () => {
+  const caps = { url: longUrl(2_048), description: 'd'.repeat(10_000) };
+  expect(userIssueReportSchema.safeParse({ ...report, ...caps }).success).toBe(
+    true,
+  );
+  expect(
+    userIssueReportSchema.safeParse({ ...report, ...caps, url: `${caps.url}x` })
+      .success,
+  ).toBe(false);
+  expect(
+    userIssueReportSchema.safeParse({
+      ...report,
+      description: `${caps.description}x`,
+    }).success,
+  ).toBe(false);
+});
+
+test('sanitizing cuts oversized fields so both reports stay valid, marker included', () => {
+  const frame = '    at frame (https://scc.example/assets/a.js:1:2)';
+  const telemetry = sanitizeErrorTelemetry({
+    timestamp: '2026-10-14T00:00:00.000Z',
+    url: longUrl(5_000),
+    message: 'word '.repeat(1_500),
+    stackTrace: `Error: Broken\n${`${frame}\n`.repeat(1_000)}`,
+  });
+  expect(telemetry.message.length).toBeLessThanOrEqual(
+    REPORT_FIELD_LIMITS.message,
+  );
+  expect(telemetry.message.endsWith('… [truncated]')).toBe(true);
+  expect(telemetry.stackTrace?.length).toBeLessThanOrEqual(
+    REPORT_FIELD_LIMITS.stackTrace,
+  );
+  expect(telemetry.stackTrace?.endsWith('… [truncated]')).toBe(true);
+  expect(errorTelemetrySchema.safeParse(telemetry).success).toBe(true);
+  const report = sanitizeUserIssueReport({
+    timestamp: '2026-10-14T00:00:00.000Z',
+    url: 'https://scc.example/info',
+    description: 'word '.repeat(3_000),
+  });
+  expect(report.description.length).toBeLessThanOrEqual(
+    REPORT_FIELD_LIMITS.description,
+  );
+  expect(userIssueReportSchema.safeParse(report).success).toBe(true);
 });

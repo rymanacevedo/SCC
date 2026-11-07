@@ -5,9 +5,17 @@ import {
   type RequestContext,
 } from 'remix/router';
 import type { z } from 'zod';
+import {
+  ERROR_TELEMETRY_MAX_LENGTH,
+  USER_ISSUE_REPORT_MAX_LENGTH,
+} from '../shared/errorReporting.ts';
 import { FLAGS_PATH } from '../shared/flags.ts';
-import { generationRequestSchema } from '../shared/schemas/generation.ts';
+import {
+  generationRequestSchema,
+  MAX_PROMPT_LENGTH,
+} from '../shared/schemas/generation.ts';
 import { handleFlagsRequest } from './flags-route.ts';
+import { jsonBodyLimit } from './lib/body.ts';
 import {
   validateGeoEnvironment,
   validateGithubEnvironment,
@@ -38,6 +46,11 @@ import {
 } from './services/github.ts';
 import { resolveModel as defaultResolveModel } from './services/model.ts';
 
+// Each route's Body limit follows from the string caps its schema enforces.
+const generationBodyLimit = jsonBodyLimit(MAX_PROMPT_LENGTH);
+const errorTelemetryBodyLimit = jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH);
+const userIssueReportBodyLimit = jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH);
+
 export function createApiRouter(
   env: object,
   {
@@ -58,13 +71,14 @@ export function createApiRouter(
   function register<T>(
     path: string,
     schema: z.core.$ZodType<T>,
+    maxBodyBytes: number,
     handler: (payload: T, request: Request) => Promise<Response>,
     errorPolicy: RouteErrorPolicy,
     guards: (
       key: ReturnType<typeof bodyValidation<T>>['key'],
     ) => Middleware[] = () => [],
   ) {
-    const body = bodyValidation(schema);
+    const body = bodyValidation(schema, maxBodyBytes);
     const errorGuard = createRouteErrorMiddleware(path, body.key, errorPolicy);
     const methodGuard: Middleware = ({ request }, next) =>
       request.method === 'POST'
@@ -99,7 +113,9 @@ export function createApiRouter(
     register(
       path,
       generationRequestSchema,
+      generationBodyLimit,
       // A client that disconnects cancels the provider call instead of paying for it.
+      // An over-limit result throws, and the route error middleware answers 502.
       async ({ prompt }, request) =>
         Response.json(await generate(prompt, model(), request.signal)),
       {
@@ -119,6 +135,7 @@ export function createApiRouter(
   register(
     '/api/errors',
     errorTelemetrySchema,
+    errorTelemetryBodyLimit,
     async (payload) => {
       const config = github();
       await createAutoReportedIssue({
@@ -133,6 +150,7 @@ export function createApiRouter(
   register(
     '/api/report-issue',
     userIssueReportSchema,
+    userIssueReportBodyLimit,
     async (payload) => {
       const config = github();
       await createUserReportedIssue({

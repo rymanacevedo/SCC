@@ -6,6 +6,8 @@
  * Stack traces have their own frame grammar in `stackFrames.ts`.
  */
 
+import { truncateText } from './text.ts';
+
 export const REDACTED = '[redacted]';
 export const TRUNCATED = '… [truncated]';
 
@@ -242,16 +244,22 @@ export function cutAtLastBreak(
   return value.slice(0, end);
 }
 
-/** Cuts sanitized text to `max` characters with a visible marker. */
-export function truncate(value: string, max: number, force = false): string {
-  return force || value.length > max
-    ? `${value.slice(0, max)}${TRUNCATED}`
-    : value;
+/**
+ * Cuts sanitized text so it and the visible marker fit in `max` code units,
+ * never splitting a surrogate pair. `force` marks text the caller already cut.
+ */
+export function truncateWithMarker(
+  value: string,
+  max: number,
+  force = false,
+): string {
+  if (!force && value.length <= max) return value;
+  return `${truncateText(value, max - TRUNCATED.length)}${TRUNCATED}`;
 }
 
 /**
- * Sanitizes a free-text field, then truncates it to `max` characters with a
- * visible marker. Input past four times `max` is never read. Pass
+ * Sanitizes a free-text field, then truncates it to at most `max` characters,
+ * visible marker included. Input past four times `max` is never read. Pass
  * `inputWasCut` when the caller already cut the value (a bounded read): its
  * trailing partial token is dropped, since it may be the front half of a
  * value that would not have been safe whole.
@@ -266,5 +274,5 @@ export function sanitizeTelemetryText(
   const sanitized = redactTelemetryText(
     cut ? cutAtLastBreak(value.slice(0, bound), inputWasCut ? 0 : max) : value,
   );
-  return truncate(sanitized, max, cut);
+  return truncateWithMarker(sanitized, max, cut);
 }
