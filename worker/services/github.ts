@@ -11,6 +11,14 @@ export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
 
 const GITHUB_ISSUE_TITLE_MAX = 256;
+/** GitHub refuses an issue body longer than this many characters. */
+const GITHUB_ISSUE_BODY_MAX = 65_536;
+/**
+ * The fingerprint JSON-escapes the report strings, so a control character
+ * there takes six characters. Real fingerprints are a few thousand; this cap
+ * plus the raw report fields keeps the auto-reported body under GitHub's limit.
+ */
+const ISSUE_FINGERPRINT_MAX = 32_000;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
 const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
 const GITHUB_USER_AGENT = 'scc-backend-worker';
@@ -41,11 +49,15 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
+/** The fingerprint an issue body carries and deduplication searches for. */
+const issueFingerprint = (payload: ErrorTelemetry) =>
+  buildTelemetryFingerprint(payload).slice(0, ISSUE_FINGERPRINT_MAX);
+
 export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
   return [
     '# Auto-reported application error',
     '',
-    `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
+    `${FINGERPRINT_LABEL}${issueFingerprint(payload)}`,
     `- Timestamp: ${payload.timestamp}`,
     `- URL: ${payload.url}`,
     `- Message: ${payload.message}`,
@@ -108,7 +120,8 @@ async function createGitHubIssue({
       },
       body: JSON.stringify({
         title,
-        body,
+        // The field limits already fit; this holds GitHub's limit for any body.
+        body: body.slice(0, GITHUB_ISSUE_BODY_MAX),
         labels,
       }),
     });
@@ -207,7 +220,7 @@ export async function createAutoReportedIssue({
   token: string;
   payload: ErrorTelemetry;
 }) {
-  const fingerprint = buildTelemetryFingerprint(payload);
+  const fingerprint = issueFingerprint(payload);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,

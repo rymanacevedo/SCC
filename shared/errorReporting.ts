@@ -4,8 +4,8 @@ export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
 
 /**
  * The longest each report field may be, in UTF-16 code units. Well above real
- * values; together they keep an auto-reported issue body, which repeats the URL,
- * message and stack trace in its fingerprint, under GitHub's 65,536 characters.
+ * values. The Worker separately bounds the GitHub issue body it renders, since
+ * the fingerprint JSON-escapes these fields.
  */
 export const REPORT_FIELD_LIMITS = {
   /** An ISO datetime is under 40; the cap stops unbounded fractional seconds. */
@@ -16,49 +16,69 @@ export const REPORT_FIELD_LIMITS = {
   description: 10_000,
 } as const;
 
-const timestampSchema = z.iso
-  .datetime()
-  .check(z.maxLength(REPORT_FIELD_LIMITS.timestamp));
+type CappedField = {
+  maxLength: number;
+  /** Builds the field's schema with `maxLength` applied. */
+  schema: (maxLength: number) => z.ZodMiniType;
+};
 
-export const errorTelemetrySchema = z.object({
-  timestamp: timestampSchema,
-  url: z.string().check(z.minLength(1), z.maxLength(REPORT_FIELD_LIMITS.url)),
-  message: z
-    .string()
-    .check(z.minLength(1), z.maxLength(REPORT_FIELD_LIMITS.message)),
-  stackTrace: z.optional(
-    z.string().check(z.maxLength(REPORT_FIELD_LIMITS.stackTrace)),
-  ),
+/**
+ * Builds a report schema and the most code units its strings can hold together
+ * from one field map, so the schema and its total cannot drift apart.
+ */
+function cappedReport<const F extends Record<string, CappedField>>(fields: F) {
+  const entries = Object.entries(fields);
+  const shape = Object.fromEntries(
+    entries.map(([key, field]) => [key, field.schema(field.maxLength)]),
+  ) as { [K in keyof F]: ReturnType<F[K]['schema']> };
+  return {
+    schema: z.object(shape),
+    maxLength: entries.reduce((total, [, field]) => total + field.maxLength, 0),
+  };
+}
+
+const timestampField = {
+  maxLength: REPORT_FIELD_LIMITS.timestamp,
+  schema: (maxLength: number) => z.iso.datetime().check(z.maxLength(maxLength)),
+};
+
+const errorTelemetry = cappedReport({
+  timestamp: timestampField,
+  url: {
+    maxLength: REPORT_FIELD_LIMITS.url,
+    schema: (maxLength: number) =>
+      z.string().check(z.minLength(1), z.maxLength(maxLength)),
+  },
+  message: {
+    maxLength: REPORT_FIELD_LIMITS.message,
+    schema: (maxLength: number) =>
+      z.string().check(z.minLength(1), z.maxLength(maxLength)),
+  },
+  stackTrace: {
+    maxLength: REPORT_FIELD_LIMITS.stackTrace,
+    schema: (maxLength: number) =>
+      z.optional(z.string().check(z.maxLength(maxLength))),
+  },
 });
-
-export const userIssueReportSchema = z.object({
-  description: z
-    .string()
-    .check(
-      z.trim(),
-      z.minLength(1),
-      z.maxLength(REPORT_FIELD_LIMITS.description),
-    ),
-  timestamp: timestampSchema,
-  url: z.url().check(z.maxLength(REPORT_FIELD_LIMITS.url)),
-});
-
-/** Sums the field limits of one report schema, so callers never repeat its fields. */
-const totalLength = (fields: (keyof typeof REPORT_FIELD_LIMITS)[]) =>
-  fields.reduce((total, field) => total + REPORT_FIELD_LIMITS[field], 0);
+export const errorTelemetrySchema = errorTelemetry.schema;
 /** The most code units an error telemetry body's strings can hold together. */
-export const ERROR_TELEMETRY_MAX_LENGTH = totalLength([
-  'timestamp',
-  'url',
-  'message',
-  'stackTrace',
-]);
+export const ERROR_TELEMETRY_MAX_LENGTH = errorTelemetry.maxLength;
+
+const userIssueReport = cappedReport({
+  description: {
+    maxLength: REPORT_FIELD_LIMITS.description,
+    schema: (maxLength: number) =>
+      z.string().check(z.trim(), z.minLength(1), z.maxLength(maxLength)),
+  },
+  timestamp: timestampField,
+  url: {
+    maxLength: REPORT_FIELD_LIMITS.url,
+    schema: (maxLength: number) => z.url().check(z.maxLength(maxLength)),
+  },
+});
+export const userIssueReportSchema = userIssueReport.schema;
 /** The most code units a user issue report body's strings can hold together. */
-export const USER_ISSUE_REPORT_MAX_LENGTH = totalLength([
-  'timestamp',
-  'url',
-  'description',
-]);
+export const USER_ISSUE_REPORT_MAX_LENGTH = userIssueReport.maxLength;
 
 export type ErrorTelemetryPayload = z.infer<typeof errorTelemetrySchema>;
 export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;

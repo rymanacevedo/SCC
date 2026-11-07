@@ -3,6 +3,7 @@ import type { Middleware } from 'remix/router';
 import { isClientAbort } from '../lib/abort.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { apiError } from '../lib/response.ts';
+import { GeneratedOutputLimitError } from '../services/ai.ts';
 import { GitHubIssueCreationError } from '../services/github.ts';
 import type { bodyValidation } from './guards.ts';
 
@@ -34,6 +35,8 @@ export function createRouteErrorMiddleware<T>(
       const isConfigurationError = error instanceof EnvironmentValidationError;
       const isGitHubError = error instanceof GitHubIssueCreationError;
       const isProviderError = APICallError.isInstance(error);
+      // The model answered, but with more than a section can hold: a bad upstream result.
+      const isOutputLimitError = error instanceof GeneratedOutputLimitError;
       let category = 'unknown';
       if (isConfigurationError) {
         category = 'config';
@@ -41,12 +44,14 @@ export function createRouteErrorMiddleware<T>(
         category = `github_${error.kind}`;
       } else if (isProviderError) {
         category = 'provider';
+      } else if (isOutputLimitError) {
+        category = 'generated_output_limit';
       }
 
       let status = 500;
       if (
         !isConfigurationError &&
-        (isGitHubError || isProviderError || !generation)
+        (isGitHubError || isProviderError || isOutputLimitError || !generation)
       ) {
         status = 502;
       }

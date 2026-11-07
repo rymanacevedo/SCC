@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import {
+  buildAutoReportedIssueBody,
   createAutoReportedIssue,
   createUserReportedIssue,
   GitHubIssueCreationError,
@@ -104,6 +105,62 @@ describe('createAutoReportedIssue', () => {
 
     expect(result).toEqual({ deduped: true, issueNumber: 151 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('GitHub issue body size', () => {
+  // GitHub refuses an issue body over 65,536 characters.
+  const GITHUB_ISSUE_BODY_MAX = 65_536;
+  // U+0001 passes every field limit yet JSON-escapes to six characters.
+  const worstCase = {
+    timestamp: '2026-04-27T12:00:00.000Z',
+    url: '\u0001'.repeat(2_048),
+    message: '\u0001'.repeat(1_000),
+    stackTrace: '\u0001'.repeat(16_000),
+  };
+
+  test('a worst-case escaped auto-reported issue body stays under the GitHub limit and still dedupes', async () => {
+    const body = buildAutoReportedIssueBody(worstCase);
+    expect(body.length).toBeLessThanOrEqual(GITHUB_ISSUE_BODY_MAX);
+    expect(body).toContain(worstCase.stackTrace);
+
+    const fetchMock = mock(async (input: RequestInfo | URL) =>
+      String(input).includes('/issues?')
+        ? Response.json([{ number: 7, body }])
+        : Response.json({ id: 2 }, { status: 201 }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    expect(
+      await createAutoReportedIssue({
+        repo: 'acme/scc',
+        token: 'token-123',
+        payload: worstCase,
+      }),
+    ).toEqual({ deduped: true, issueNumber: 7 });
+  });
+
+  test('every issue body sent to GitHub stays under its limit', async () => {
+    const sent: string[] = [];
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/issues?')) return Response.json([]);
+        sent.push(JSON.parse(String(init?.body)).body);
+        return Response.json({ id: 2 }, { status: 201 });
+      },
+    ) as unknown as typeof fetch;
+    const auth = { repo: 'acme/scc', token: 'token-123' };
+    await createAutoReportedIssue({ ...auth, payload: worstCase });
+    await createUserReportedIssue({
+      ...auth,
+      payload: {
+        description: '\u0001'.repeat(10_000),
+        timestamp: worstCase.timestamp,
+        url: `https://example.com/${'a'.repeat(2_000)}`,
+      },
+    });
+    expect(sent).toHaveLength(2);
+    for (const body of sent)
+      expect(body.length).toBeLessThanOrEqual(GITHUB_ISSUE_BODY_MAX);
   });
 });
 

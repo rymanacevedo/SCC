@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { zodSchema } from 'ai';
 import {
   ExperienceSchema,
+  exceedsGeneratedOutputLimits,
+  GENERATED_OUTPUT_LIMITS,
   generationRequestSchema,
   MAX_PROMPT_LENGTH,
   SkillsSchema,
@@ -72,4 +74,32 @@ test('a Generation request prompt is accepted up to its cap and refused one char
   });
   expect(over.success).toBe(false);
   expect(generationRequestSchema.safeParse({ prompt: '' }).success).toBe(false);
+});
+
+test('generated output is within its limits at exactly 50 items of 2,000 characters', () => {
+  expect(GENERATED_OUTPUT_LIMITS).toEqual({ items: 50, length: 2_000 });
+  const text = 'x'.repeat(2_000);
+  const items = Array.from({ length: 50 }, () => text);
+  expect(
+    exceedsGeneratedOutputLimits({ expertRecommended: items, other: items }),
+  ).toBe(false);
+  expect(
+    exceedsGeneratedOutputLimits({
+      summaries: items.map(() => ({ title: text, text })),
+    }),
+  ).toBe(false);
+});
+
+test('generated output one item or one character over a limit exceeds it, wherever it sits', () => {
+  const items = (count: number, length = 10) =>
+    Array.from({ length: count }, () => 'x'.repeat(length));
+  for (const output of [
+    { expertRecommended: items(51), other: [] },
+    { expertRecommended: [], other: items(51) },
+    { expertRecommended: items(1, 2_001), other: [] },
+    { summaries: items(51).map((title) => ({ title, text: title })) },
+    { summaries: [{ title: 'Developer', text: 'x'.repeat(2_001) }] },
+    [{ title: 'x'.repeat(2_001), text: 'Developer' }],
+  ])
+    expect(exceedsGeneratedOutputLimits(output)).toBe(true);
 });

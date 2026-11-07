@@ -2,9 +2,25 @@ import { generateText, type LanguageModel, Output } from 'ai';
 import { z } from 'zod';
 import {
   ExperienceSchema,
+  exceedsGeneratedOutputLimits,
   SkillsSchema,
   SummarySchema,
 } from '../../shared/schemas/generation.ts';
+
+/** A section generator's result has an array or string over its limit. */
+export class GeneratedOutputLimitError extends Error {
+  constructor() {
+    super('Generated output exceeds its limits.');
+    this.name = 'GeneratedOutputLimitError';
+  }
+}
+
+/** Returns a section generator's result, or throws if it is over its limits. */
+export function boundGeneratedOutput<T>(output: T): T {
+  if (exceedsGeneratedOutputLimits(output))
+    throw new GeneratedOutputLimitError();
+  return output;
+}
 
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;

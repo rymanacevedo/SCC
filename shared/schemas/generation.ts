@@ -32,6 +32,29 @@ export const SummarySchema = z.array(
 );
 
 /**
+ * Caps on a section generator's result: at most `items` entries in any array
+ * and `length` code units in any string. Far above a real section (top 5
+ * suggestions, a summary of a few sentences per job). Checked by the Worker
+ * after the model returns, never sent to the provider, whose JSON Schema stays
+ * unchanged for strict structured outputs.
+ */
+export const GENERATED_OUTPUT_LIMITS = { items: 50, length: 2_000 } as const;
+
+/** Whether any array or string anywhere in `output` is over its limit. */
+export function exceedsGeneratedOutputLimits(output: unknown): boolean {
+  if (typeof output === 'string')
+    return output.length > GENERATED_OUTPUT_LIMITS.length;
+  if (Array.isArray(output))
+    return (
+      output.length > GENERATED_OUTPUT_LIMITS.items ||
+      output.some(exceedsGeneratedOutputLimits)
+    );
+  if (output !== null && typeof output === 'object')
+    return Object.values(output).some(exceedsGeneratedOutputLimits);
+  return false;
+}
+
+/**
  * The longest prompt a Generation request may carry, in UTF-16 code units. A
  * full resume's jobs serialize to a few thousand; this bounds Worker CPU and the
  * provider payload without refusing a real one.

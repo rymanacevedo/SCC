@@ -34,6 +34,7 @@ import {
   sameOriginGuard,
 } from './middleware/guards.ts';
 import {
+  boundGeneratedOutput,
   createExperience,
   createSkills,
   createSummaries,
@@ -115,8 +116,11 @@ export function createApiRouter(
       generationRequestSchema,
       generationBodyLimit,
       // A client that disconnects cancels the provider call instead of paying for it.
+      // An over-limit result throws, and the route error middleware answers 502.
       async ({ prompt }, request) =>
-        Response.json(await generate(prompt, model(), request.signal)),
+        Response.json(
+          boundGeneratedOutput(await generate(prompt, model(), request.signal)),
+        ),
       {
         generation: true,
         errorMessage: 'Failed to generate content',

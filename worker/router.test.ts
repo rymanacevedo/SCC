@@ -1,8 +1,14 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
+import {
+  ERROR_TELEMETRY_MAX_LENGTH,
+  USER_ISSUE_REPORT_MAX_LENGTH,
+} from '../shared/errorReporting.ts';
+import { MAX_PROMPT_LENGTH } from '../shared/schemas/generation.ts';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
+import { jsonBodyLimit } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
 const env = {
@@ -209,6 +215,35 @@ test('config failures are 500 and provider APICallError is 502', async () => {
   );
 });
 
+test('generated output at its limits is returned; one item or character over is a 502', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const generate = (path: string, output: unknown) =>
+    createApiRouter(env, {
+      resolveModel: () => createMockJsonModel(output),
+    }).fetch(contractRequest(path));
+  const items = (count: number, length = 10) =>
+    Array.from({ length: count }, () => 'x'.repeat(length));
+  const atLimit = { expertRecommended: items(50, 2_000), other: items(50) };
+  expect(
+    await assertResponse(await generate('/api/skills', atLimit), 200),
+  ).toEqual(atLimit);
+  for (const [path, output] of [
+    ['/api/skills', { expertRecommended: items(51), other: [] }],
+    ['/api/experience', { expertRecommended: [], other: items(1, 2_001) }],
+    [
+      '/api/summaries',
+      { summaries: [{ title: 'Developer', text: 'x'.repeat(2_001) }] },
+    ],
+  ] as const) {
+    const body = await assertResponse(await generate(path, output), 502);
+    expect(body.error).toBe('Failed to generate content');
+  }
+  expect(log).toHaveBeenCalledTimes(3);
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({ category: 'generated_output_limit' }),
+  );
+});
+
 const report = {
   timestamp: '2026-10-13T00:00:00.000Z',
   url: 'https://scc.example/summary',
@@ -282,11 +317,11 @@ test('GET /api/flags returns every known flag and rejects other methods', async 
   }
 });
 
-// Each route's Body limit, in bytes: the worst-case JSON size of its capped fields.
+// Each route's Body limit, in bytes; body.test.ts pins the jsonBodyLimit formula.
 const bodyLimits = {
-  '/api/summaries': 301_024,
-  '/api/errors': 115_696,
-  '/api/report-issue': 73_696,
+  '/api/summaries': jsonBodyLimit(MAX_PROMPT_LENGTH),
+  '/api/errors': jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH),
+  '/api/report-issue': jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH),
 } as const;
 /** A valid body padded with trailing JSON whitespace to exactly `bytes`. */
 const paddedBody = (payload: unknown, bytes: number) => {
@@ -357,7 +392,9 @@ test('a prompt over its cap is a 400 validation failure, not a model call', asyn
   const resolveModel = mock(() => createMockJsonModel({}));
   const body = await assertResponse(
     await createApiRouter(env, { resolveModel }).fetch(
-      contractRequest('/api/summaries', { prompt: 'x'.repeat(50_001) }),
+      contractRequest('/api/summaries', {
+        prompt: 'x'.repeat(MAX_PROMPT_LENGTH + 1),
+      }),
     ),
     400,
   );
