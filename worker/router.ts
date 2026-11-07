@@ -13,6 +13,7 @@ import {
   validateGithubEnvironment,
   validateOpenAiEnvironment,
 } from './lib/environment.ts';
+import { lazy } from './lib/lazy.ts';
 import { apiError } from './lib/response.ts';
 import {
   createRouteErrorMiddleware,
@@ -46,15 +47,18 @@ export function createApiRouter(
   const router = createRouter({
     defaultHandler: () => apiError(404, 'Not found'),
   });
-  let geo: Middleware | undefined;
-  const geoGuard: Middleware = (context, next) => {
-    geo ??= createGeoRestrictionMiddleware(validateGeoEnvironment(env));
-    return geo(context, next);
-  };
+  // Each router serves one env, so config is validated once, on first use by a
+  // route that needs it. A missing variable stays a per-route failure.
+  const geo = lazy(() =>
+    createGeoRestrictionMiddleware(validateGeoEnvironment(env)),
+  );
+  const geoGuard: Middleware = (context, next) => geo()(context, next);
+  const model = lazy(() => resolveModel(validateOpenAiEnvironment(env)));
+  const github = lazy(() => validateGithubEnvironment(env));
   function register<T>(
     path: string,
     schema: z.core.$ZodType<T>,
-    handler: (payload: T) => Promise<Response>,
+    handler: (payload: T, request: Request) => Promise<Response>,
     errorPolicy: RouteErrorPolicy,
     guards: (
       key: ReturnType<typeof bodyValidation<T>>['key'],
@@ -80,21 +84,24 @@ export function createApiRouter(
         const payload = context.get(body.key);
         if (payload === undefined)
           throw new Error('Missing validated request body');
-        return handler(payload);
+        return handler(payload, context.request);
       },
     });
   }
   function generationRoute(
     path: string,
-    generate: (prompt: string, model: LanguageModel) => Promise<unknown>,
+    generate: (
+      prompt: string,
+      model: LanguageModel,
+      abortSignal: AbortSignal,
+    ) => Promise<unknown>,
   ) {
     register(
       path,
       generationRequestSchema,
-      async ({ prompt }) =>
-        Response.json(
-          await generate(prompt, resolveModel(validateOpenAiEnvironment(env))),
-        ),
+      // A client that disconnects cancels the provider call instead of paying for it.
+      async ({ prompt }, request) =>
+        Response.json(await generate(prompt, model(), request.signal)),
       {
         generation: true,
         errorMessage: 'Failed to generate content',
@@ -113,7 +120,7 @@ export function createApiRouter(
     '/api/errors',
     errorTelemetrySchema,
     async (payload) => {
-      const config = validateGithubEnvironment(env);
+      const config = github();
       await createAutoReportedIssue({
         repo: config.GITHUB_REPO,
         token: config.GITHUB_TOKEN,
@@ -127,7 +134,7 @@ export function createApiRouter(
     '/api/report-issue',
     userIssueReportSchema,
     async (payload) => {
-      const config = validateGithubEnvironment(env);
+      const config = github();
       await createUserReportedIssue({
         repo: config.GITHUB_REPO,
         token: config.GITHUB_TOKEN,

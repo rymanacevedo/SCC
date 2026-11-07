@@ -5,6 +5,7 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { readBoundedText } from '../lib/body.ts';
 
 export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
@@ -68,6 +69,18 @@ export function buildUserReportedIssueBody(payload: UserIssueReport) {
   ].join('\n');
 }
 
+// A UTF-8 character is at most 4 bytes, so this many bytes always covers the snippet.
+const GITHUB_ERROR_BODY_SNIPPET_BYTES = GITHUB_ERROR_BODY_SNIPPET_MAX * 4;
+
+/** Keeps the start of a GitHub error body without buffering the rest of it. */
+async function readErrorSnippet(response: Response) {
+  const { text } = await readBoundedText(
+    response.body,
+    GITHUB_ERROR_BODY_SNIPPET_BYTES,
+  );
+  return text.slice(0, GITHUB_ERROR_BODY_SNIPPET_MAX);
+}
+
 async function createGitHubIssue({
   repo,
   token,
@@ -110,10 +123,7 @@ async function createGitHubIssue({
   }
 
   if (!response.ok) {
-    const details = (await response.text()).slice(
-      0,
-      GITHUB_ERROR_BODY_SNIPPET_MAX,
-    );
+    const details = await readErrorSnippet(response);
     throw new GitHubIssueCreationError('GitHub issue creation failed.', {
       kind: 'http',
       status: response.status,
@@ -166,10 +176,7 @@ async function findMatchingOpenAutoReportedIssue({
     }
 
     if (!response.ok) {
-      const details = (await response.text()).slice(
-        0,
-        GITHUB_ERROR_BODY_SNIPPET_MAX,
-      );
+      const details = await readErrorSnippet(response);
       throw new GitHubIssueCreationError('GitHub issue deduplication failed.', {
         kind: 'http',
         status: response.status,

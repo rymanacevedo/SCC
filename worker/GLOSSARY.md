@@ -30,10 +30,10 @@ The middleware that replaces CORS now that UI and API share one origin: rejects 
 ## Generation architecture
 
 ### Generation seam
-The boundary where a serialized section input becomes AI content: the three section generators. It is the surface evals and unit tests drive — a generator called in isolation, with no HTTP and no environment, fully exercises generation. Each generator takes `(prompt, model)` — the injected `LanguageModel` is the seam's second half (see [ADR-0001](docs/adr/0001-env-driven-model-selection.md), implemented).
+The boundary where a serialized section input becomes AI content: the three section generators. It is the surface evals and unit tests drive — a generator called in isolation, with no HTTP and no environment, fully exercises generation. Each generator takes `(prompt, model, abortSignal?)` — the injected `LanguageModel` is the seam's second half; the API routes pass the request's signal so a client disconnect cancels the provider call (see [ADR-0001](docs/adr/0001-env-driven-model-selection.md), implemented).
 
 ### Model adapter (`resolveModel`)
-The single place that turns validated environment config into a concrete `LanguageModel` — the only module that may name a concrete provider or model id. The section generators never do. It reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` (omit → OpenAI cloud; set → a self-hosted or local OpenAI-compatible endpoint such as Ollama/LM Studio), and optional `OPENAI_MODEL` (omit → `DEFAULT_MODEL`). The API routes compose it per-request from validated environment; evals compose it (or any `LanguageModel`) themselves and wrap it for tracing/caching.
+The single place that turns validated environment config into a concrete `LanguageModel` — the only module that may name a concrete provider or model id. The section generators never do. It reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` (omit → OpenAI cloud; set → a self-hosted or local OpenAI-compatible endpoint such as Ollama/LM Studio), and optional `OPENAI_MODEL` (omit → `DEFAULT_MODEL`). The API router composes it once, on the first generation request, from validated environment and reuses it for that env; evals compose it (or any `LanguageModel`) themselves and wrap it for tracing/caching.
 
 Introduced by [ADR-0001](docs/adr/0001-env-driven-model-selection.md) — **accepted and implemented.**
 

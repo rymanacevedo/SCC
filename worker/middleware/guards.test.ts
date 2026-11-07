@@ -131,3 +131,27 @@ test('Profanity filter passes clean prompts and refuses the unchanged word list,
     expect.objectContaining({ category: 'filtered' }),
   );
 });
+
+test('Profanity filter names the longest matched term and ignores terms inside other words', async () => {
+  const body = bodyValidation(generationRequestSchema);
+  const router = throwawayRouter([
+    body.middleware,
+    createProfanityFilter(body.key),
+  ]);
+  spyOn(console, 'log').mockImplementation(() => {});
+  const refusal = await router.fetch(
+    contractRequest('/stub', {
+      prompt: '<job>terrorist</job><job>Domestic Terrorist</job>',
+    }),
+  );
+  expect(((await refusal.json()) as { error: string }).error).toBe(
+    'Inappropriate term: Domestic Terrorist',
+  );
+  expect(
+    (
+      await router.fetch(
+        contractRequest('/stub', { prompt: '<job>Bombers Assassins</job>' }),
+      )
+    ).status,
+  ).toBe(200);
+});

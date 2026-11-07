@@ -31,3 +31,30 @@ test('the Worker converts thrown errors to a 500 without leaking details', async
     log.mockRestore();
   }
 });
+
+test('the Worker logs a client disconnect as a cancellation, not a failure', async () => {
+  const controller = new AbortController();
+  const request = new Request('https://scc.example/api/summaries');
+  // The test DOM's AbortController is not Bun's, so attach it after construction.
+  Object.defineProperty(request, 'signal', { value: controller.signal });
+  const log = spyOn(console, 'log').mockImplementation(() => {});
+  const error = spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const worker = createWorker({
+      fetch: async () => {
+        controller.abort();
+        throw controller.signal.reason;
+      },
+    });
+    const response = await worker.fetch(request);
+    expect(response.status).toBe(499);
+    expect(log).toHaveBeenCalledWith({
+      category: 'client_aborted',
+      path: '/api/summaries',
+    });
+    expect(error).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
+  }
+});

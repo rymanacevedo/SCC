@@ -2,6 +2,7 @@ import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
+import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
 const env = {
@@ -279,4 +280,50 @@ test('GET /api/flags returns every known flag and rejects other methods', async 
     expect(rejected.status).toBe(405);
     expect(rejected.headers.get('Allow')).toBe('GET');
   }
+});
+
+test('oversized bodies are 413 before validation or the model', async () => {
+  const resolveModel = mock(() => createMockJsonModel({}));
+  const response = await createApiRouter(env, { resolveModel }).fetch(
+    contractRequest('/api/summaries', {
+      prompt: 'x'.repeat(MAX_JSON_BODY_BYTES),
+    }),
+  );
+  expect((await assertResponse(response, 413)).error).toBe(
+    'Request body too large',
+  );
+  expect(resolveModel).not.toHaveBeenCalled();
+});
+
+test('the model is resolved once per router and reused across generation routes', async () => {
+  const resolveModel = mock(() => createMockJsonModel({ summaries: [] }));
+  const router = createApiRouter(env, { resolveModel });
+  for (let i = 0; i < 3; i += 1) {
+    await assertResponse(
+      await router.fetch(contractRequest('/api/summaries')),
+      200,
+    );
+  }
+  expect(resolveModel).toHaveBeenCalledTimes(1);
+});
+
+test('a client disconnect aborts the provider call', async () => {
+  const controller = new AbortController();
+  const model = createMockJsonModel({});
+  let providerSignal: AbortSignal | undefined;
+  model.doGenerate = async ({ abortSignal }) => {
+    providerSignal = abortSignal;
+    controller.abort();
+    abortSignal?.throwIfAborted();
+    throw new Error('provider ignored the abort');
+  };
+  // Set after construction: the test DOM's AbortController is not Bun's, so the
+  // Request constructor rejects it. contractRequest attaches `cf` the same way.
+  const request = contractRequest('/api/summaries');
+  Object.defineProperty(request, 'signal', { value: controller.signal });
+  // The router rethrows the abort; the Worker entry turns it into a 499.
+  await expect(
+    createApiRouter(env, { resolveModel: () => model }).fetch(request),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+  expect(providerSignal?.aborted).toBe(true);
 });

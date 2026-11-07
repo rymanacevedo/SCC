@@ -3,6 +3,9 @@
   "name": "scc",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-13",
+  // Lets request.signal fire on client disconnect so generation calls are cancelled.
+  // Becomes the default with compatibility_date 2026-11-17; drop it on that bump.
+  "compatibility_flags": ["enable_request_signal"],
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
@@ -13,6 +16,9 @@
   },
   "observability": {
     "enabled": true,
+    "traces": {
+      "enabled": true,
+    },
   },
   "flagship": [
     { "binding": "FLAGS", "app_id": "60edd5e7-cc0b-4bb1-a9cd-db6decd34208" },
