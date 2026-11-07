@@ -20,7 +20,8 @@
 # push plumbing (send-pack, http-push) are blocked as well.
 #
 # Threat model: this hook catches agent mistakes, not adversaries; a script
-# on disk can still run git. The `standard` ruleset on GitHub (pull request
+# on disk can still run git, including a git-<name> helper on PATH, which
+# git --list-cmds lists as a command. The `standard` ruleset on GitHub (pull request
 # and status checks required, no force pushes, no bypass) is what enforces
 # protection of main.
 #
@@ -39,9 +40,13 @@ PROTECTED_BRANCHES="main|master"
 PUSH_FLAGS="-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run"
 SIMPLE_PUSH="run 'git push [-u] <remote> <branch>' as its own command"
 PUSH_PLUMBING="send-pack|http-push"
-# Words that may precede git in a simple command: VAR=value, shell control
-# words, wrappers and shells, and their options or numeric arguments.
-COMMAND_PREFIX="[A-Za-z_][A-Za-z0-9_]*=.*|-.*|[0-9.]+[smhd]?|!|if|then|elif|else|do|while|until|env|sudo|exec|command|builtin|nohup|time|nice|xargs|timeout|stdbuf|watch|sh|bash|zsh|dash"
+# Words that may precede the program of a simple command.
+SHELL_PREFIX="[A-Za-z_][A-Za-z0-9_]*=.*|!|if|then|elif|else|do|while|until"
+# Programs that run another command, matched by basename. Their options may
+# take values, so the command they run is the first git word after them.
+WRAPPERS="env|sudo|doas|su|exec|command|builtin|eval|nohup|time|nice|ionice|xargs|timeout|stdbuf|watch|setsid|flock|chroot|script|unbuffer|sh|bash|zsh|dash|ksh"
+# Real git commands; any other subcommand is an alias or a typo.
+GIT_COMMANDS=" $(git --list-cmds=builtins,main,others 2>/dev/null | tr '\n' ' ') "
 
 # Git global options (git --help): those taking a separate value, and flags.
 GLOBAL_WITH_VALUE="-C|-c|--git-dir|--work-tree|--namespace|--config-env|--attr-source|--super-prefix"
@@ -77,51 +82,88 @@ check_dangerous_patterns() {
   done
 }
 
-# simple_commands: NORMALIZED split into simple commands, one per line.
+# shell_words: COMMAND with quotes and backslashes removed, like NORMALIZED,
+# but whitespace inside a quoted string becomes \x01 so the string stays one
+# word (-c user.name="Jane Doe"). A quoted string that mentions git may be a
+# script for an inner shell (sh -c '...'), so it is left to be split.
+shell_words() {
+  local s=$COMMAND out="" chunk="" quote="" c i
+  for ((i = 0; i < ${#s}; i++)); do
+    c=${s:i:1}
+    if [ -z "$quote" ]; then
+      case $c in
+        "'"|'"') quote=$c; chunk="" ;;
+        '\') out+=${s:i+1:1}; i=$((i + 1)) ;;
+        *) out+=$c ;;
+      esac
+    elif [ "$c" = "$quote" ]; then
+      if [[ "$chunk" =~ (^|[^A-Za-z0-9_-])git([^A-Za-z0-9_-]|$) ]]; then out+=$chunk
+      else out+=${chunk//[[:space:]]/$'\x01'}
+      fi
+      quote="" chunk=""
+    elif [ "$c" != '\' ]; then
+      chunk+=$c
+    fi
+  done
+  printf '%s\n' "$out$chunk"
+}
+
+# simple_commands: shell_words split into simple commands, one per line.
 # Redirections are removed (git p>/dev/null runs p), each backtick becomes
 # a '$' marker so a substituted subcommand counts as dynamic, and find's
 # -exec starts a new command.
 simple_commands() {
-  printf '%s\n' "$NORMALIZED" | sed -E '
+  shell_words | sed -E '
     s/`/ $\n/g
     s/[0-9]*[<>]+[&|]?[[:space:]]*[^[:space:];&|(){}<>]*/ /g
     s/[[:space:]]-(exec|execdir|ok|okdir)[[:space:]]/\n/g
     s/(;|&|\||\(|\)|\{|\})/\n/g'
 }
 
-# check_git_subcommands: in each simple command that runs git, block a
-# subcommand that may push without spelling it.
+# program_index <words...>: index of the program a simple command runs,
+# past VAR=value and control words; for a wrapper, its first git word.
+program_index() {
+  local words=("$@") i=0 n=$#
+  while [ "$i" -lt "$n" ] && [[ "${words[$i]}" =~ ^($SHELL_PREFIX)$ ]]; do i=$((i + 1)); done
+  if [[ "${words[$i]##*/}" =~ ^($WRAPPERS)$ ]]; then
+    while [ "$i" -lt "$n" ] && ! [[ "${words[$i]##*/}" =~ ^git(-($PUSH_PLUMBING))?$ ]]; do i=$((i + 1)); done
+  fi
+  echo "$i"
+}
+
+# check_git_invocation <args after git...>: block a subcommand that may push
+# without spelling it.
+check_git_invocation() {
+  while [ "$#" -gt 0 ] && [[ "$1" == -* ]]; do
+    if [[ "$1" =~ ^($GLOBAL_WITH_VALUE)$ ]]; then shift 2 || shift
+    elif [[ "$1" =~ ^($GLOBAL_WITH_VALUE)= || "$1" =~ ^($GLOBAL_FLAGS)(=.*)?$ ]]; then shift
+    else block "uses git option '$1' before the subcommand, which the hook does not know"
+    fi
+  done
+  local sub=$1
+  [ -n "$sub" ] || return 0
+  [[ "$sub" == *'$'* ]] && block "runs a dynamic git subcommand '$sub'"
+  [[ "$sub" =~ ^($PUSH_PLUMBING)$ ]] && block "runs git $sub, which pushes without git push"
+  [[ "$GIT_COMMANDS" == *" $sub "* ]] || block "runs git '$sub', which is not a git command (an alias, or a typo git may autocorrect)"
+  return 0
+}
+
+# check_git_subcommands: check every simple command that runs git.
 check_git_subcommands() {
   if printf '%s\n' "$NORMALIZED" | grep -qE '(-c|--config-env)[[:space:]=]+alias\.|GIT_CONFIG_(PARAMETERS|COUNT|KEY_)'; then
     block "defines git config inline that can add aliases"
   fi
 
-  local commands segment words n i j w program sub
-  commands=" $(git --list-cmds=builtins,main,others 2>/dev/null | tr '\n' ' ') "
-
+  local segment words i program
   while IFS= read -r segment; do
     read -ra words <<< "$segment"
-    n=${#words[@]}
-    i=0
-    while [ "$i" -lt "$n" ] && [[ "${words[$i]}" =~ ^($COMMAND_PREFIX)$ ]]; do i=$((i + 1)); done
+    [ "${#words[@]}" -gt 0 ] || continue
+    i=$(program_index "${words[@]}")
     program=${words[$i]##*/}
     [[ "$program" =~ ^git-($PUSH_PLUMBING)$ ]] && block "runs $program, which pushes without git push"
-    [ "$program" = "git" ] || continue
-
-    j=$((i + 1))
-    while [ "$j" -lt "$n" ] && [[ "${words[$j]}" == -* ]]; do
-      w=${words[$j]}
-      if [[ "$w" =~ ^($GLOBAL_WITH_VALUE)$ ]]; then j=$((j + 2))
-      elif [[ "$w" =~ ^($GLOBAL_WITH_VALUE)= || "$w" =~ ^($GLOBAL_FLAGS)(=.*)?$ ]]; then j=$((j + 1))
-      else block "uses git option '$w' before the subcommand, which the hook does not know"
-      fi
-    done
-    sub=${words[$j]}
-    [ -n "$sub" ] || continue
-    [[ "$sub" == *'$'* ]] && block "runs a dynamic git subcommand '$sub'"
-    [[ "$sub" =~ ^($PUSH_PLUMBING)$ ]] && block "runs git $sub, which pushes without git push"
-    [[ "$commands" == *" $sub "* ]] || block "runs git '$sub', which is not a git command (an alias, or a typo git may autocorrect)"
+    [ "$program" = "git" ] && check_git_invocation "${words[@]:i+1}"
   done < <(simple_commands)
+  return 0
 }
 
 # parse_push: check the whole command against the strict grammar and set
@@ -167,12 +209,10 @@ check_push_config() {
   return 0
 }
 
-# check_push_target: configured remote, and a local branch (not a tag or
-# other ref) that is not protected or a detached HEAD.
+# check_push_target: a configured remote (also when implied by config), and
+# a local branch (not a tag or other ref) that is not protected or a
+# detached HEAD.
 check_push_target() {
-  if [ -n "$REMOTE" ]; then
-    repo_git remote | grep -qxF -- "$REMOTE" || block "pushes to '$REMOTE', which is not a configured remote"
-  fi
   if [ -n "$BRANCH" ] && [ "$BRANCH" != "HEAD" ]; then
     repo_git show-ref --verify -q "refs/heads/$BRANCH" || block "pushes '$BRANCH', which is not a local branch"
   fi
@@ -181,6 +221,11 @@ check_push_target() {
     [ -n "$BRANCH" ] || block "pushes a detached HEAD"
   fi
   printf '%s\n' "${BRANCH##*/}" | grep -qxE "$PROTECTED_BRANCHES" && block "targets protected branch '$BRANCH'"
+  if [ -z "$REMOTE" ]; then
+    REMOTE=$(repo_git config --get "branch.$BRANCH.pushRemote" || repo_git config --get remote.pushDefault ||
+      repo_git config --get "branch.$BRANCH.remote" || echo origin)
+  fi
+  repo_git remote | grep -qxF -- "$REMOTE" || block "pushes to '$REMOTE', which is not a configured remote"
   return 0
 }
 
