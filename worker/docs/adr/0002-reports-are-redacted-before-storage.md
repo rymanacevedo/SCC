@@ -42,7 +42,10 @@ Sanitizing runs before either store is written.
 
 ## Retention
 
-> **TODO (maintainer decision):** retention period for report issues and Workers Logs is not decided yet. Record it here once confirmed. Until then, GitHub issues stay until closed or deleted by hand, and Workers Logs follow the account's default log retention.
+Decided by the maintainer: retention is whatever the Cloudflare free plan provides.
+
+- **Workers Logs** keep report log lines for the Workers Free plan default (3 days, 7 days from 2026-12-01). Today Workers Logs retention is set by [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/#workers-logs); from 2026-12-01 Workers Logs moves to [Cloudflare Observability pricing](https://developers.cloudflare.com/observability/pricing/), whose Free plan includes 7-day retention (both checked 2026-11-07). This repo does not override it: no extra retention configuration and no Logpush.
+- **GitHub issues** (`auto-reported` and `user-reported`) are not governed by a Cloudflare plan. They are kept until a maintainer closes or deletes them; nothing expires them automatically. That is acceptable because a report holds no free text: a path-only URL on the synthetic origin, canonical stack frames, error class names and a message length.
 
 ## Consequences
 
