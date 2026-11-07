@@ -197,8 +197,9 @@ check_push_config() {
     ""|simple|current) ;;
     *) block "relies on push.default=$mode" ;;
   esac
-  mapping=$(repo_git config --get-regexp '^remote\..*\.(push|mirror)$' | head -1)
-  [ -z "$mapping" ] || block "uses a remote with configured push refspecs or mirror ($mapping)"
+  # Keys are matched in git's canonical lower case.
+  mapping=$(repo_git config --get-regexp '^(remote\..*\.(push|pushurl|mirror)|url\..*\.pushinsteadof)$' | head -1)
+  [ -z "$mapping" ] || block "uses config that redirects the push (push refspec, push URL, pushInsteadOf or mirror: $mapping)"
   recurse=$(repo_git config --get push.recurseSubmodules)
   case "$recurse" in
     ""|no|false|check) ;;

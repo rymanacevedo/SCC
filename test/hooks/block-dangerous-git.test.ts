@@ -20,7 +20,9 @@ const repoConfig = {
   submodules: [['push.recurseSubmodules', 'on-demand']],
   recurse: [['submodule.recurse', 'true']],
   tags: [['push.followTags', 'true']],
-  pushurl: [['remote.pushDefault', 'https://example.com/repo.git']],
+  pushdefault: [['remote.pushDefault', 'https://example.com/repo.git']],
+  pushurl: [['remote.origin.pushurl', 'https://example.com/repo.git']],
+  pushinsteadof: [['url.https://example.com/.pushInsteadOf', '/']],
   aliased: [
     ['alias.p', 'push'],
     ['alias.ship', '!git push origin main'],
@@ -196,7 +198,9 @@ const blocked: [string, Where][] = [
   ['git push origin feat', 'submodules'],
   ['git push origin feat', 'recurse'],
   ['git push origin feat', 'tags'],
-  ['git push', 'pushurl'],
+  ['git push', 'pushdefault'],
+  ['git push origin feat', 'pushurl'],
+  ['git push origin feat', 'pushinsteadof'],
   // Aliases (any, since a push alias may be defined in another repo) and
   // typos git may autocorrect.
   ['git st', 'aliased'],
