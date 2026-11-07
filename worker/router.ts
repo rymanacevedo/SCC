@@ -6,7 +6,6 @@ import {
 } from 'remix/router';
 import type { z } from 'zod';
 import { generationRequestSchema } from '../shared/schemas/generation.ts';
-import { FLAGS_ROUTE, handleFlagsRequest } from './flags-route.ts';
 import {
   validateGeoEnvironment,
   validateGithubEnvironment,
@@ -101,12 +100,6 @@ export function createApiRouter(
       (key) => [createProfanityFilter(key)],
     );
   }
-  // Public, read-only, no body: the route answers 405 for anything but GET.
-  // readFlags() checks the FLAGS binding itself and serves the defaults
-  // without one, so no environment validation here.
-  router.route('ANY', FLAGS_ROUTE, {
-    handler: ({ request }) => handleFlagsRequest(request, env),
-  });
   generationRoute('/api/summaries', createSummaries);
   generationRoute('/api/skills', createSkills);
   generationRoute('/api/experience', createExperience);

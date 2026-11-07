@@ -47,7 +47,3 @@ _Avoid_: script transfer bytes, JS size, bundle size (the built-asset figure is 
 ### Third-party script bytes
 The script transfer bytes a page downloads from hosts outside the app's build, today only the Web Analytics beacon. Reported in the Verdict, never scored.
 _Avoid_: vendor bytes, analytics overhead
-
-### Feature flag
-A named on/off switch, off by default, read from the `FLAGS` KV namespace and flipped without a deploy (see `docs/runbooks/feature-flags.md`). Every flag is temporary: the PR that adds it files the issue that removes it.
-_Avoid_: toggle, feature switch, kill switch
