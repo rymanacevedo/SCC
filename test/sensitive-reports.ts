@@ -7,6 +7,19 @@ export const SENSITIVE_KEY_SEGMENT = [
   'AbCdEfGhIjKlMnOpQrStUvWx',
 ].join('_');
 
+/** The same kind of key with dashes, used as a stack file's scheme. */
+export const SENSITIVE_DASHED_KEY = [
+  'sk',
+  'live',
+  'abcdefghijklmnopqrstuvwx',
+].join('-');
+
+/** An access-key-style identifier, used as a function or error name. */
+export const SENSITIVE_AKIA_NAME = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
+
+/** An error-shaped name carrying a key. */
+export const SENSITIVE_KEY_ERROR_NAME = `Token_${SENSITIVE_KEY_SEGMENT}Error`;
+
 /**
  * Every leak shape council review found in the report pipeline, as values
  * planted in the fixtures below. None of these strings may appear in any sink
@@ -61,6 +74,9 @@ export const SENSITIVE_VALUES = [
   'pluralvalue',
   '765 - 4321',
   SENSITIVE_KEY_SEGMENT,
+  SENSITIVE_DASHED_KEY,
+  SENSITIVE_AKIA_NAME,
+  'janedoe.example.com',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -80,6 +96,9 @@ export const SENSITIVE_KEY_URL = `https://scc.example/k/(${SENSITIVE_KEY_SEGMENT
  */
 export const SENSITIVE_AT_HEADER_STACK =
   'Error: failed for jane.doe@example.com:1:2\n    at save (https://scc.example/a.js:1:2)';
+
+/** A stack whose header is an error-shaped name carrying a key. */
+export const SENSITIVE_NAMED_STACK = `${SENSITIVE_KEY_ERROR_NAME}: failed\n    at save (https://scc.example/a.js:1:2)`;
 
 /** A URL with userinfo and a query, embedded in free text. */
 export const SENSITIVE_EMBEDDED_URL =
@@ -115,6 +134,12 @@ export const SENSITIVE_STACK = [
   `    at ${SENSITIVE_KEY_SEGMENT} (https://scc.example/k/(${SENSITIVE_KEY_SEGMENT})/a.js:1:2)`,
   `    at Object.${SENSITIVE_KEY_SEGMENT} (https://scc.example/k/@${SENSITIVE_KEY_SEGMENT}/a.js:3:4)`,
   `    at run [as ${SENSITIVE_KEY_SEGMENT}] (https://scc.example/k/${SENSITIVE_KEY_SEGMENT}.js:5:6)`,
+  // A random and an access-key-style function name, a credential-shaped
+  // scheme, and a blob URL whose inner host names a person.
+  '    at XkfQpLmZr9Ab (https://scc.example/a.js:2:2)',
+  `    at ${SENSITIVE_AKIA_NAME} (https://scc.example/a.js:2:3)`,
+  `    at run (${SENSITIVE_DASHED_KEY}:module.js:2:4)`,
+  '    at load (blob:https://janedoe.example.com/token.js:2:5)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [

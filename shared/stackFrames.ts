@@ -1,8 +1,9 @@
 import {
   cutAtLastBreak,
-  hasTooManyDigits,
+  isSafeIdentifierPart,
   isSensitiveToken,
   REDACTED,
+  REPORT_ORIGIN,
   SANITIZE_INPUT_FACTOR,
   sanitizeErrorName,
   sanitizePathSegments,
@@ -23,28 +24,68 @@ const FRAME_OMITTED = '    [frame omitted]';
 // A line longer than this is not a frame anyone wrote.
 const FRAME_LINE_MAX = 1_000;
 // An identifier (`saveSummary`, `Array.map`, `Object.<anonymous>`), with
-// at most one `new ` or `async ` prefix and V8's `[as alias]` suffix.
+// at most one `new ` or `async ` prefix and V8's `[as alias]` suffix; the
+// groups are the dotted name and the alias.
 const FUNCTION_NAME =
-  /^(?:(?:new|async) )?[A-Za-z_$][\w$.<>]*(?: \[as [A-Za-z_$][\w$]*\])?$/;
+  /^(?:(?:new|async) )?([A-Za-z_$][\w$.<>]*)(?: \[as ([A-Za-z_$][\w$]*)\])?$/;
 const FUNCTION_NAME_MAX = 80;
+const ANGLE_BRACKETS = /[<>]/g;
 // Safari's name for top-level script code.
 const KNOWN_FUNCTION_NAMES = new Set(['global code']);
 const LOCATION = /^(.+):(\d{1,9}):(\d{1,9})$/;
 // Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
-const URL_PREFIX = /^https?:\/\//i;
-// `node:`, `file://`, `webpack-internal:///` or a drive letter, then a path.
-const SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:(?:\/\/\/?)?/i;
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 const QUERY_START = /[?#]/;
+// Schemes whose URL has a host: it is replaced by the synthetic one.
+const HOSTED_SCHEMES = new Set([
+  'chrome-extension',
+  'file',
+  'moz-extension',
+  'safari-extension',
+  'webpack',
+  'webpack-internal',
+]);
+const SYNTHETIC_HOST = new URL(REPORT_ORIGIN).host;
 
-/** A frame's file: path-only for http(s), plain path segments otherwise. */
-function sanitizeFile(file: string): string {
-  if (URL_PREFIX.test(file)) return toPathOnlyUrl(file);
-  const query = file.search(QUERY_START);
-  const path = query === -1 ? file : file.slice(0, query);
-  const scheme = SCHEME_PREFIX.exec(path)?.[0] ?? '';
-  const sanitized = sanitizePathSegments(path.slice(scheme.length), /[/\\]/);
-  return sanitized === REDACTED ? REDACTED : `${scheme}${sanitized}`;
+/** A path's plain segments, or `[redacted]` if none survive. */
+function sanitizePath(path: string, separator: RegExp): string {
+  const query = path.search(QUERY_START);
+  const sanitized = sanitizePathSegments(
+    query === -1 ? path : path.slice(0, query),
+    separator,
+  );
+  return sanitized === REDACTED ? REDACTED : sanitized;
+}
+
+/**
+ * A frame's file under a fixed scheme allowlist: a plain path; `http(s)`
+ * under the synthetic origin; `blob:` around such a URL; `node:` and a
+ * path; or a hosted scheme (`webpack:`, `file:`, `chrome-extension:`, …)
+ * with its host replaced by the synthetic one. A nested URL never keeps its
+ * host, not even as a path segment. Any other scheme is undefined: the
+ * frame is omitted, since dropping only the scheme would leave what followed
+ * it to be read as a path.
+ */
+function sanitizeFile(file: string): string | undefined {
+  const scheme = SCHEME.exec(file)?.[1]?.toLowerCase();
+  if (scheme === undefined) return sanitizePath(file, /[/\\]/);
+  const rest = file.slice(scheme.length + 1);
+  if (scheme === 'http' || scheme === 'https') return toPathOnlyUrl(file);
+  if (scheme === 'blob')
+    return SCHEME.test(rest) && /^https?:/i.test(rest)
+      ? `blob:${toPathOnlyUrl(rest)}`
+      : undefined;
+  if (scheme === 'node') return `node:${sanitizePath(rest, /\//)}`;
+  if (!HOSTED_SCHEMES.has(scheme)) return undefined;
+  let url: URL;
+  try {
+    url = new URL(file);
+  } catch {
+    return undefined;
+  }
+  const host = url.host ? SYNTHETIC_HOST : '';
+  return `${scheme}://${host}${sanitizePathSegments(url.pathname, /\//)}`;
 }
 
 function sanitizeLocation(location: string): string | undefined {
@@ -52,7 +93,8 @@ function sanitizeLocation(location: string): string | undefined {
   const match = LOCATION.exec(location);
   if (!match) return undefined;
   const [, file = '', line, column] = match;
-  return `${sanitizeFile(file)}:${line}:${column}`;
+  const sanitized = sanitizeFile(file);
+  return sanitized === undefined ? undefined : `${sanitized}:${line}:${column}`;
 }
 
 function frame(name: string, location: string): string | undefined {
@@ -61,14 +103,19 @@ function frame(name: string, location: string): string | undefined {
   return `    at ${sanitizeFunctionName(name)} (${sanitized})`;
 }
 
-/** A frame's function name if it is an identifier shape, else `<anonymous>`. */
+/**
+ * A frame's function name if it is an identifier shape whose every dotted
+ * part and `[as alias]` passes the rule path segments use
+ * (`isSafeIdentifierPart`), else `<anonymous>`. `renderSummary`,
+ * `Array.map`, `Object.<anonymous>`, `async loadUser` and `new Foo` stay.
+ */
 function sanitizeFunctionName(name: string): string {
   if (KNOWN_FUNCTION_NAMES.has(name)) return name;
-  // `isSensitiveToken` finds a key in any dotted part or `[as alias]`.
-  return name.length <= FUNCTION_NAME_MAX &&
-    FUNCTION_NAME.test(name) &&
-    !hasTooManyDigits(name) &&
-    !isSensitiveToken(name)
+  const match = name.length <= FUNCTION_NAME_MAX && FUNCTION_NAME.exec(name);
+  if (!match || isSensitiveToken(name)) return '<anonymous>';
+  const [, dotted = '', alias] = match;
+  const parts = [...dotted.replace(ANGLE_BRACKETS, '').split('.'), alias ?? ''];
+  return parts.every((part) => !part || isSafeIdentifierPart(part))
     ? name
     : '<anonymous>';
 }
@@ -120,7 +167,7 @@ export function sanitizeStackTrace(stack: string, max: number): string {
     const parsed = header === undefined ? parseFrame(line) : undefined;
     if (header !== undefined) output.push(sanitizeErrorName(header));
     else if (parsed) output.push(parsed);
-    else if (index === 0) output.push(REDACTED);
+    else if (index === 0) output.push(sanitizeErrorName(''));
     else if (output.at(-1) !== FRAME_OMITTED) output.push(FRAME_OMITTED);
   }
   const sanitized = output.join('\n');
@@ -131,6 +178,21 @@ export function sanitizeStackTrace(stack: string, max: number): string {
     max,
     true,
   );
+}
+
+/**
+ * A stack whose first line is the error's header. V8 starts with
+ * `Name: message`; Firefox and Safari start with a frame, so the error's
+ * class name is put first. The title and fingerprint then read the name the
+ * same way whatever the browser. With no stack, the name alone.
+ */
+export function stackWithHeader(
+  name: string,
+  stack: string | undefined,
+): string {
+  if (!stack) return name;
+  const firstLine = stack.split('\n', 1)[0] ?? '';
+  return HEADER.test(firstLine) ? stack : `${name}\n${stack}`;
 }
 
 /**

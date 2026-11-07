@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test';
-import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
+import {
+  sanitizeStackTrace,
+  stackSummary,
+  stackWithHeader,
+} from './stackFrames.ts';
+
+// Keys, assembled at runtime so none sits in source.
+const DASHED_KEY = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('-');
+const AKIA_NAME = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
 
 describe('sanitizeStackTrace', () => {
   test('a real V8 stack comes out as clean canonical frames', () => {
@@ -70,16 +78,17 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
-  test('the header line is reduced to an error class name; its message is dropped', () => {
-    expect(sanitizeStackTrace('apiKey: short-secret', 8_000)).toBe(
-      '[redacted]',
-    );
+  test('the header line is reduced to a known error class name; its message is dropped', () => {
+    expect(sanitizeStackTrace('apiKey: short-secret', 8_000)).toBe('Error');
     expect(
       sanitizeStackTrace(
-        'TokenError: correcthorse\n    at f (https://scc.example/a.js:1:2)',
+        'TypeError: correcthorse\n    at f (https://scc.example/a.js:1:2)',
         8_000,
       ),
-    ).toBe('TokenError\n    at f (https://app.invalid/a.js:1:2)');
+    ).toBe('TypeError\n    at f (https://app.invalid/a.js:1:2)');
+    // Error-shaped is not enough: only a known class name is kept.
+    const key = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
+    expect(sanitizeStackTrace(`Token_${key}Error: x`, 8_000)).toBe('Error');
     expect(
       sanitizeStackTrace('DOMException: The operation was aborted.', 8_000),
     ).toBe('DOMException');
@@ -126,12 +135,69 @@ describe('sanitizeStackTrace', () => {
         '    at <anonymous> (https://app.invalid/a.js:1:2)',
         '    at <anonymous> (https://app.invalid/a.js:3:4)',
         '    at <anonymous> (https://app.invalid/a.js:5:6)',
-        '    at hunter2 (https://app.invalid/a.js:7:8)',
+        '    at <anonymous> (https://app.invalid/a.js:7:8)',
         '    at new Builder (https://app.invalid/a.js:9:9)',
         '    at async loadUser (https://app.invalid/a.js:9:9)',
         '    at Object.<anonymous> [as run] (https://app.invalid/a.js:9:9)',
       ].join('\n'),
     );
+  });
+
+  test('a file keeps only an allowlisted scheme; a nested URL loses its host', () => {
+    const stack = [
+      'Error',
+      '    at a (blob:https://janedoe.example.com/token.js:1:2)',
+      '    at b (webpack://janedoe-app/src/main.ts:3:4)',
+      '    at c (webpack-internal:///./src/x.ts:5:6)',
+      '    at d (chrome-extension://abcdefghijklmnopabcdefghijklmnop/x.js:7:8)',
+      '    at e (file:///srv/app/x.js:9:9)',
+      '    at f (node:internal/vm:1:2)',
+      `    at g (${DASHED_KEY}:module.js:1:2)`,
+      '    at h (javascript:alert(1):1:2)',
+      '    at i (https://scc.example/a.js:1:2)',
+    ].join('\n');
+    const sanitized = sanitizeStackTrace(stack, 8_000);
+    expect(sanitized).not.toContain('janedoe');
+    expect(sanitized).not.toContain(DASHED_KEY);
+    expect(sanitized).toBe(
+      [
+        'Error',
+        '    at a (blob:https://app.invalid/token.js:1:2)',
+        '    at b (webpack://app.invalid/src/main.ts:3:4)',
+        '    at c (webpack-internal:///src/x.ts:5:6)',
+        '    at d (chrome-extension://app.invalid/x.js:7:8)',
+        '    at e (file:///srv/app/x.js:9:9)',
+        '    at f (node:internal/vm:1:2)',
+        // An unknown scheme omits the frame: dropping just the scheme would
+        // leave what followed it to be read as a path.
+        '    [frame omitted]',
+        '    at i (https://app.invalid/a.js:1:2)',
+      ].join('\n'),
+    );
+  });
+
+  test('a random-looking or key-like function name becomes <anonymous>', () => {
+    for (const name of [
+      'XkfQpLmZr9Ab',
+      AKIA_NAME,
+      `Object.${AKIA_NAME}`,
+      `run [as XkfQpLmZr9Ab]`,
+    ])
+      expect(
+        sanitizeStackTrace(
+          `    at ${name} (https://scc.example/a.js:1:2)`,
+          8_000,
+        ),
+      ).toBe('    at <anonymous> (https://app.invalid/a.js:1:2)');
+  });
+
+  test('stackWithHeader names a headerless stack, and leaves a V8 one alone', () => {
+    expect(stackWithHeader('TypeError', 'f@https://scc.example/a.js:1:2')).toBe(
+      'TypeError\nf@https://scc.example/a.js:1:2',
+    );
+    expect(stackWithHeader('TypeError', undefined)).toBe('TypeError');
+    const v8 = 'TypeError: x\n    at f (https://scc.example/a.js:1:2)';
+    expect(stackWithHeader('TypeError', v8)).toBe(v8);
   });
 
   test('a key-shaped function name, dotted part or alias becomes <anonymous>', () => {
@@ -195,9 +261,7 @@ describe('sanitizeStackTrace', () => {
       4_000,
     );
     expect(sanitized.endsWith('… [truncated]')).toBe(true);
-    expect(sanitized.length).toBeLessThanOrEqual(
-      4_000 + '… [truncated]'.length,
-    );
+    expect(sanitized.length).toBeLessThanOrEqual(4_000);
   });
 
   test('is linear on adversarial input', () => {

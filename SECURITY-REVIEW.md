@@ -35,7 +35,7 @@ place today and what is still a gap.
   stored, only their length, and a User report asks for no text at all
   (`shared/telemetryRedaction.ts`,
   `shared/stackFrames.ts`,
-  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); every
+  `docs/adr/0001-reports-are-redacted-before-storage.md`); every
   field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
   that cap, and the route body limit is derived from them. Gaps: a plain-word
   path segment can still be personal (`/u/janedoe`); no real host is kept;

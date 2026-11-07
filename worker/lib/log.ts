@@ -2,10 +2,12 @@ import {
   sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
-import { sanitizeStackTrace } from '../../shared/stackFrames.ts';
+import {
+  sanitizeStackTrace,
+  stackWithHeader,
+} from '../../shared/stackFrames.ts';
 import {
   omittedText,
-  REDACTED,
   sanitizeErrorName,
   toPathOnlyUrl,
 } from '../../shared/telemetryRedaction.ts';
@@ -67,10 +69,10 @@ export function describeErrorForLog(error: unknown) {
       return { message: `[thrown ${thrownType(error)} omitted]` };
     const { name, stack, cause, message } = error;
     return {
-      name: typeof name === 'string' ? sanitizeErrorName(name) : REDACTED,
+      name: sanitizeErrorName(typeof name === 'string' ? name : ''),
       stack:
-        typeof stack === 'string'
-          ? sanitizeStackTrace(stack, LOG_STACK_MAX)
+        typeof stack === 'string' && typeof name === 'string'
+          ? sanitizeStackTrace(stackWithHeader(name, stack), LOG_STACK_MAX)
           : undefined,
       causeName:
         cause instanceof Error && typeof cause.name === 'string'

@@ -27,13 +27,49 @@ export function omittedText(field: string, value: string): string {
   return `[${field} omitted: ${value.length} characters]`;
 }
 
-// An error class name: `TypeError`, `ChunkLoadError`, `DOMException`. No
-// digits, so it cannot carry a number, and no other shape.
-const ERROR_NAME = /^(?:[A-Z][A-Za-z_]{0,62})?(?:Error|Exception)$/;
+/**
+ * The error class names a report may keep: JavaScript's and the browser's
+ * built-ins, and every class the app or Worker defines or reports. A fixed
+ * list, not a shape: a shape such as `…Error` would let `Token_sk_live_…Error`
+ * through. Any other name becomes `Error`.
+ */
+const KNOWN_ERROR_NAMES = new Set([
+  // JavaScript
+  'AggregateError',
+  'Error',
+  'EvalError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'TypeError',
+  'URIError',
+  // The browser
+  'AbortError',
+  'DOMException',
+  'InvalidStateError',
+  'NetworkError',
+  'NotAllowedError',
+  'NotFoundError',
+  'QuotaExceededError',
+  'SecurityError',
+  'TimeoutError',
+  // Bundlers
+  'ChunkLoadError',
+  // The Worker and the AI SDK it reports
+  'AI_APICallError',
+  'AI_NoObjectGeneratedError',
+  'AI_RetryError',
+  'EnvironmentValidationError',
+  'GeneratedOutputLimitError',
+  'GitHubIssueCreationError',
+  'SectionTokenLimitError',
+  'UpstreamTimeoutError',
+]);
+const UNKNOWN_ERROR_NAME = 'Error';
 
-/** The error name if it is an error class name, else `[redacted]`. */
+/** The error name if it is a known error class, else `Error`. */
 export function sanitizeErrorName(name: string): string {
-  return ERROR_NAME.test(name) ? name : REDACTED;
+  return KNOWN_ERROR_NAMES.has(name) ? name : UNKNOWN_ERROR_NAME;
 }
 
 // Five digits, however separated, may be a phone number or an id:
@@ -63,7 +99,7 @@ const CONTENT_HASH = /^[A-Za-z0-9]{4,16}$/;
 // a sigil, a file extension, a dotted part or an alias cannot hide it. One
 // structural rule rather than a list of prefixes.
 const KEY_SHAPE =
-  /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[A-Za-z0-9]{16,}(?![A-Za-z0-9])/;
+  /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[a-z0-9]{16,}(?![a-z0-9])/i;
 
 /**
  * True when a value holds a key-shaped token. The one check shared by URL
@@ -74,22 +110,42 @@ export function isSensitiveToken(value: string): boolean {
 }
 // A word with this share of upper-case letters, past this length, looks
 // random rather than written (`AbCdEfGh…`, `XkfQpLmZrAb`); `UserProfile`,
-// `getElementById` and `XMLHttpRequest` stay. All-capitals is a word too.
+// `getElementById` and `XMLHttpRequest` stay. All-capitals is a word
+// (`README`, `MAX`) up to a length a constant's part plausibly has.
 const MIXED_CASE_MIN_LENGTH = 8;
 const MAX_UPPER_SHARE = 0.4;
+const ALL_CAPS_MAX_LENGTH = 12;
 const UPPER = /[A-Z]/g;
+// What splits an identifier part into words: `MAX_RETRY_COUNT`, `$foo`.
+const IDENTIFIER_WORD_SEPARATORS = /[_$-]+/;
 
 function looksRandom(word: string): boolean {
-  if (word.length < MIXED_CASE_MIN_LENGTH || word === word.toUpperCase())
-    return false;
+  if (word.length < MIXED_CASE_MIN_LENGTH) return false;
+  if (word === word.toUpperCase()) return word.length > ALL_CAPS_MAX_LENGTH;
   return (word.match(UPPER)?.length ?? 0) / word.length > MAX_UPPER_SHARE;
 }
 
-function isSafeSegmentPart(part: string): boolean {
+function isSafeWord(word: string): boolean {
   return (
-    (SEGMENT_WORD.test(part) && !looksRandom(part)) ||
-    SEGMENT_NUMBER.test(part) ||
-    VERSION.test(part)
+    (SEGMENT_WORD.test(word) && !looksRandom(word)) ||
+    SEGMENT_NUMBER.test(word) ||
+    VERSION.test(word)
+  );
+}
+
+/**
+ * The one rule a URL path segment's parts and a stack frame's function-name
+ * parts both pass: at most 4 digits, no key shape (any case), and every
+ * word (split at `_`, `$`, `-`) a written word, a short number or an API
+ * version. A random-looking word (`XkfQpLmZr9Ab`), a key (`sk_live_…`,
+ * an access-key-style `AKIA…`) or a word mixing letters and digits (`hunter2`)
+ * fails.
+ */
+export function isSafeIdentifierPart(part: string): boolean {
+  return (
+    !hasTooManyDigits(part) &&
+    !isSensitiveToken(part) &&
+    part.split(IDENTIFIER_WORD_SEPARATORS).filter(Boolean).every(isSafeWord)
   );
 }
 
@@ -112,7 +168,7 @@ function isSafeSegment(segment: string): boolean {
   const isFileName = FILE_EXTENSION.test(bare);
   return parts.every(
     (part) =>
-      isSafeSegmentPart(part) || (isFileName && CONTENT_HASH.test(part)),
+      isSafeIdentifierPart(part) || (isFileName && CONTENT_HASH.test(part)),
   );
 }
 

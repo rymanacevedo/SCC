@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  isSafeIdentifierPart,
   isSensitiveToken,
   omittedText,
-  REDACTED,
   REPORT_ORIGIN,
   sanitizeErrorName,
   TRUNCATED,
@@ -159,29 +159,70 @@ describe('free text is reduced to its length', () => {
 });
 
 describe('sanitizeErrorName', () => {
-  test('keeps an error class name', () => {
+  test('keeps a known error class name', () => {
     for (const name of [
       'Error',
       'TypeError',
-      'ChunkLoadError',
+      'RangeError',
+      'SyntaxError',
+      'AggregateError',
       'DOMException',
+      'AbortError',
+      'ChunkLoadError',
+      'QuotaExceededError',
       'AI_APICallError',
+      'AI_RetryError',
       'GitHubIssueCreationError',
+      'UpstreamTimeoutError',
     ])
       expect(sanitizeErrorName(name)).toBe(name);
   });
 
-  test('anything else becomes [redacted]', () => {
+  test('any other name becomes Error, however error-shaped', () => {
     for (const name of [
+      `Token_${KEY}Error`,
+      'MyCustomError',
+      'TokenError',
       'hunter2',
-      'correcthorse',
       'TokenError: correcthorse',
-      'apiKey',
-      'Error5551234567',
       'jane@example.com',
       '',
     ])
-      expect(sanitizeErrorName(name)).toBe(REDACTED);
+      expect(sanitizeErrorName(name)).toBe('Error');
+  });
+});
+
+describe('isSafeIdentifierPart', () => {
+  test('keeps real code names', () => {
+    for (const part of [
+      'renderSummary',
+      'map',
+      'anonymous',
+      'loadUser',
+      'Foo',
+      'getElementById',
+      'XMLHttpRequest',
+      'node_modules',
+      'README',
+      'MAX_RETRY_COUNT',
+      'v1',
+      '1234',
+    ])
+      expect(isSafeIdentifierPart(part)).toBe(true);
+  });
+
+  test('random, key-shaped, digit-heavy or mixed letter-digit parts fail', () => {
+    for (const part of [
+      'XkfQpLmZr9Ab',
+      'XkfQpLmZrAbW',
+      ['AKIA', 'IOSFODNN7EXAMPLE'].join(''),
+      'ABCDEFGHIJKLMNOPQR',
+      KEY,
+      KEY.toUpperCase(),
+      'hunter2',
+      'user5551234567',
+    ])
+      expect(isSafeIdentifierPart(part)).toBe(false);
   });
 });
 

@@ -3,6 +3,7 @@ import {
   shouldSkipDuplicateTelemetryReport,
 } from '../shared/errorReporting.ts';
 import type { Result } from '../shared/result.ts';
+import { stackWithHeader } from '../shared/stackFrames.ts';
 import { reportError } from './api.ts';
 
 export const ERROR_MODAL_MESSAGE =
@@ -38,10 +39,11 @@ export async function reportErrorTelemetry(
       url,
       timestamp: new Date().toISOString(),
       message: errorMessage(error),
-      // With no stack, the class name alone stands in for one, so it still
-      // reaches the fingerprint and title (`TypeError`, not a bare path).
+      // The class name heads the stack (Firefox and Safari leave it out; with
+      // no stack it stands alone), so it reaches the title and fingerprint
+      // whatever the browser.
       ...(error instanceof Error
-        ? { stackTrace: error.stack || error.name }
+        ? { stackTrace: stackWithHeader(error.name, error.stack) }
         : {}),
     });
     if (shouldSkipDuplicateTelemetryReport(telemetry))

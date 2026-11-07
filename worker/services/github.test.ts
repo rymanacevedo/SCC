@@ -15,6 +15,7 @@ import {
   SENSITIVE_DESCRIPTION,
   SENSITIVE_KEY_URL,
   SENSITIVE_MESSAGE,
+  SENSITIVE_NAMED_STACK,
   SENSITIVE_STACK,
   SENSITIVE_TIMESTAMP,
   SENSITIVE_URL,
@@ -225,6 +226,10 @@ describe('issue bodies sent to GitHub', () => {
         '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
         '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
         '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
+        '    at <anonymous> (https://app.invalid/a.js:2:2)',
+        '    at <anonymous> (https://app.invalid/a.js:2:3)',
+        '    [frame omitted]',
+        '    at load (blob:https://app.invalid/token.js:2:5)',
         '```',
       ].join('\n'),
     );
@@ -253,7 +258,7 @@ describe('issue bodies sent to GitHub', () => {
     );
   });
 
-  test('the stack header keeps only an error class name', async () => {
+  test('the stack header keeps only a known error class name', async () => {
     const sent = captureCreatedIssues();
     const stackTrace =
       'apiKey: headersecretvalue\n    at f (https://scc.example/a.js:1:2)';
@@ -263,9 +268,24 @@ describe('issue bodies sent to GitHub', () => {
     });
     expectNoSensitiveValues(`${sent[0]?.title}\n${sent[0]?.body}`);
     expect(sent[0]?.title).toBe(
-      'Auto-reported error: [redacted] at /assets/app-a1b2c3d4.js',
+      'Auto-reported error: Error at /assets/app-a1b2c3d4.js',
     );
-    expect(sent[0]?.body).toContain('\n[redacted]\n    at f (');
+    expect(sent[0]?.body).toContain('\nError\n    at f (');
+  });
+
+  test('a key-bearing error name reaches neither title, body nor fingerprint', async () => {
+    const sent = captureCreatedIssues();
+    const payload = { ...chunkFailure, stackTrace: SENSITIVE_NAMED_STACK };
+    await createAutoReportedIssue({ ...auth, payload });
+    expectNoSensitiveValues(`${sent[0]?.title}\n${sent[0]?.body}`);
+    expect(sent[0]?.title).toBe(
+      'Auto-reported error: Error at /assets/app-a1b2c3d4.js',
+    );
+    const fingerprint = buildSanitizedTelemetryFingerprint(
+      sanitizeErrorTelemetry(payload),
+    );
+    expectNoSensitiveValues(fingerprint);
+    expect(JSON.parse(fingerprint).name).toBe('Error');
   });
 
   test('a key in the page URL or a header ending like a frame reaches no issue', async () => {
@@ -500,7 +520,7 @@ describe('GitHub issue body size', () => {
     });
     const body = sent[0]?.body ?? '';
     expect(body).toContain('- Message: `[message omitted: 1000 characters]`');
-    expect(body.endsWith('\n```\n[redacted]\n```')).toBe(true);
+    expect(body.endsWith('\n```\nError\n```')).toBe(true);
     expect(body).not.toContain('````');
   });
 

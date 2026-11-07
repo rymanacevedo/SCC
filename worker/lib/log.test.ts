@@ -2,8 +2,11 @@ import { expect, test } from 'bun:test';
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
+  SENSITIVE_AKIA_NAME,
   SENSITIVE_AT_HEADER_STACK,
+  SENSITIVE_KEY_ERROR_NAME,
   SENSITIVE_KEY_URL,
+  SENSITIVE_NAMED_STACK,
   SENSITIVE_MESSAGE,
   SENSITIVE_PAREN_URL,
   SENSITIVE_STACK,
@@ -72,11 +75,15 @@ test('an Error is logged as its class name, frames, cause class and message leng
       '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
       '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
       '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
+      '    at <anonymous> (https://app.invalid/a.js:2:2)',
+      '    at <anonymous> (https://app.invalid/a.js:2:3)',
+      '    [frame omitted]',
+      '    at load (blob:https://app.invalid/token.js:2:5)',
     ].join('\n'),
   });
 });
 
-test('an error name or stack header that is not an error class is [redacted]', () => {
+test('an error name or stack header that is not a known error class is Error', () => {
   const error = new Error('Broken');
   error.name = 'hunter2';
   error.stack =
@@ -84,8 +91,23 @@ test('an error name or stack header that is not an error class is [redacted]', (
   const described = describeErrorForLog(error);
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described).toMatchObject({
-    name: '[redacted]',
-    stack: '[redacted]\n    at f (https://app.invalid/a.js:1:2)',
+    name: 'Error',
+    stack: 'Error\n    at f (https://app.invalid/a.js:1:2)',
+  });
+});
+
+test('a key-bearing Error.name, cause.name or header is logged as Error', () => {
+  const cause = new Error('x');
+  cause.name = SENSITIVE_AKIA_NAME;
+  const error = new Error('x', { cause });
+  error.name = SENSITIVE_KEY_ERROR_NAME;
+  error.stack = SENSITIVE_NAMED_STACK;
+  const described = describeErrorForLog(error);
+  expectNoSensitiveValues(JSON.stringify(described));
+  expect(described).toMatchObject({
+    name: 'Error',
+    causeName: 'Error',
+    stack: 'Error\n    at save (https://app.invalid/a.js:1:2)',
   });
 });
 
