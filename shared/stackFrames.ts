@@ -41,8 +41,40 @@ const HTTP_SCHEME = /^https?:\/\//i;
 const ASSET_PATH =
   /^\/assets\/([A-Za-z][\w.-]{0,47})-[\w-]{8}\.(?:js|mjs|css)$/;
 const ASSET_NAME_SEPARATORS = /[.-]+/;
-// A Node.js built-in (`node:fs`, `node:internal/vm`): the module name only.
+// A Node.js location (`node:fs`, `node:internal/vm`): its first segment.
 const NODE_MODULE = /^node:([a-z_]{1,24})(?![^/])/;
+// The Node.js built-in modules a frame may name, plus `internal`. A fixed
+// list, so the browser cannot put a word or a key-shaped value of its own
+// (`node:sk_live_…`) into an issue. Checked against Node's own list by a test.
+export const NODE_BUILTIN_MODULES: ReadonlySet<string> = new Set([
+  'assert',
+  'async_hooks',
+  'buffer',
+  'child_process',
+  'crypto',
+  'dns',
+  'events',
+  'fs',
+  'http',
+  'https',
+  'internal',
+  'module',
+  'net',
+  'os',
+  'path',
+  'process',
+  'querystring',
+  'readline',
+  'stream',
+  'string_decoder',
+  'timers',
+  'tls',
+  'url',
+  'util',
+  'vm',
+  'worker_threads',
+  'zlib',
+]);
 // What any other file becomes: the frame keeps its function and position.
 const FILE_REDACTED = `${REPORT_ORIGIN}/${REDACTED}`;
 
@@ -61,14 +93,15 @@ function filePath(file: string): string | undefined {
 /**
  * A frame's file, reduced to the shapes the app's own code runs from: a
  * Vite bundle asset (`/assets/<name>-<hash>.js`, under the synthetic origin)
- * or a Node.js built-in module (`node:fs`). Any other file (a dev module
+ * or a known Node.js built-in module (`node:fs`). Any other file (a dev module
  * path, an extension, `blob:`, `file:`, `webpack:`, a path of words) becomes
  * `https://app.invalid/[redacted]`, and the frame is kept: the browser does
  * not choose the words a file path carries into an issue.
  */
 function sanitizeFile(file: string): string {
   const node = NODE_MODULE.exec(file)?.[1];
-  if (node !== undefined) return `node:${node}`;
+  if (node !== undefined)
+    return NODE_BUILTIN_MODULES.has(node) ? `node:${node}` : FILE_REDACTED;
   const path = filePath(file);
   const name = path === undefined ? undefined : ASSET_PATH.exec(path)?.[1];
   return name !== undefined &&
@@ -146,7 +179,9 @@ const FRAME_PREFIX = '    at ';
  * so `Error: …@host:1:2` is not taken for a Firefox frame; it becomes the
  * error name alone (`TypeError`), or `Error` if that is not a known error
  * class name. Input past four times `max` is never read, and a frame the
- * bound cut in half is dropped.
+ * bound cut in half is dropped. A trailing truncation marker, as a first
+ * pass leaves it, is kept, so a second pass does not hide that frames were
+ * cut.
  */
 export function sanitizeStackTrace(stack: string, max: number): string {
   const bound = max * SANITIZE_INPUT_FACTOR;
@@ -155,6 +190,8 @@ export function sanitizeStackTrace(stack: string, max: number): string {
   const lines = (
     cut ? cutAtLastBreak(stack.slice(0, bound), isLineBreak) : stack
   ).split('\n');
+  const marked = lines.length > 1 && lines.at(-1) === TRUNCATED;
+  if (marked) lines.pop();
   const output: string[] = [];
   for (const [index, line] of lines.entries()) {
     if (!line.trim()) continue;
@@ -166,10 +203,10 @@ export function sanitizeStackTrace(stack: string, max: number): string {
     else if (output.at(-1) !== FRAME_OMITTED) output.push(FRAME_OMITTED);
   }
   const sanitized = output.join('\n');
-  if (!cut && sanitized.length <= max) return sanitized;
+  if (!cut && !marked && sanitized.length <= max) return sanitized;
   const room = max - TRUNCATED.length;
   return truncateWithMarker(
-    cutAtLastBreak(sanitized.slice(0, room + 1), isLineBreak),
+    cutAtLastBreak(`${sanitized}\n`.slice(0, room + 1), isLineBreak),
     max,
     true,
   );

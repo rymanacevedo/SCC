@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'bun:test';
+import { builtinModules } from 'node:module';
 import {
+  NODE_BUILTIN_MODULES,
   sanitizeStackTrace,
   stackSummary,
   stackWithHeader,
 } from './stackFrames.ts';
+import { TRUNCATED } from './telemetryRedaction.ts';
 
 // Keys, assembled at runtime so none sits in source.
 const DASHED_KEY = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('-');
@@ -335,6 +338,46 @@ describe('sanitizeStackTrace', () => {
     );
     expect(sanitized.endsWith('… [truncated]')).toBe(true);
     expect(sanitized.length).toBeLessThanOrEqual(4_000);
+  });
+
+  test('a second pass keeps the truncation marker and every frame', () => {
+    const frame = '    at frame (https://scc.example/assets/a-abcdef12.js:1:2)';
+    const once = sanitizeStackTrace(
+      `Error: Broken\n${`${frame}\n`.repeat(5_000)}`,
+      4_000,
+    );
+    expect(once.endsWith(`\n${TRUNCATED}`)).toBe(true);
+    expect(once).not.toContain('[frame omitted]');
+    expect(sanitizeStackTrace(once, 4_000)).toBe(once);
+  });
+
+  test('a Node.js location keeps only a known built-in module name', () => {
+    const key = ['sk', 'live', 'abcdefghijklmnop'].join('_');
+    expect(
+      sanitizeStackTrace(
+        [
+          'Error',
+          `    at a (node:${key}:1:2)`,
+          '    at b (node:ignore_previous/instructions:1:2)',
+          '    at c (node:internal/modules/cjs/loader:1:2)',
+          '    at d (node:fs:1:2)',
+        ].join('\n'),
+        8_000,
+      ),
+    ).toBe(
+      [
+        'Error',
+        `    at a (${REDACTED_FILE}:1:2)`,
+        `    at b (${REDACTED_FILE}:1:2)`,
+        '    at c (node:internal:1:2)',
+        '    at d (node:fs:1:2)',
+      ].join('\n'),
+    );
+  });
+
+  test('every listed Node.js module is a real built-in', () => {
+    for (const name of NODE_BUILTIN_MODULES)
+      if (name !== 'internal') expect(builtinModules).toContain(name);
   });
 
   test('is linear on adversarial input', () => {

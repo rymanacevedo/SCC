@@ -14,6 +14,9 @@ export const SENSITIVE_DASHED_KEY = [
   'abcdefghijklmnopqrstuvwx',
 ].join('-');
 
+/** A lowercase key, shaped like a Node.js module name. */
+export const SENSITIVE_NODE_KEY = ['sk', 'live', 'abcdefghijklmnop'].join('_');
+
 /** An access-key-style identifier, used as a function or error name. */
 export const SENSITIVE_AKIA_NAME = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
 
@@ -75,6 +78,7 @@ export const SENSITIVE_VALUES = [
   '765 - 4321',
   SENSITIVE_KEY_SEGMENT,
   SENSITIVE_DASHED_KEY,
+  SENSITIVE_NODE_KEY,
   SENSITIVE_AKIA_NAME,
   'janedoe.example.com',
   '555.123.4567',
@@ -175,6 +179,9 @@ export const SENSITIVE_STACK = [
   '    at eval (//janedoe.example.com/script.js:3:3)',
   '    at load (node:https://janedoe.example.com/a.js:3:4)',
   '    at load (node://janedoe.example.com/script.js:3:5)',
+  // Node.js locations that are no built-in module: a key and a word.
+  `    at load (node:${SENSITIVE_NODE_KEY}:3:6)`,
+  '    at load (node:ignore/previous:3:7)',
   // File paths that are not bundle assets, spelling words.
   `    at render (https://scc.example${SENSITIVE_INJECTION_PATH}.js:4:1)`,
   '    at render (https://scc.example/experience/janedoe.js:4:2)',
@@ -206,6 +213,8 @@ export const SANITIZED_SENSITIVE_STACK = [
   `    at eval (${FILE}:3:3)`,
   `    at load (${FILE}:3:4)`,
   `    at load (${FILE}:3:5)`,
+  `    at load (${FILE}:3:6)`,
+  `    at load (${FILE}:3:7)`,
   `    at render (${FILE}:4:1)`,
   `    at render (${FILE}:4:2)`,
 ].join('\n');

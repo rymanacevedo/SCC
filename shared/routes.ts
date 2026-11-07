@@ -39,27 +39,15 @@ export const API_ROUTE_PATTERNS = [
 export const UNKNOWN_ROUTE = '/[unknown-route]';
 
 /**
- * The pattern a path matches, or `UNKNOWN_ROUTE`. A `:name` segment
- * matches any one segment and is kept as its name, so a value such as
- * `/experience/janedoe` is never kept.
+ * The pattern a path is, ignoring one trailing slash, or `UNKNOWN_ROUTE`,
+ * so a value such as `/experience/janedoe` is never kept.
  */
 export function matchRoute(
   pathname: string,
   patterns: readonly string[],
 ): string {
   const path = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
-  const segments = path.split('/');
-  for (const pattern of patterns) {
-    const parts = pattern.split('/');
-    if (
-      parts.length === segments.length &&
-      parts.every(
-        (part, index) => part.startsWith(':') || part === segments[index],
-      )
-    )
-      return pattern;
-  }
-  return UNKNOWN_ROUTE;
+  return patterns.find((pattern) => pattern === path) ?? UNKNOWN_ROUTE;
 }
 
 /**
