@@ -89,7 +89,7 @@ describe.each(sectionGenerators)(
 
       const error = await result.catch((caught: unknown) => caught);
       expect(error).toBeInstanceOf(UpstreamTimeoutError);
-      expect(error).toMatchObject({ upstream: 'ai', timeoutMs: 45_000 });
+      expect(error).toMatchObject({ upstream: 'provider', timeoutMs: 45_000 });
       expect(providerSignal?.aborted).toBe(true);
     });
   },

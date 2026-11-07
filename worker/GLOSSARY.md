@@ -34,7 +34,10 @@ The 1 MiB cap on any `/api/*` JSON body (`MAX_JSON_BODY_BYTES`). The Worker read
 A request whose client disconnected before the response. `request.signal` aborts, the generation route passes that signal to the provider so the call stops, and the Worker entry logs it once as `client_aborted` with a 499. It is not a route failure: the router rethrows the abort reason once the signal fires, and the route error middleware rethrows it rather than log it.
 
 ### Upstream deadline
-The time limit on every call the Worker makes to an upstream (the model provider, GitHub), applied by `withDeadline` in `lib/deadline.ts`. It aborts the call's signal and settles at once, even if the upstream ignores the signal, with an `UpstreamTimeoutError`. A section generator's deadline (`SECTION_GENERATION_DEADLINE_MS`) covers its retries; each GitHub call has its own (`GITHUB_REQUEST_DEADLINE_MS`) and is never retried, so issue creation that timed out is never sent twice. A generation timeout is a 504 logged as `timeout`; a GitHub timeout is a `GitHubIssueCreationError` of kind `timeout`, a 502 logged as `github_timeout`. A generation cut off at its output-token limit is a 502 logged as `token_limit`.
+The time limit on every call the Worker makes to an upstream (the model provider, GitHub), applied by `withDeadline` in `lib/deadline.ts`. It aborts the call's signal and settles at once, even if the upstream ignores the signal, with an `UpstreamTimeoutError`. A section generator's deadline (`SECTION_GENERATION_DEADLINE_MS`) covers its retries; each GitHub call has its own (`GITHUB_REQUEST_DEADLINE_MS`) and is never retried, so issue creation that timed out is never sent twice. A generation timeout is a 504 logged as `timeout`; a GitHub timeout is a `GitHubIssueCreationError` of kind `timeout`, a 502 logged as `github_timeout`.
+
+### Output-token limit
+The cap on how many tokens a section generator's model may produce (`SECTION_MAX_OUTPUT_TOKENS`, one per section). Reasoning tokens count against it, so each limit sits well above the section's visible JSON. A generation that stops at the limit gave no usable output, cut-short JSON or no text at all, and raises `SectionTokenLimitError`: a 502 logged as `token_limit`.
 
 ## Generation architecture
 

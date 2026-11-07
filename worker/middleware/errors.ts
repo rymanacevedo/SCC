@@ -1,10 +1,14 @@
-import { APICallError, NoObjectGeneratedError } from 'ai';
+import { APICallError } from 'ai';
 import type { Middleware } from 'remix/router';
 import { isClientAbort } from '../lib/abort.ts';
 import { UpstreamTimeoutError } from '../lib/deadline.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { apiError } from '../lib/response.ts';
-import { GitHubIssueCreationError } from '../services/github.ts';
+import { SectionTokenLimitError } from '../services/ai.ts';
+import {
+  GitHubIssueCreationError,
+  type GitHubIssueCreationErrorKind,
+} from '../services/github.ts';
 import type { bodyValidation } from './guards.ts';
 
 export type RouteErrorPolicy = {
@@ -55,8 +59,17 @@ export function createRouteErrorMiddleware<T>(
   };
 }
 
-type RouteErrorClass = {
-  category: string;
+/** The `category` a route failure is logged under, for counting. */
+type RouteErrorCategory =
+  | 'config'
+  | 'timeout'
+  | `github_${GitHubIssueCreationErrorKind}`
+  | 'provider'
+  | 'token_limit'
+  | 'unknown';
+
+type RouteErrorClassification = {
+  category: RouteErrorCategory;
   status: number;
   details: Record<string, unknown>;
 };
@@ -70,7 +83,7 @@ type RouteErrorClass = {
 function classifyRouteError(
   error: unknown,
   generation: boolean,
-): RouteErrorClass {
+): RouteErrorClassification {
   if (error instanceof EnvironmentValidationError) {
     return { category: 'config', status: 500, details: {} };
   }
@@ -102,17 +115,13 @@ function classifyRouteError(
       },
     };
   }
-  // The model stopped at its output-token limit, so the JSON was cut short.
-  if (
-    NoObjectGeneratedError.isInstance(error) &&
-    error.finishReason === 'length'
-  ) {
+  if (error instanceof SectionTokenLimitError) {
     return {
       category: 'token_limit',
       status: 502,
       details: {
-        finishReason: error.finishReason,
-        outputTokens: error.usage?.outputTokens,
+        maxOutputTokens: error.maxOutputTokens,
+        outputTokens: error.outputTokens,
       },
     };
   }

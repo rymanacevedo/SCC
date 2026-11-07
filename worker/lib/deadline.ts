@@ -1,5 +1,5 @@
 /** The upstream services the Worker calls under a deadline. */
-export type Upstream = 'ai' | 'github';
+export type Upstream = 'provider' | 'github';
 
 /** An upstream call ran past its deadline and was aborted. */
 export class UpstreamTimeoutError extends Error {

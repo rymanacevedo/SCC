@@ -1,6 +1,9 @@
 import {
+  type FinishReason,
   generateText,
+  type LanguageModelUsage,
   type LanguageModel,
+  NoObjectGeneratedError,
   Output,
   type OutputInterface,
 } from 'ai';
@@ -37,6 +40,30 @@ export const SECTION_MAX_OUTPUT_TOKENS = {
   experience: 4000,
 } as const;
 
+/**
+ * A section generator's model stopped at its output-token limit, so it gave
+ * no usable output: JSON cut short, or no text at all when a reasoning model
+ * spent the whole budget thinking.
+ */
+export class SectionTokenLimitError extends Error {
+  readonly maxOutputTokens: number;
+  readonly outputTokens: number | undefined;
+
+  constructor(
+    maxOutputTokens: number,
+    outputTokens: number | undefined,
+    cause: unknown,
+  ) {
+    super(
+      `Section generation stopped at its ${maxOutputTokens}-token output limit.`,
+      { cause },
+    );
+    this.name = 'SectionTokenLimitError';
+    this.maxOutputTokens = maxOutputTokens;
+    this.outputTokens = outputTokens;
+  }
+}
+
 /** The one bounded model call every section generator makes. */
 async function generateSection<OUTPUT>({
   prompt,
@@ -55,21 +82,41 @@ async function generateSection<OUTPUT>({
 }): Promise<OUTPUT> {
   return withDeadline(
     {
-      upstream: 'ai',
+      upstream: 'provider',
       timeoutMs: SECTION_GENERATION_DEADLINE_MS,
       signal: abortSignal,
     },
     async (signal) => {
-      const result = await generateText({
-        model,
-        abortSignal: signal,
-        maxRetries: SECTION_GENERATION_MAX_RETRIES,
-        maxOutputTokens,
-        output,
-        prompt,
-        instructions,
-      });
-      return result.output;
+      let finished:
+        | { finishReason: FinishReason; usage: LanguageModelUsage }
+        | undefined;
+      try {
+        const result = await generateText({
+          model,
+          abortSignal: signal,
+          maxRetries: SECTION_GENERATION_MAX_RETRIES,
+          maxOutputTokens,
+          output,
+          prompt,
+          instructions,
+        });
+        finished = result;
+        return result.output;
+      } catch (error) {
+        // The SDK reports the limit two ways: a parse failure while generating
+        // text (NoObjectGeneratedError), or, with no text, from `output`.
+        const stopped = NoObjectGeneratedError.isInstance(error)
+          ? error
+          : finished;
+        if (stopped?.finishReason === 'length') {
+          throw new SectionTokenLimitError(
+            maxOutputTokens,
+            stopped.usage?.outputTokens,
+            error,
+          );
+        }
+        throw error;
+      }
     },
   );
 }

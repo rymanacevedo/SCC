@@ -93,19 +93,45 @@ async function readErrorSnippet(response: Response) {
  * with failures classified by kind. Never retries, so a creation that timed
  * out (and may have landed) is never sent twice.
  */
-async function requestGitHub<T>(
-  action: string,
-  url: string,
-  init: RequestInit,
-  read: (response: Response) => Promise<T>,
-): Promise<T> {
+async function requestGitHub<T>({
+  action,
+  token,
+  path,
+  method,
+  body,
+  read,
+}: {
+  /** Names the call in error messages, e.g. `issue creation`. */
+  action: string;
+  token: string;
+  /** Path under `https://api.github.com`, query string included. */
+  path: string;
+  method: 'GET' | 'POST';
+  /** Sent as JSON. */
+  body?: unknown;
+  read: (response: Response) => Promise<T>;
+}): Promise<T> {
+  const init: RequestInit = {
+    method,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': GITHUB_USER_AGENT,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  };
   try {
     return await withDeadline(
       { upstream: 'github', timeoutMs: GITHUB_REQUEST_DEADLINE_MS },
       async (signal) => {
         let response: Response;
         try {
-          response = await fetch(url, { ...init, signal });
+          response = await fetch(`https://api.github.com${path}`, {
+            ...init,
+            signal,
+          });
         } catch (error) {
           throw new GitHubIssueCreationError(
             `GitHub ${action} request failed.`,
@@ -147,26 +173,14 @@ async function createGitHubIssue({
   body: string;
   labels: string[];
 }) {
-  return requestGitHub(
-    'issue creation',
-    `https://api.github.com/repos/${repo}/issues`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': GITHUB_USER_AGENT,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      body: JSON.stringify({
-        title,
-        body,
-        labels,
-      }),
-    },
-    (response) => response.json(),
-  );
+  return requestGitHub({
+    action: 'issue creation',
+    token,
+    path: `/repos/${repo}/issues`,
+    method: 'POST',
+    body: { title, body, labels },
+    read: (response) => response.json(),
+  });
 }
 
 async function findMatchingOpenAutoReportedIssue({
@@ -185,24 +199,17 @@ async function findMatchingOpenAutoReportedIssue({
       per_page: String(GITHUB_ISSUES_PAGE_SIZE),
       page: String(page),
     });
-    const issues = await requestGitHub(
-      'issue deduplication',
-      `https://api.github.com/repos/${repo}/issues?${params}`,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'User-Agent': GITHUB_USER_AGENT,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-      async (response) =>
+    const issues = await requestGitHub({
+      action: 'issue deduplication',
+      token,
+      path: `/repos/${repo}/issues?${params}`,
+      method: 'GET',
+      read: async (response) =>
         (await response.json()) as {
           number?: number;
           body?: string | null;
         }[],
-    );
+    });
     const matchingIssue = issues.find((issue) =>
       issue.body?.includes(`${FINGERPRINT_LABEL}${fingerprint}`),
     );

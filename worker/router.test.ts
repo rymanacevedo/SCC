@@ -231,43 +231,51 @@ test('a generation route answers 504 when the model never answers within the dea
     expect.objectContaining({
       route: '/api/skills',
       category: 'timeout',
-      upstream: 'ai',
+      upstream: 'provider',
       timeoutMs: 45_000,
     }),
   );
 });
 
-test('a generation cut off at its output-token limit is a 502 logged as token_limit', async () => {
-  const log = spyOn(console, 'error').mockImplementation(() => {});
-  const model = createMockJsonModel({});
-  model.doGenerate = async () => ({
-    content: [{ type: 'text', text: '{"summaries":[{"title":"Dev' }],
-    finishReason: { unified: 'length', raw: 'length' },
-    usage: {
-      inputTokens: {
-        total: 10,
-        noCache: 10,
-        cacheRead: undefined,
-        cacheWrite: undefined,
+test.each([
+  ['truncated JSON', '{"summaries":[{"title":"Dev'],
+  // A reasoning model can spend the whole budget before writing any text.
+  ['no text at all', ''],
+])(
+  'a generation cut off at its output-token limit with %s is a 502 logged as token_limit',
+  async (_case, text) => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    const model = createMockJsonModel({});
+    model.doGenerate = async () => ({
+      content: text ? [{ type: 'text', text }] : [],
+      finishReason: { unified: 'length', raw: 'length' },
+      usage: {
+        inputTokens: {
+          total: 10,
+          noCache: 10,
+          cacheRead: undefined,
+          cacheWrite: undefined,
+        },
+        outputTokens: { total: 6000, text: 6000, reasoning: undefined },
       },
-      outputTokens: { total: 6000, text: 6000, reasoning: undefined },
-    },
-    warnings: [],
-  });
-  await assertResponse(
-    await createApiRouter(env, { resolveModel: () => model }).fetch(
-      contractRequest('/api/summaries'),
-    ),
-    502,
-  );
-  expect(log).toHaveBeenCalledWith(
-    expect.objectContaining({
-      route: '/api/summaries',
-      category: 'token_limit',
-      outputTokens: 6000,
-    }),
-  );
-});
+      warnings: [],
+    });
+    await assertResponse(
+      await createApiRouter(env, { resolveModel: () => model }).fetch(
+        contractRequest('/api/summaries'),
+      ),
+      502,
+    );
+    expect(log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: '/api/summaries',
+        category: 'token_limit',
+        maxOutputTokens: 6000,
+        outputTokens: 6000,
+      }),
+    );
+  },
+);
 
 const report = {
   timestamp: '2026-10-13T00:00:00.000Z',
