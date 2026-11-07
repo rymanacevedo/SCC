@@ -12,11 +12,16 @@
 # remote must be configured, the pushed branch must not be main/master
 # (compared by last path component), and config must not redirect the push.
 #
-# Pushes that never spell `push` are blocked too: every git invocation's
-# subcommand is resolved, and it is blocked when it is dynamic ($x, `...`),
-# follows an unknown global option, or is an alias that expands to push
-# (alias chains are followed). Aliases defined inline (-c alias.*,
-# GIT_CONFIG_*) are blocked.
+# Pushes that never spell `push` are blocked too: in each simple command
+# that runs git, the subcommand must be a real git command (git
+# --list-cmds), so aliases and autocorrected typos are blocked wherever they
+# are defined. Dynamic subcommands ($x, `...`), unknown global options, and
+# push plumbing (send-pack, http-push) are blocked as well.
+#
+# Threat model: this hook catches agent mistakes, not adversaries; a script
+# on disk can still run git. The `standard` ruleset on GitHub (pull request
+# and status checks required, no force pushes, no bypass) is what enforces
+# protection of main.
 #
 # Tests: test/hooks/block-dangerous-git.test.ts (bun test skips dot-dirs,
 # so the test cannot sit beside this file).
@@ -32,10 +37,14 @@ NORMALIZED=$(printf '%s\n' "$COMMAND" | tr -d "'\"\\\\")
 PROTECTED_BRANCHES="main|master"
 PUSH_FLAGS="-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run"
 SIMPLE_PUSH="run 'git push [-u] <remote> <branch>' as its own command"
+PUSH_PLUMBING="send-pack|http-push"
+# Words that may precede git in a simple command: VAR=value, wrappers, and
+# their options or numeric arguments.
+COMMAND_PREFIX="[A-Za-z_][A-Za-z0-9_]*=.*|-.*|[0-9.]+[smhd]?|env|sudo|exec|command|builtin|nohup|time|nice|xargs|timeout|stdbuf|watch"
 
 # Git global options (git --help): those taking a separate value, and flags.
 GLOBAL_WITH_VALUE="-C|-c|--git-dir|--work-tree|--namespace|--config-env|--attr-source|--super-prefix"
-GLOBAL_FLAGS="-v|--version|-h|--help|--exec-path|--html-path|--man-path|--info-path|-p|--paginate|-P|--no-pager|--no-replace-objects|--no-lazy-fetch|--no-optional-locks|--no-advice|--bare|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs"
+GLOBAL_FLAGS="-v|--version|-h|--help|--list-cmds|--exec-path|--html-path|--man-path|--info-path|-p|--paginate|-P|--no-pager|--no-replace-objects|--no-lazy-fetch|--no-optional-locks|--no-advice|--bare|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs"
 
 block() {
   echo "BLOCKED: '$COMMAND' $1. The user has prevented you from doing this." >&2
@@ -61,66 +70,55 @@ check_dangerous_patterns() {
     "reset --hard"
   )
   for pattern in "${patterns[@]}"; do
-    if printf '%s\n' "$COMMAND" | grep -qE "$pattern"; then
+    if printf '%s\n%s\n' "$COMMAND" "$NORMALIZED" | grep -qE "$pattern"; then
       block "matches dangerous pattern '$pattern'"
     fi
   done
 }
 
-# push_aliases: prints every alias that expands to push, directly or through
-# a chain of aliases (alias.p=publish, alias.publish=push).
-push_aliases() {
-  local names=() values=() found=() value_words=() line changed=1 i word
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    names+=("${line%% *}")
-    values+=("$(printf '%s\n' "${line#* }" | tr -d "'\"\\\\!")")
-  done < <(repo_git config --get-regexp '^alias\.' | sed 's/^alias\.//')
-
-  while [ "$changed" -eq 1 ]; do
-    changed=0
-    for i in "${!names[@]}"; do
-      [[ " ${found[*]} " == *" ${names[$i]} "* ]] && continue
-      read -ra value_words <<< "${values[$i]}"
-      for word in "${value_words[@]}"; do
-        if [ "$word" = "push" ] || [[ " ${found[*]} " == *" $word "* ]]; then
-          found+=("${names[$i]}"); changed=1; break
-        fi
-      done
-    done
-  done
-  printf '%s\n' "${found[@]}"
+# simple_commands: NORMALIZED split into simple commands, one per line.
+# Redirections are removed (git p>/dev/null runs p) and each backtick
+# becomes a '$' marker, so a substituted subcommand counts as dynamic.
+simple_commands() {
+  printf '%s\n' "$NORMALIZED" | sed -E '
+    s/`/ $\n/g
+    s/[0-9]*[<>]+[&|]?[[:space:]]*[^[:space:];&|(){}<>]*/ /g
+    s/(;|&|\||\(|\)|\{|\})/\n/g'
 }
 
-# check_git_subcommands: resolve each git invocation's subcommand and block
-# the ones that may push without spelling it.
+# check_git_subcommands: in each simple command that runs git, block a
+# subcommand that may push without spelling it.
 check_git_subcommands() {
   if printf '%s\n' "$NORMALIZED" | grep -qE '(-c|--config-env)[[:space:]=]+alias\.|GIT_CONFIG_(PARAMETERS|COUNT|KEY_)'; then
     block "defines git config inline that can add aliases"
   fi
 
-  local aliases segment words i n w sub
-  aliases=" $(push_aliases | tr '\n' ' ') "
+  local commands segment words n i j w program sub
+  commands=" $(git --list-cmds=main,others 2>/dev/null | tr '\n' ' ') "
 
   while IFS= read -r segment; do
     read -ra words <<< "$segment"
     n=${#words[@]}
-    for ((i = 0; i < n; i++)); do
-      [ "${words[$i]##*/}" = "git" ] || continue
-      local j=$((i + 1))
-      while [ "$j" -lt "$n" ] && [[ "${words[$j]}" == -* ]]; do
-        w=${words[$j]}
-        if [[ "$w" =~ ^($GLOBAL_WITH_VALUE)$ ]]; then j=$((j + 2))
-        elif [[ "$w" =~ ^($GLOBAL_WITH_VALUE)= || "$w" =~ ^($GLOBAL_FLAGS)(=.*)?$ ]]; then j=$((j + 1))
-        else block "uses git option '$w' before the subcommand, which the hook does not know"
-        fi
-      done
-      sub=${words[$j]}
-      [ -n "$sub" ] || continue
-      [[ "$sub" == *'$'* ]] && block "runs a dynamic git subcommand '$sub'"
-      [[ "$aliases" == *" $sub "* ]] && block "runs git alias '$sub', which expands to a push"
+    i=0
+    while [ "$i" -lt "$n" ] && [[ "${words[$i]}" =~ ^($COMMAND_PREFIX)$ ]]; do i=$((i + 1)); done
+    program=${words[$i]##*/}
+    [[ "$program" =~ ^git-($PUSH_PLUMBING)$ ]] && block "runs $program, which pushes without git push"
+    [ "$program" = "git" ] || continue
+
+    j=$((i + 1))
+    while [ "$j" -lt "$n" ] && [[ "${words[$j]}" == -* ]]; do
+      w=${words[$j]}
+      if [[ "$w" =~ ^($GLOBAL_WITH_VALUE)$ ]]; then j=$((j + 2))
+      elif [[ "$w" =~ ^($GLOBAL_WITH_VALUE)= || "$w" =~ ^($GLOBAL_FLAGS)(=.*)?$ ]]; then j=$((j + 1))
+      else block "uses git option '$w' before the subcommand, which the hook does not know"
+      fi
     done
-  done < <(printf '%s\n' "$NORMALIZED" | sed -E 's/(;|&|\||\(|\)|`|\{|\})/\n/g')
+    sub=${words[$j]}
+    [ -n "$sub" ] || continue
+    [[ "$sub" == *'$'* ]] && block "runs a dynamic git subcommand '$sub'"
+    [[ "$sub" =~ ^($PUSH_PLUMBING)$ ]] && block "runs git $sub, which pushes without git push"
+    [[ "$commands" == *" $sub "* ]] || block "runs git '$sub', which is not a git command (an alias, or a typo git may autocorrect)"
+  done < <(simple_commands)
 }
 
 # parse_push: check the whole command against the strict grammar and set
@@ -162,6 +160,7 @@ check_push_config() {
     *) block "relies on push.recurseSubmodules=$recurse" ;;
   esac
   [ "$(repo_git config --type=bool --get submodule.recurse)" = "true" ] && block "relies on submodule.recurse=true"
+  [ "$(repo_git config --type=bool --get push.followTags)" = "true" ] && block "relies on push.followTags=true, which also pushes tags"
   return 0
 }
 
