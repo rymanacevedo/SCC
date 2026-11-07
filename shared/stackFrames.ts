@@ -1,4 +1,4 @@
-import { ASSET_PATH, withoutAssetHash } from './reportAssets.ts';
+import { withoutAssetHash } from './reportAssets.ts';
 import {
   cutAtLastBreak,
   markTruncated,
@@ -118,9 +118,10 @@ function sanitizeFile(file: string, knownAssets: ReadonlySet<string>): string {
   if (node !== undefined)
     return NODE_BUILTIN_MODULES.has(node) ? `node:${node}` : FILE_REDACTED;
   const path = filePath(file);
-  const kept =
-    path !== undefined && ASSET_PATH.test(path) && knownAssets.has(path);
-  return kept ? `${REPORT_ORIGIN}${path}` : FILE_REDACTED;
+  // The loaded list holds only asset paths (`reportAssetsSchema`).
+  return path !== undefined && knownAssets.has(path)
+    ? `${REPORT_ORIGIN}${path}`
+    : FILE_REDACTED;
 }
 
 function sanitizeLocation(

@@ -48,22 +48,34 @@ export function withoutAssetHash(path: string): string {
   return `/assets/${name}-[hash].${extension}`;
 }
 
-/** Fetches the published list: the browser's `fetch`, the Worker's binding. */
-export type ReportAssetsFetch = () => Promise<Response>;
+/**
+ * Fetches the published list (the browser's `fetch`, the Worker's binding),
+ * aborting when `signal` does.
+ */
+export type ReportAssetsFetch = (signal: AbortSignal) => Promise<Response>;
+
+/**
+ * How long a read of the list may take, fetch and body together. Past it the
+ * read is aborted and counts as failed, so no report waits on a stalled
+ * read.
+ */
+export const REPORT_ASSETS_TIMEOUT_MS = 5_000;
 
 /**
  * The asset paths the client build published (`report-assets.json`), read
  * on first use and reused after. Anything but a JSON list of asset paths (no
  * fetcher, a failed fetch, a 404, the SPA fallback's `index.html`, invalid
- * JSON, a list of the wrong shape) is the empty set, so every asset file is
- * redacted. A failure is not reused: the next report tries again.
+ * JSON, a list of the wrong shape, a read past `timeoutMs`) is the empty
+ * set, so every asset file is redacted. A failure is not reused: the next
+ * report tries again.
  */
 export function createKnownAssetsLoader(
   fetchAssets: ReportAssetsFetch | undefined,
+  timeoutMs = REPORT_ASSETS_TIMEOUT_MS,
 ): () => Promise<ReadonlySet<string>> {
   let loaded: Promise<ReadonlySet<string>> | undefined;
   return () => {
-    loaded ??= readKnownAssets(fetchAssets).then((known) => {
+    loaded ??= readWithin(fetchAssets, timeoutMs).then((known) => {
       if (known === undefined) loaded = undefined;
       return known ?? NO_ASSETS;
     });
@@ -71,12 +83,37 @@ export function createKnownAssetsLoader(
   };
 }
 
-async function readKnownAssets(
+/** The list, or undefined if it cannot be read within `timeoutMs`. */
+async function readWithin(
   fetchAssets: ReportAssetsFetch | undefined,
+  timeoutMs: number,
 ): Promise<ReadonlySet<string> | undefined> {
   if (!fetchAssets) return undefined;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Settles at the deadline even if the fetcher ignores the signal.
+  const timedOut = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(undefined);
+    }, timeoutMs);
+  });
   try {
-    const response = await fetchAssets();
+    return await Promise.race([
+      readKnownAssets(fetchAssets, controller.signal),
+      timedOut,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readKnownAssets(
+  fetchAssets: ReportAssetsFetch,
+  signal: AbortSignal,
+): Promise<ReadonlySet<string> | undefined> {
+  try {
+    const response = await fetchAssets(signal);
     const type = response.headers.get('content-type') ?? '';
     if (!response.ok || !type.includes('application/json')) {
       await response.body?.cancel();

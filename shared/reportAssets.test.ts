@@ -54,3 +54,24 @@ test('a failed read is not reused: the next report tries again', async () => {
   expect(await load()).toBe(await load());
   expect(fetchAssets).toHaveBeenCalledTimes(2);
 });
+
+test('a stalled fetch or body is the empty set at the deadline, aborted and not reused', async () => {
+  const never = () => new Promise<never>(() => {});
+  // The fetcher never answers, and ignores the signal.
+  const stalledFetch = mock(async (_signal: AbortSignal) => never());
+  // The headers arrive, then the body never ends.
+  const stalledBody = mock(
+    async (_signal: AbortSignal) =>
+      new Response(new ReadableStream({ start() {} }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+  );
+  for (const fetchAssets of [stalledFetch, stalledBody]) {
+    const load = createKnownAssetsLoader(fetchAssets, 10);
+    expect((await load()).size).toBe(0);
+    expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
+    // The timed-out read is not cached: the next report reads again.
+    expect((await load()).size).toBe(0);
+    expect(fetchAssets).toHaveBeenCalledTimes(2);
+  }
+});
