@@ -122,6 +122,21 @@ test('sanitizing keeps structure only: free text is reduced to its length', () =
   });
 });
 
+test('an over-limit URL of many safe segments is cut at a segment, with no marker', () => {
+  const url = `https://scc.example/${'segment/'.repeat(400)}end`;
+  const report = sanitizeUserIssueReport({ timestamp: reportTime, url });
+  expect(report.url.length).toBeLessThanOrEqual(REPORT_FIELD_LIMITS.url);
+  expect(report.url).not.toContain('truncated');
+  expect(report.url.endsWith('/segment/')).toBe(true);
+  expect(userIssueReportSchema.safeParse(report).success).toBe(true);
+  expect(
+    errorTelemetrySchema.safeParse(
+      sanitizeErrorTelemetry({ timestamp: reportTime, url, message: 'x' }),
+    ).success,
+  ).toBe(true);
+});
+const reportTime = '2026-10-14T00:00:00.000Z';
+
 test('a sanitized report always passes its schema, whatever its URL and timestamp', () => {
   for (const url of [
     'http://127.0.0.1:5173/info',

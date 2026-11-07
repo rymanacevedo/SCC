@@ -1,9 +1,9 @@
 import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
 import {
+  cutAtLastBreak,
   omittedText,
   SANITIZE_INPUT_FACTOR,
   toPathOnlyUrl,
-  truncateWithMarker,
 } from './telemetryRedaction.ts';
 import { z } from './zod.ts';
 
@@ -114,16 +114,19 @@ export function sanitizeReportTimestamp(timestamp: string): string {
 }
 
 /**
- * A report URL as origin + plain path, cut to its limit. Always a valid URL
- * (under the synthetic `https://app.invalid` origin; no host is kept), so a
- * sanitized report always passes its schema.
+ * A report URL as a plain path under the synthetic `https://app.invalid`
+ * origin (no host is kept). An over-limit URL is cut back to its last whole
+ * segment with no marker, which a URL cannot carry, so a sanitized report
+ * always passes its schema.
  */
 export function sanitizeReportUrl(url: string): string {
-  return truncateWithMarker(
-    toPathOnlyUrl(
-      url.slice(0, REPORT_FIELD_LIMITS.url * SANITIZE_INPUT_FACTOR),
-    ),
-    REPORT_FIELD_LIMITS.url,
+  const sanitized = toPathOnlyUrl(
+    url.slice(0, REPORT_FIELD_LIMITS.url * SANITIZE_INPUT_FACTOR),
+  );
+  if (sanitized.length <= REPORT_FIELD_LIMITS.url) return sanitized;
+  return cutAtLastBreak(
+    sanitized.slice(0, REPORT_FIELD_LIMITS.url),
+    (char) => char === '/',
   );
 }
 

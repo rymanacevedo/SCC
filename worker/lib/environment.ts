@@ -28,6 +28,7 @@ export type EnvSchema = z.infer<typeof environmentSchema>;
 
 export type EnvScope = 'geo' | 'github' | 'openai' | 'all';
 
+// Listed in KNOWN_ERROR_NAMES (shared/telemetryRedaction.ts); an unlisted name is reported as `Error`.
 export class EnvironmentValidationError extends Error {
   scope: EnvScope;
 

@@ -33,6 +33,7 @@ export const GITHUB_REQUEST_DEADLINE_MS = 10_000;
 
 export type GitHubIssueCreationErrorKind = 'http' | 'network' | 'timeout';
 
+// Listed in KNOWN_ERROR_NAMES (shared/telemetryRedaction.ts); an unlisted name is reported as `Error`.
 export class GitHubIssueCreationError extends Error {
   kind: GitHubIssueCreationErrorKind;
   status?: number;

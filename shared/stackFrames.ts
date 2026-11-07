@@ -1,8 +1,8 @@
 import {
   cutAtLastBreak,
+  hasTooManyDigits,
   isSafeIdentifierPart,
   isSensitiveToken,
-  REDACTED,
   REPORT_ORIGIN,
   SANITIZE_INPUT_FACTOR,
   sanitizeErrorName,
@@ -36,6 +36,10 @@ const LOCATION = /^(.+):(\d{1,9}):(\d{1,9})$/;
 // Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
+const HTTP_SCHEME = /^https?:/i;
+// `//host/…` (V8 prints eval'd code this way) or a `\\host\…` share: the
+// first segment is an authority, never a path segment.
+const NETWORK_PATH = /^(?:\/\/|\\\\)/;
 const QUERY_START = /[?#]/;
 // Schemes whose URL has a host: it is replaced by the synthetic one.
 const HOSTED_SCHEMES = new Set([
@@ -48,36 +52,39 @@ const HOSTED_SCHEMES = new Set([
 ]);
 const SYNTHETIC_HOST = new URL(REPORT_ORIGIN).host;
 
-/** A path's plain segments, or `[redacted]` if none survive. */
+/** A path, query and fragment dropped, with only its plain segments. */
 function sanitizePath(path: string, separator: RegExp): string {
   const query = path.search(QUERY_START);
-  const sanitized = sanitizePathSegments(
+  return sanitizePathSegments(
     query === -1 ? path : path.slice(0, query),
     separator,
   );
-  return sanitized === REDACTED ? REDACTED : sanitized;
 }
 
 /**
  * A frame's file under a fixed scheme allowlist: a plain path; `http(s)`
  * under the synthetic origin; `blob:` around such a URL; `node:` and a
  * path; or a hosted scheme (`webpack:`, `file:`, `chrome-extension:`, …)
- * with its host replaced by the synthetic one. A nested URL never keeps its
- * host, not even as a path segment. Any other scheme is undefined: the
- * frame is omitted, since dropping only the scheme would leave what followed
+ * written with `//`, its host replaced by the synthetic one. An authority
+ * is never read as a path segment: a `//host/…` reference goes under the
+ * synthetic origin, and a nested URL in any scheme but `blob:` (or a hosted
+ * scheme without `//`) is undefined. So is any other scheme. Undefined
+ * omits the frame, since dropping only the scheme would leave what followed
  * it to be read as a path.
  */
 function sanitizeFile(file: string): string | undefined {
+  if (NETWORK_PATH.test(file))
+    return toPathOnlyUrl(`https:${file.replace(/\\/g, '/')}`);
   const scheme = SCHEME.exec(file)?.[1]?.toLowerCase();
   if (scheme === undefined) return sanitizePath(file, /[/\\]/);
   const rest = file.slice(scheme.length + 1);
   if (scheme === 'http' || scheme === 'https') return toPathOnlyUrl(file);
   if (scheme === 'blob')
-    return SCHEME.test(rest) && /^https?:/i.test(rest)
-      ? `blob:${toPathOnlyUrl(rest)}`
-      : undefined;
+    return HTTP_SCHEME.test(rest) ? `blob:${toPathOnlyUrl(rest)}` : undefined;
+  // `node:https://host/…`, `webpack:https://host/…`: a nested URL.
+  if (SCHEME.test(rest.replace(/^\/+/, ''))) return undefined;
   if (scheme === 'node') return `node:${sanitizePath(rest, /\//)}`;
-  if (!HOSTED_SCHEMES.has(scheme)) return undefined;
+  if (!HOSTED_SCHEMES.has(scheme) || !rest.startsWith('//')) return undefined;
   let url: URL;
   try {
     url = new URL(file);
@@ -106,13 +113,16 @@ function frame(name: string, location: string): string | undefined {
 /**
  * A frame's function name if it is an identifier shape whose every dotted
  * part and `[as alias]` passes the rule path segments use
- * (`isSafeIdentifierPart`), else `<anonymous>`. `renderSummary`,
- * `Array.map`, `Object.<anonymous>`, `async loadUser` and `new Foo` stay.
+ * (`isSafeIdentifierPart`), and the whole name, alias included, stays under
+ * the same digit cap a segment has, else `<anonymous>`. `renderSummary`,
+ * `Array.map`, `Object.<anonymous>`, `async loadUser` and `new Foo` stay;
+ * `Object.555.123.4567` does not.
  */
 function sanitizeFunctionName(name: string): string {
   if (KNOWN_FUNCTION_NAMES.has(name)) return name;
   const match = name.length <= FUNCTION_NAME_MAX && FUNCTION_NAME.exec(name);
-  if (!match || isSensitiveToken(name)) return '<anonymous>';
+  if (!match || isSensitiveToken(name) || hasTooManyDigits(name))
+    return '<anonymous>';
   const [, dotted = '', alias] = match;
   const parts = [...dotted.replace(ANGLE_BRACKETS, '').split('.'), alias ?? ''];
   return parts.every((part) => !part || isSafeIdentifierPart(part))

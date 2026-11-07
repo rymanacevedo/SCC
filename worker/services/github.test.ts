@@ -230,6 +230,10 @@ describe('issue bodies sent to GitHub', () => {
         '    at <anonymous> (https://app.invalid/a.js:2:3)',
         '    [frame omitted]',
         '    at load (blob:https://app.invalid/token.js:2:5)',
+        '    at <anonymous> (https://app.invalid/a.js:3:1)',
+        '    at <anonymous> (https://app.invalid/a.js:3:2)',
+        '    at eval (https://app.invalid/script.js:3:3)',
+        '    [frame omitted]',
         '```',
       ].join('\n'),
     );
@@ -271,6 +275,18 @@ describe('issue bodies sent to GitHub', () => {
       'Auto-reported error: Error at /assets/app-a1b2c3d4.js',
     );
     expect(sent[0]?.body).toContain('\nError\n    at f (');
+  });
+
+  test('through both sanitizing passes, nothing sensitive reaches title, body or fingerprint', async () => {
+    const sent = captureCreatedIssues();
+    // The browser sanitizes first; the Worker sanitizes what it receives.
+    const fromBrowser = sanitizeErrorTelemetry(telemetry);
+    expect(sanitizeErrorTelemetry(fromBrowser)).toEqual(fromBrowser);
+    await createAutoReportedIssue({ ...auth, payload: fromBrowser });
+    const { title, body } = sent[0] ?? { title: '', body: '' };
+    expectNoSensitiveValues(`${title}\n${body}`);
+    expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromBrowser));
+    expect(title).toBe('Auto-reported error: TypeError at /summary');
   });
 
   test('a key-bearing error name reaches neither title, body nor fingerprint', async () => {

@@ -22,9 +22,19 @@ export const REPORT_ORIGIN = 'https://app.invalid';
 // field costs bounded CPU however large the request body was.
 export const SANITIZE_INPUT_FACTOR = 4;
 
-/** `[message omitted: 142 characters]`: free text, reduced to its length. */
+// What omittedText produces, so a second pass (the Worker, after the
+// browser) keeps the original length instead of measuring the placeholder.
+const OMITTED_TEXT = /^\[[a-z ]+ omitted: \d+ characters\]$/;
+
+/**
+ * `[message omitted: 142 characters]`: free text, reduced to its length. A
+ * value that already is such a placeholder is kept, within the usual digit
+ * cap, so a crafted one cannot carry a number through.
+ */
 export function omittedText(field: string, value: string): string {
-  return `[${field} omitted: ${value.length} characters]`;
+  return OMITTED_TEXT.test(value) && !hasTooManyDigits(value)
+    ? value
+    : `[${field} omitted: ${value.length} characters]`;
 }
 
 /**

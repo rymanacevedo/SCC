@@ -77,6 +77,8 @@ export const SENSITIVE_VALUES = [
   SENSITIVE_DASHED_KEY,
   SENSITIVE_AKIA_NAME,
   'janedoe.example.com',
+  '555.123.4567',
+  '555_987_6543',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -140,6 +142,12 @@ export const SENSITIVE_STACK = [
   `    at ${SENSITIVE_AKIA_NAME} (https://scc.example/a.js:2:3)`,
   `    at run (${SENSITIVE_DASHED_KEY}:module.js:2:4)`,
   '    at load (blob:https://janedoe.example.com/token.js:2:5)',
+  // A phone number split across dotted parts and across an alias, a
+  // network-path reference and a URL nested in an allowlisted scheme.
+  '    at Object.555.123.4567 (https://scc.example/a.js:3:1)',
+  '    at run [as x_555_987_6543] (https://scc.example/a.js:3:2)',
+  '    at eval (//janedoe.example.com/script.js:3:3)',
+  '    at load (node:https://janedoe.example.com/a.js:3:4)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [

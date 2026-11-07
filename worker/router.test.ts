@@ -455,6 +455,25 @@ test("an older client's report with a description is accepted, and the descripti
   expect(JSON.parse(sent).body).not.toContain('Description');
 });
 
+test('a browser-sanitized report from an over-limit URL of many segments is accepted', async () => {
+  globalThis.fetch = mock(async () =>
+    Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const report = sanitizeUserIssueReport({
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: `https://scc.example/${'segment/'.repeat(400)}end`,
+  });
+  expect(report.url).not.toContain('truncated');
+  expect(
+    await assertResponse(
+      await createApiRouter(env).fetch(
+        contractRequest('/api/report-issue', report),
+      ),
+      200,
+    ),
+  ).toEqual({ ok: true });
+});
+
 test('GitHub config failures are 500; HTTP and network failures are 502', async () => {
   spyOn(console, 'error').mockImplementation(() => {});
   for (const path of ['/api/errors', '/api/report-issue']) {

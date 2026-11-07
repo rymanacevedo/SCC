@@ -79,6 +79,10 @@ test('an Error is logged as its class name, frames, cause class and message leng
       '    at <anonymous> (https://app.invalid/a.js:2:3)',
       '    [frame omitted]',
       '    at load (blob:https://app.invalid/token.js:2:5)',
+      '    at <anonymous> (https://app.invalid/a.js:3:1)',
+      '    at <anonymous> (https://app.invalid/a.js:3:2)',
+      '    at eval (https://app.invalid/script.js:3:3)',
+      '    [frame omitted]',
     ].join('\n'),
   });
 });

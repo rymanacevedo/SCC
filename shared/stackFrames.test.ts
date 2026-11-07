@@ -176,6 +176,47 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
+  test('the digit cap applies to the whole function name and alias, not just each part', () => {
+    for (const name of [
+      'Object.555.123.4567',
+      'run [as x_555_123_4567]',
+      'a1.b2.c3.d4.e5',
+    ])
+      expect(
+        sanitizeStackTrace(
+          `    at ${name} (https://scc.example/a.js:1:2)`,
+          8_000,
+        ),
+      ).toBe('    at <anonymous> (https://app.invalid/a.js:1:2)');
+  });
+
+  test('an authority in a stack location is never kept, not even as a path segment', () => {
+    const stack = [
+      'Error',
+      // A network-path reference: V8 prints eval'd code this way.
+      '    at eval (//janedoe.example.com/script.js:1:7)',
+      // A nested URL inside any scheme but blob: omits the frame.
+      '    at a (node:https://janedoe.example.com/a.js:1:2)',
+      '    at b (webpack:https://janedoe.example.com/a.js:3:4)',
+      '    at c (file:https://janedoe.example.com/a.js:5:6)',
+      // A hosted scheme without `//` would read its host as a path.
+      '    at d (chrome-extension:janedoe/a.js:7:8)',
+      '    at e (file://janedoe-laptop/srv/a.js:9:9)',
+      '    at f (https://scc.example/a.js:1:2)',
+    ].join('\n');
+    const sanitized = sanitizeStackTrace(stack, 8_000);
+    expect(sanitized).not.toContain('janedoe');
+    expect(sanitized).toBe(
+      [
+        'Error',
+        '    at eval (https://app.invalid/script.js:1:7)',
+        '    [frame omitted]',
+        '    at e (file://app.invalid/srv/a.js:9:9)',
+        '    at f (https://app.invalid/a.js:1:2)',
+      ].join('\n'),
+    );
+  });
+
   test('a random-looking or key-like function name becomes <anonymous>', () => {
     for (const name of [
       'XkfQpLmZr9Ab',

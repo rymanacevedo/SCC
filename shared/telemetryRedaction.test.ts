@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 import {
   isSafeIdentifierPart,
   isSensitiveToken,
@@ -156,6 +157,17 @@ describe('free text is reduced to its length', () => {
     );
     expect(omittedText('message', '')).toBe('[message omitted: 0 characters]');
   });
+
+  test("a second pass keeps the first pass's placeholder, not its own length", () => {
+    const once = omittedText('message', 'Save failed for jane.doe@example.com');
+    expect(omittedText('message', once)).toBe(once);
+    expect(once).toBe('[message omitted: 36 characters]');
+    // A crafted placeholder cannot carry a number through.
+    const crafted = '[message omitted: 5551234567 characters]';
+    expect(omittedText('message', crafted)).toBe(
+      '[message omitted: 40 characters]',
+    );
+  });
 });
 
 describe('sanitizeErrorName', () => {
@@ -189,6 +201,23 @@ describe('sanitizeErrorName', () => {
       '',
     ])
       expect(sanitizeErrorName(name)).toBe('Error');
+  });
+});
+
+describe('KNOWN_ERROR_NAMES stays in step with the code', () => {
+  test('every Error class the app and Worker define is on the list', async () => {
+    const repoRoot = join(import.meta.dir, '..');
+    const classes: string[] = [];
+    for (const file of new Bun.Glob(
+      '{app,worker,shared}/**/*.{ts,tsx}',
+    ).scanSync(repoRoot)) {
+      if (/\.test\.tsx?$/.test(file)) continue;
+      const source = await Bun.file(join(repoRoot, file)).text();
+      for (const [, name] of source.matchAll(/class (\w+) extends Error\b/g))
+        if (name) classes.push(name);
+    }
+    expect(classes.length).toBeGreaterThan(0);
+    for (const name of classes) expect(sanitizeErrorName(name)).toBe(name);
   });
 });
 
