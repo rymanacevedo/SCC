@@ -134,6 +134,7 @@ describe('issue bodies', () => {
       'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
     );
     expect(body).toContain('at fetchWithAuth (');
+    expect(body).toContain('GET https://localhost/api Authorization:');
   });
 
   test('the user-reported body is path-only and redacted', () => {
@@ -197,12 +198,10 @@ describe('issue bodies', () => {
 });
 
 describe('GitHub error snippet', () => {
-  test('keeps the first 300 characters of a large multi-byte error body', async () => {
-    const body = '✓'.repeat(5000);
+  async function snippetFor(body: string) {
     globalThis.fetch = mock(
       async () => new Response(body, { status: 422 }),
     ) as unknown as typeof fetch;
-
     const error = await createUserReportedIssue({
       repo: 'acme/scc',
       token: 'token-123',
@@ -212,11 +211,30 @@ describe('GitHub error snippet', () => {
         url: 'https://example.com/',
       },
     }).catch((caught: unknown) => caught);
-
     expect(error).toBeInstanceOf(GitHubIssueCreationError);
     expect((error as GitHubIssueCreationError).status).toBe(422);
-    expect((error as GitHubIssueCreationError).details).toBe(
-      body.slice(0, 300),
+    return (error as GitHubIssueCreationError).details ?? '';
+  }
+
+  test('keeps the first 300 characters of a large multi-byte error body', async () => {
+    const body = '✓✓✓✓ '.repeat(1000);
+    expect(await snippetFor(body)).toBe(`${body.slice(0, 300)}${TRUNCATED}`);
+  });
+
+  test('redacts before the 300-character cut, so a straddling email is masked', async () => {
+    const snippet = await snippetFor(
+      `${'a'.repeat(290)} jane.doe@example.com tail`,
     );
+    expect(snippet).not.toContain('jane');
+    expect(snippet.endsWith(TRUNCATED)).toBe(true);
+  });
+
+  test('drops the partial token the bounded read cut, even when redaction shrinks the rest', async () => {
+    // Fourteen 80-character tokens shrink to [redacted], pulling the email
+    // that straddles the 1,200-byte read boundary inside the 300 kept.
+    const body = `${`${'A1'.repeat(40)} `.repeat(14)}${'b'.repeat(55)} jane.doe@example.com tail`;
+    const snippet = await snippetFor(body);
+    expect(snippet).not.toContain('jane');
+    expect(snippet).toContain('b'.repeat(55));
   });
 });

@@ -35,7 +35,8 @@ export function createRouteErrorMiddleware<T>(
         'timestamp' in payload &&
         'url' in payload
           ? {
-              timestamp: redactForLog(payload.timestamp),
+              // Schema-validated ISO datetime: logged as it is.
+              timestamp: payload.timestamp,
               url: redactUrlForLog(payload.url),
             }
           : {};

@@ -98,24 +98,19 @@ export function buildSanitizedTelemetryFingerprint(
   });
 }
 
-export function buildTelemetryFingerprint(
-  telemetry: ErrorTelemetryPayload,
-): string {
-  return buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(telemetry));
-}
-
 const TELEMETRY_DEDUPLICATION_WINDOW_MS = 1_000;
 const recentlyReportedErrors = new Map<string, number>();
 
+/** Takes sanitized telemetry: the caller sanitizes once, then dedups and sends. */
 export function shouldSkipDuplicateTelemetryReport(
-  telemetry: ErrorTelemetryPayload,
+  telemetry: SanitizedErrorTelemetry,
   now = Date.now(),
 ): boolean {
   for (const [fingerprint, timestamp] of recentlyReportedErrors) {
     if (now - timestamp > TELEMETRY_DEDUPLICATION_WINDOW_MS)
       recentlyReportedErrors.delete(fingerprint);
   }
-  const fingerprint = buildTelemetryFingerprint(telemetry);
+  const fingerprint = buildSanitizedTelemetryFingerprint(telemetry);
   const previous = recentlyReportedErrors.get(fingerprint);
   if (
     previous !== undefined &&

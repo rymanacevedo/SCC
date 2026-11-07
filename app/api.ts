@@ -1,7 +1,6 @@
 import {
-  type ErrorTelemetryPayload,
   reportAcknowledgementSchema,
-  sanitizeErrorTelemetry,
+  type SanitizedErrorTelemetry,
   sanitizeUserIssueReport,
   type UserIssueReportPayload,
 } from '../shared/errorReporting.ts';
@@ -64,18 +63,14 @@ export const createExperience = (
   input: GenerationRequest,
   signal?: AbortSignal,
 ) => post('/api/experience', input, ExperienceSchema, signal);
-// Every report leaves the browser path-only, redacted and truncated. The
-// Worker sanitizes again; this keeps the data off the wire in the first place.
+// Every report leaves the browser path-only, redacted and truncated, exactly
+// once. The Worker sanitizes again; this keeps the data off the wire. Error
+// telemetry arrives already sanitized, because its sender dedups on the same
+// sanitized value; the type makes a raw payload a compile error.
 export const reportError = (
-  input: ErrorTelemetryPayload,
+  input: SanitizedErrorTelemetry,
   signal?: AbortSignal,
-) =>
-  post(
-    '/api/errors',
-    sanitizeErrorTelemetry(input),
-    reportAcknowledgementSchema,
-    signal,
-  );
+) => post('/api/errors', input, reportAcknowledgementSchema, signal);
 export const reportIssue = (
   input: UserIssueReportPayload,
   signal?: AbortSignal,

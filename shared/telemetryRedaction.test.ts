@@ -18,6 +18,84 @@ describe('toPathOnlyUrl', () => {
     expect(toPathOnlyUrl('/info?email=a@b.co#top')).toBe('/info');
     expect(toPathOnlyUrl('unknown')).toBe('unknown');
   });
+  test('drops credentials from values URL cannot parse', () => {
+    expect(toPathOnlyUrl('//alice:hunter2@scc.example/x?y=1')).toBe(
+      '//scc.example/x',
+    );
+    expect(toPathOnlyUrl('alice:hunter2@scc.example/x')).toBe('scc.example/x');
+  });
+});
+
+describe('redactTelemetryText: council round 1', () => {
+  test('drops userinfo from URLs embedded in text', () => {
+    for (const input of [
+      'GET https://alice:hunter2@localhost/api?debug=true failed',
+      'GET https://alice:hunter2@localhost/api failed',
+      'proxy alice:hunter2@proxy.example:8080/x failed',
+    ]) {
+      const redacted = redactTelemetryText(input);
+      expect(redacted).not.toContain('hunter2');
+      expect(redacted).not.toContain('alice');
+    }
+    expect(
+      redactTelemetryText('GET https://alice:hunter2@localhost/api?debug=true'),
+    ).toBe('GET https://localhost/api');
+  });
+
+  test('masks a whole quoted value however long, terminated or not', () => {
+    const words = `${'first '.repeat(200)}private ending`;
+    for (const input of [
+      `password="${words}" next`,
+      `password='${words}' next`,
+      `password="${words}`,
+      `password="${'x'.repeat(511)} private ending" next`,
+      `password="${'x'.repeat(513)} private ending" next`,
+    ]) {
+      const redacted = redactTelemetryText(input);
+      expect(redacted).not.toContain('private');
+      expect(redacted).not.toContain('first');
+    }
+    expect(redactTelemetryText(`password="${words}" next`)).toBe(
+      'password="[redacted]" next',
+    );
+  });
+
+  test('recognizes credential synonyms and the space-separated header form', () => {
+    for (const input of [
+      'passphrase=correct-horse',
+      'passcode: 4417',
+      'otp=774411',
+      'verification_code=774411',
+      'mfaCode: 774411',
+      'pin=4417',
+      'x-api-key 774411zz',
+      'X-Auth-Token 774411zz',
+      'apiKey 774411zz',
+    ])
+      expect(redactTelemetryText(input)).not.toMatch(/774411|4417|horse/);
+    const ordinary =
+      'author: John, keyboard: 3, error code: E42, the key is missing, token expired';
+    expect(redactTelemetryText(ordinary)).toBe(ordinary);
+    const frames = [
+      '    at fetchWithAuth (https://scc.example/assets/api.js:5:6)',
+      '    at Object.refreshToken [as refresh] (https://scc.example/a.js:1:2)',
+    ].join('\n');
+    expect(redactTelemetryText(frames)).toBe(frames);
+  });
+
+  test('strips the query and fragment of relative and schemeless URLs', () => {
+    expect(redactTelemetryText('GET api/x?ref=abc123 done')).toBe(
+      'GET api/x done',
+    );
+    expect(redactTelemetryText('see www.example.com/x?ref=abc123#top')).toBe(
+      'see www.example.com/x',
+    );
+    expect(
+      redactTelemetryText('    at load (assets/index.js?v=1a2b:56:78)'),
+    ).toBe('    at load (assets/index.js:56:78)');
+    const prose = 'What? Really?! See issue #12 in C# or e.g.?';
+    expect(redactTelemetryText(prose)).toBe(prose);
+  });
 });
 
 describe('redactTelemetryText', () => {
@@ -110,6 +188,11 @@ describe('redactTelemetryText', () => {
       'a@'.repeat(16_000),
       '+1'.repeat(16_000),
       `${'a'.repeat(31_999)}=`,
+      `password="${'a\\"'.repeat(10_000)}`,
+      'x-api-key '.repeat(3_000),
+      'a://b@'.repeat(5_000),
+      'u:p@'.repeat(8_000),
+      'www.a/?'.repeat(4_000),
     ];
     const started = performance.now();
     for (const input of inputs) redactTelemetryText(input);
@@ -123,6 +206,24 @@ describe('redactTelemetryText', () => {
 });
 
 describe('sanitizeTelemetryText', () => {
+  test('redacts before the final cut, so a secret straddling it is masked', () => {
+    const value = `${'a'.repeat(290)} jane.doe@example.com tail`;
+    const sanitized = sanitizeTelemetryText(value, 300);
+    expect(sanitized).not.toContain('jane');
+    expect(sanitized.endsWith(TRUNCATED)).toBe(true);
+  });
+
+  test('drops an incomplete trailing token when the input was already cut', () => {
+    const sanitized = sanitizeTelemetryText(
+      'Bad credentials for jane.doe@exa',
+      300,
+      {
+        inputWasCut: true,
+      },
+    );
+    expect(sanitized).toBe(`Bad credentials for ${TRUNCATED}`);
+  });
+
   test('leaves short text alone apart from redaction', () => {
     expect(sanitizeTelemetryText('Broken page for a@b.co', 100)).toBe(
       'Broken page for [redacted]',

@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import {
-  buildTelemetryFingerprint,
+  buildSanitizedTelemetryFingerprint,
+  type ErrorTelemetryPayload,
   resetReportedTelemetryForTests,
   sanitizeErrorTelemetry,
   sanitizeUserIssueReport,
@@ -14,6 +15,8 @@ const telemetry = {
   stackTrace: 'at https://scc.example/assets/main-abcdef12.js:12:34',
 };
 afterEach(resetReportedTelemetryForTests);
+const buildTelemetryFingerprint = (payload: ErrorTelemetryPayload) =>
+  buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(payload));
 test('fingerprint ignores timestamps, asset hashes and stack coordinates', () => {
   expect(buildTelemetryFingerprint(telemetry)).toBe(
     buildTelemetryFingerprint({
@@ -76,9 +79,26 @@ test('sanitizes every Error telemetry and User report field', () => {
   });
 });
 test('dedupes through one second, expires afterwards, and reset permits reporting again', () => {
-  expect(shouldSkipDuplicateTelemetryReport(telemetry, 100)).toBe(false);
-  expect(shouldSkipDuplicateTelemetryReport(telemetry, 1_100)).toBe(true);
-  expect(shouldSkipDuplicateTelemetryReport(telemetry, 1_101)).toBe(false);
+  expect(
+    shouldSkipDuplicateTelemetryReport(sanitizeErrorTelemetry(telemetry), 100),
+  ).toBe(false);
+  expect(
+    shouldSkipDuplicateTelemetryReport(
+      sanitizeErrorTelemetry(telemetry),
+      1_100,
+    ),
+  ).toBe(true);
+  expect(
+    shouldSkipDuplicateTelemetryReport(
+      sanitizeErrorTelemetry(telemetry),
+      1_101,
+    ),
+  ).toBe(false);
   resetReportedTelemetryForTests();
-  expect(shouldSkipDuplicateTelemetryReport(telemetry, 1_102)).toBe(false);
+  expect(
+    shouldSkipDuplicateTelemetryReport(
+      sanitizeErrorTelemetry(telemetry),
+      1_102,
+    ),
+  ).toBe(false);
 });

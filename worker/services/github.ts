@@ -8,6 +8,7 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { sanitizeTelemetryText } from '../../shared/telemetryRedaction.ts';
 import { readBoundedText } from '../lib/body.ts';
 
 export type { ErrorTelemetry, UserIssueReport };
@@ -88,13 +89,19 @@ export function buildUserReportedIssueBody(report: UserIssueReport) {
 // A UTF-8 character is at most 4 bytes, so this many bytes always covers the snippet.
 const GITHUB_ERROR_BODY_SNIPPET_BYTES = GITHUB_ERROR_BODY_SNIPPET_MAX * 4;
 
-/** Keeps the start of a GitHub error body without buffering the rest of it. */
+/**
+ * Keeps the redacted start of a GitHub error body without buffering the rest
+ * of it. Redaction runs before the 300-character cut, and a token the bounded
+ * read split is dropped, so no half-secret survives either boundary.
+ */
 async function readErrorSnippet(response: Response) {
-  const { text } = await readBoundedText(
+  const { text, truncated } = await readBoundedText(
     response.body,
     GITHUB_ERROR_BODY_SNIPPET_BYTES,
   );
-  return text.slice(0, GITHUB_ERROR_BODY_SNIPPET_MAX);
+  return sanitizeTelemetryText(text, GITHUB_ERROR_BODY_SNIPPET_MAX, {
+    inputWasCut: truncated,
+  });
 }
 
 async function createGitHubIssue({

@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { sanitizeErrorTelemetry } from '../shared/errorReporting.ts';
 import { TRUNCATED } from '../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
@@ -24,19 +25,21 @@ function mockFetch(
 ) {
   globalThis.fetch = handler as typeof fetch;
 }
-test('both report senders sanitize every field before it leaves the browser', async () => {
+test('a User report is sanitized before it leaves the browser; Error telemetry arrives sanitized', async () => {
   const bodies: string[] = [];
   mockFetch(async (_path, init) => {
     bodies.push(String(init?.body));
     return Response.json({ ok: true });
   });
   const timestamp = new Date().toISOString();
-  await reportError({
+  const telemetry = sanitizeErrorTelemetry({
     timestamp,
     url: SENSITIVE_URL,
     message: SENSITIVE_MESSAGE,
     stackTrace: SENSITIVE_STACK,
   });
+  await reportError(telemetry);
+  expect(bodies[0]).toBe(JSON.stringify(telemetry));
   await reportIssue({
     timestamp,
     url: SENSITIVE_URL,
@@ -71,7 +74,11 @@ test('API client sends JSON with signal and parses shared output schemas for all
   expect(
     (
       await reportError(
-        { timestamp: new Date().toISOString(), message: 'error', url: '/info' },
+        sanitizeErrorTelemetry({
+          timestamp: new Date().toISOString(),
+          message: 'error',
+          url: '/info',
+        }),
         signal,
       )
     ).ok,
@@ -155,11 +162,11 @@ for (const [name, send] of [
     'reportError',
     (signal?: AbortSignal) =>
       reportError(
-        {
+        sanitizeErrorTelemetry({
           url: 'https://scc.example/info',
           message: 'Failed',
           timestamp: new Date().toISOString(),
-        },
+        }),
         signal,
       ),
   ],

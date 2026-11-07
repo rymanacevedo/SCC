@@ -1,3 +1,4 @@
+import { sanitizeErrorTelemetry } from '../shared/errorReporting.ts';
 import type { Result } from '../shared/result.ts';
 import {
   type Drafts,
@@ -45,11 +46,13 @@ export function createUserStorage(
   storage: () => Storage = () => window.sessionStorage,
   telemetry: (message: string) => void = (message) => {
     queueMicrotask(() => {
-      void reportError({
-        message,
-        timestamp: new Date().toISOString(),
-        url: window.location.href,
-      });
+      void reportError(
+        sanitizeErrorTelemetry({
+          message,
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+        }),
+      );
     });
   },
 ) {
