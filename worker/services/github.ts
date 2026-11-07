@@ -9,6 +9,7 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { NO_ASSETS } from '../../shared/reportAssets.ts';
 import { stackSummary } from '../../shared/stackFrames.ts';
 import { truncateText } from '../../shared/text.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
@@ -262,14 +263,21 @@ export async function createAutoReportedIssue({
   repo,
   token,
   payload,
+  knownAssets = NO_ASSETS,
 }: {
   repo: string;
   token: string;
   payload: ErrorTelemetry;
+  /**
+   * The asset paths the client build published; any other asset file is
+   * redacted. Without a list, every one is: the Worker never falls back to
+   * the browser's shape check.
+   */
+  knownAssets?: ReadonlySet<string>;
 }) {
   // Never trust the client to have sanitized. Sanitize once: the lookup,
   // title and body all use the same values.
-  const telemetry = sanitizeErrorTelemetry(payload);
+  const telemetry = sanitizeErrorTelemetry(payload, { knownAssets });
   const fingerprint = await issueFingerprint(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,

@@ -22,12 +22,12 @@ const telemetry = {
 afterEach(resetReportedTelemetryForTests);
 const buildTelemetryFingerprint = (payload: ErrorTelemetryPayload) =>
   buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(payload));
-test('fingerprint is the error name, path and top frames, normalized across builds', () => {
+test("fingerprint is the error name, route and top frames' files, normalized across builds", () => {
   expect(buildTelemetryFingerprint(telemetry)).toBe(
     JSON.stringify({
       name: 'TypeError',
       url: 'https://app.invalid/info',
-      frames: ['    at render (https://app.invalid/assets/main-[hash].js)'],
+      files: ['https://app.invalid/assets/main-[hash].js'],
     }),
   );
   // Another build, another time, another message: the same error.
@@ -40,11 +40,18 @@ test('fingerprint is the error name, path and top frames, normalized across buil
         'TypeError: other text\n    at render (https://scc.example/assets/main-ghijkl34.js:56:78)',
     }),
   ).toBe(buildTelemetryFingerprint(telemetry));
-  // Another name, path or call site: another error.
+  // Another name, route or file: another error. A function name is never
+  // kept, so it does not split one.
+  expect(
+    buildTelemetryFingerprint({
+      ...telemetry,
+      stackTrace: telemetry.stackTrace.replace('render', 'save'),
+    }),
+  ).toBe(buildTelemetryFingerprint(telemetry));
   for (const other of [
     { stackTrace: telemetry.stackTrace.replace('TypeError', 'RangeError') },
     { url: 'https://scc.example/summary' },
-    { stackTrace: telemetry.stackTrace.replace('render', 'save') },
+    { stackTrace: telemetry.stackTrace.replace('/main-', '/pdf-') },
   ])
     expect(buildTelemetryFingerprint({ ...telemetry, ...other })).not.toBe(
       buildTelemetryFingerprint(telemetry),
@@ -52,11 +59,12 @@ test('fingerprint is the error name, path and top frames, normalized across buil
 });
 
 test('fingerprint keeps only the top five frames', () => {
-  const frames = (last: string) =>
-    `TypeError: x\n${'    at f (https://scc.example/a.js:1:2)\n'.repeat(5)}    at ${last} (https://scc.example/b.js:1:2)`;
-  expect(
-    buildTelemetryFingerprint({ ...telemetry, stackTrace: frames('g') }),
-  ).toBe(buildTelemetryFingerprint({ ...telemetry, stackTrace: frames('h') }));
+  const frames = (top: string, last: string) =>
+    `TypeError: x\n    at f (https://scc.example/assets/${top}-abcdef12.js:1:2)\n${'    at f (https://scc.example/assets/a-abcdef12.js:1:2)\n'.repeat(4)}    at g (https://scc.example/assets/${last}-abcdef12.js:1:2)`;
+  const fingerprint = (top: string, last: string) =>
+    buildTelemetryFingerprint({ ...telemetry, stackTrace: frames(top, last) });
+  expect(fingerprint('main', 'pdf')).toBe(fingerprint('main', 'docx'));
+  expect(fingerprint('main', 'pdf')).not.toBe(fingerprint('index', 'pdf'));
 });
 test('fingerprint is not split by query strings, fragments or redacted values', () => {
   expect(

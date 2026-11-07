@@ -22,6 +22,10 @@ import {
   validateOpenAiEnvironment,
 } from './lib/environment.ts';
 import { lazy } from './lib/lazy.ts';
+import {
+  type AssetsFetcher,
+  createKnownAssetsLoader,
+} from './lib/report-assets.ts';
 import { apiError } from './lib/response.ts';
 import {
   createRouteErrorMiddleware,
@@ -68,6 +72,10 @@ export function createApiRouter(
   const geoGuard: Middleware = (context, next) => geo()(context, next);
   const model = lazy(() => resolveModel(validateOpenAiEnvironment(env)));
   const github = lazy(() => validateGithubEnvironment(env));
+  // The asset paths the client build published, read once per isolate.
+  const knownAssets = createKnownAssetsLoader(
+    'ASSETS' in env ? (env.ASSETS as AssetsFetcher) : undefined,
+  );
   function register<T>(
     path: string,
     schema: z.core.$ZodType<T>,
@@ -142,6 +150,7 @@ export function createApiRouter(
         repo: config.GITHUB_REPO,
         token: config.GITHUB_TOKEN,
         payload,
+        knownAssets: await knownAssets(),
       });
       return Response.json({ ok: true });
     },

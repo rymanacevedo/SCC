@@ -31,8 +31,10 @@ place today and what is still a gap.
   error log store structure only: a canonical timestamp, the page's app
   route pattern under a synthetic origin (`shared/routes.ts`, checked
   against the app router by a test; any other path is `[unknown-route]`),
-  the error class name and canonical stack frames whose files are the
-  bundle's own asset paths or `[redacted]`. Worker log paths are API route
+  the error class name and canonical stack frames with no function name, a
+  bounded line and column, and a file the client build published
+  (`report-assets.json`, read by the Worker through its `ASSETS` binding),
+  a known Node.js built-in or `[redacted]`. Worker log paths are API route
   patterns, from a second list checked against the Worker router.
   Error messages and GitHub error bodies are free text and are never
   stored, only their length, and a User report asks for no text at all
@@ -43,11 +45,11 @@ place today and what is still a gap.
   that cap, and the route body limit is derived from them. No real host or
   path the browser chose is kept. Gaps: the token's scope is set in the
   Cloudflare dashboard, not checked in code. Issue bodies are later read by
-  triage agents through `gh`; with free text and paths gone, the browser
-  controls only identifier-shaped words in them (function names and bundle
-  asset names, such as `ignorePreviousInstructions`), which both body
-  builders still fence as code (`worker/lib/markdown.ts`), and agents must
-  still treat them as untrusted.
+  triage agents through `gh`; with free text, paths and function names
+  gone, the browser chooses no word in them, only among fixed values and
+  bounded numbers, which both body builders still fence as code
+  (`worker/lib/markdown.ts`), and agents must still treat them as
+  untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.

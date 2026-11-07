@@ -6,7 +6,7 @@ import {
 } from '../shared/errorReporting.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
-  expectNoSensitiveValues,
+  expectNoSensitiveValuesOnTheWire,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
@@ -46,14 +46,14 @@ test('auto-report sends a route-pattern URL and a redacted message and stack', a
   });
   await reportErrorTelemetry(error, SENSITIVE_URL);
   expect(bodies).toHaveLength(1);
-  expectNoSensitiveValues(bodies[0] ?? '');
+  expectNoSensitiveValuesOnTheWire(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
   expect(sent.url).toBe('https://app.invalid/summary');
   expect(sent.message).toBe(
     `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   );
   expect(sent.stackTrace).toContain(
-    'at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+    'TypeError\n    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:12:34)',
   );
 });
 test('errors that differ only by query string or redacted data are sent once', async () => {

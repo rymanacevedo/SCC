@@ -92,6 +92,13 @@ export const SENSITIVE_VALUES = [
   'janedoe',
   'please',
   'every/report',
+  // Credential-shaped words a function or asset name could carry, and a
+  // line or column no bundle has.
+  'password_correcthorse',
+  'accessToken_accesstokenvalue',
+  'accesstokenvalue',
+  '123456789',
+  '987654321',
 ] as const;
 
 /** A page path that spells an instruction to a triage agent. */
@@ -188,39 +195,67 @@ export const SENSITIVE_STACK = [
   // File paths that are not bundle assets, spelling words.
   `    at render (https://scc.example${SENSITIVE_INJECTION_PATH}.js:4:1)`,
   '    at render (https://scc.example/experience/janedoe.js:4:2)',
+  // Credential-shaped words as function names on a published asset, and as
+  // asset names that pass the browser's shape check but were never built.
+  '    at password_correcthorse (https://scc.example/assets/main-abcdef12.js:4:3)',
+  '    at accessToken_accesstokenvalue (https://scc.example/assets/main-abcdef12.js:4:4)',
+  '    at load (https://scc.example/assets/password_correcthorse-abcdef12.js:4:5)',
+  '    at load (https://scc.example/assets/accessToken_accesstokenvalue-abcdef12.js:4:6)',
+  // A line and column no real bundle has: the frame is omitted.
+  '    at load (https://scc.example/assets/main-abcdef12.js:123456789:987654321)',
 ].join('\n');
+
+/**
+ * The asset paths the fixtures' build published, as the Worker reads them
+ * from `report-assets.json`.
+ */
+export const KNOWN_TEST_ASSETS: ReadonlySet<string> = new Set([
+  '/assets/a-abcdef12.js',
+  '/assets/api-1a2b3c4d.js',
+  '/assets/app-a1b2c3d4.js',
+  '/assets/app-ffee9988.js',
+  '/assets/main-abcdef12.js',
+]);
 
 const FILE = 'https://app.invalid/[redacted]';
 
-/** `SENSITIVE_STACK` as both sanitizing passes leave it. */
+/**
+ * `SENSITIVE_STACK` as the Worker leaves it, after the browser or not, with
+ * `KNOWN_TEST_ASSETS` as its published list.
+ */
 export const SANITIZED_SENSITIVE_STACK = [
   'TypeError',
-  '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+  '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:12:34)',
   '    [frame omitted]',
-  '    at retry (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
-  `    at loadPage (${FILE}:3:4)`,
+  '    at <anonymous> (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
+  `    at <anonymous> (${FILE}:3:4)`,
   '    [frame omitted]',
-  `    at fn (${FILE}:7:8)`,
-  `    at dial (${FILE}:9:9)`,
+  `    at <anonymous> (${FILE}:7:8)`,
+  `    at <anonymous> (${FILE}:9:9)`,
   `    at <anonymous> (${FILE}:1:2)`,
-  `    at keyed (${FILE}:1:2)`,
+  `    at <anonymous> (${FILE}:1:2)`,
   `    at <anonymous> (${FILE}:1:2)`,
   `    at <anonymous> (${FILE}:3:4)`,
   `    at <anonymous> (${FILE}:5:6)`,
   `    at <anonymous> (${FILE}:2:2)`,
   `    at <anonymous> (${FILE}:2:3)`,
-  `    at run (${FILE}:2:4)`,
-  `    at load (${FILE}:2:5)`,
+  `    at <anonymous> (${FILE}:2:4)`,
+  `    at <anonymous> (${FILE}:2:5)`,
   `    at <anonymous> (${FILE}:3:1)`,
   `    at <anonymous> (${FILE}:3:2)`,
-  `    at eval (${FILE}:3:3)`,
-  `    at load (${FILE}:3:4)`,
-  `    at load (${FILE}:3:5)`,
-  `    at load (${FILE}:3:6)`,
-  `    at load (${FILE}:3:7)`,
-  `    at load (${FILE}:3:8)`,
-  `    at render (${FILE}:4:1)`,
-  `    at render (${FILE}:4:2)`,
+  `    at <anonymous> (${FILE}:3:3)`,
+  `    at <anonymous> (${FILE}:3:4)`,
+  `    at <anonymous> (${FILE}:3:5)`,
+  `    at <anonymous> (${FILE}:3:6)`,
+  `    at <anonymous> (${FILE}:3:7)`,
+  `    at <anonymous> (${FILE}:3:8)`,
+  `    at <anonymous> (${FILE}:4:1)`,
+  `    at <anonymous> (${FILE}:4:2)`,
+  '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:4:3)',
+  '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:4:4)',
+  `    at <anonymous> (${FILE}:4:5)`,
+  `    at <anonymous> (${FILE}:4:6)`,
+  '    [frame omitted]',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [
@@ -241,4 +276,16 @@ export const SENSITIVE_DESCRIPTION = [
 
 export function expectNoSensitiveValues(output: string) {
   for (const value of SENSITIVE_VALUES) expect(output).not.toContain(value);
+}
+
+// A bundle asset file in a browser-sanitized frame.
+const BROWSER_ASSET = /https:\/\/app\.invalid\/assets\/[\w.-]+/g;
+
+/**
+ * What the browser may send: its own pass keeps any well-shaped asset name
+ * (`/assets/password_correcthorse-abcdef12.js`), since only the Worker has
+ * the build's published list. Everything else must be clean.
+ */
+export function expectNoSensitiveValuesOnTheWire(output: string) {
+  expectNoSensitiveValues(output.replace(BROWSER_ASSET, '[asset]'));
 }

@@ -5,7 +5,7 @@ import {
 } from '../shared/errorReporting.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
-  expectNoSensitiveValues,
+  expectNoSensitiveValuesOnTheWire,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
@@ -41,7 +41,7 @@ test('both report senders post an already-sanitized report unchanged', async () 
   await reportIssue(report);
   expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
   for (const body of bodies) {
-    expectNoSensitiveValues(body);
+    expectNoSensitiveValuesOnTheWire(body);
     expect(JSON.parse(body).url).toBe('https://app.invalid/summary');
   }
 });

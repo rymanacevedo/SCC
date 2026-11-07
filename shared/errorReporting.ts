@@ -1,4 +1,8 @@
-import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
+import {
+  sanitizeStackTrace,
+  type StackSanitizeOptions,
+  stackSummary,
+} from './stackFrames.ts';
 import {
   omittedText,
   SANITIZE_INPUT_FACTOR,
@@ -129,10 +133,13 @@ export function sanitizeReportUrl(url: string): string {
  * The only form of Error telemetry that may be sent, stored or fingerprinted:
  * the canonical timestamp, the route-pattern URL and the canonical stack (the
  * error name and frames). The message is free text, so only its length is
- * kept. Every field fits its schema limit.
+ * kept. Every field fits its schema limit. The Worker passes the asset paths
+ * the build published (`options.knownAssets`), so only a file the app ships
+ * is kept in a frame.
  */
 export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
+  options: StackSanitizeOptions = {},
 ): SanitizedErrorTelemetry {
   return {
     timestamp: sanitizeReportTimestamp(telemetry.timestamp),
@@ -144,6 +151,7 @@ export function sanitizeErrorTelemetry(
           stackTrace: sanitizeStackTrace(
             telemetry.stackTrace,
             REPORT_FIELD_LIMITS.stackTrace,
+            options,
           ),
         }),
   } as SanitizedErrorTelemetry;
@@ -162,39 +170,26 @@ export function sanitizeUserIssueReport(
   } as SanitizedUserIssueReport;
 }
 
-const STACK_COORDINATE_SUFFIX_PATTERN = /:\d+:\d+\b/g;
-const HASHED_ASSET_FILENAME_PATTERN =
-  /\/assets\/([^/?#/:]+)-[A-Za-z0-9_-]{6,}(\.[A-Za-z0-9]+)\b/g;
-
-function normalizeTelemetryFingerprintValue(value: string): string {
-  return value
-    .replace(STACK_COORDINATE_SUFFIX_PATTERN, '')
-    .replace(HASHED_ASSET_FILENAME_PATTERN, '/assets/$1-[hash]$2');
-}
-
 // How many top frames identify an error: enough to tell call sites apart,
 // few enough that a deep recursion difference does not split one error.
 const FINGERPRINT_FRAME_COUNT = 5;
 
 /**
- * The error name, path and top frames of sanitized telemetry: what makes two
- * reports the same error. Asset hashes and stack coordinates are normalized,
- * so a new build does not split it. Takes already-sanitized telemetry, so a
+ * The error name, route and top frames' files of sanitized telemetry: what
+ * makes two reports the same error. Frames carry no function names, and
+ * their line and column are left out, as are asset content hashes, so a new
+ * build does not split one error. Takes already-sanitized telemetry, so a
  * caller sanitizes once and every use (the dedup lookup, the issue body)
  * sees the same fingerprint.
  */
 export function buildSanitizedTelemetryFingerprint(
   telemetry: SanitizedErrorTelemetry,
 ): string {
-  const { name, frames } = stackSummary(
+  const { name, files } = stackSummary(
     telemetry.stackTrace ?? '',
     FINGERPRINT_FRAME_COUNT,
   );
-  return JSON.stringify({
-    name,
-    url: normalizeTelemetryFingerprintValue(telemetry.url),
-    frames: frames.map(normalizeTelemetryFingerprintValue),
-  });
+  return JSON.stringify({ name, url: telemetry.url, files });
 }
 
 const TELEMETRY_DEDUPLICATION_WINDOW_MS = 1_000;

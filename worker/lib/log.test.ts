@@ -68,7 +68,11 @@ test('an Error is logged as its class name, frames, cause class and message leng
     name: 'Error',
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
     causeName: 'TypeError',
-    stack: SANITIZED_SENSITIVE_STACK,
+    // The Worker's own code is no client asset: every asset file is redacted.
+    stack: SANITIZED_SENSITIVE_STACK.replace(
+      /https:\/\/app\.invalid\/assets\/[^:]+/g,
+      'https://app.invalid/[redacted]',
+    ),
   });
 });
 
@@ -81,7 +85,7 @@ test('an error name or stack header that is not a known error class is Error', (
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described).toMatchObject({
     name: 'Error',
-    stack: 'Error\n    at f (https://app.invalid/assets/a-abcdef12.js:1:2)',
+    stack: 'Error\n    at <anonymous> (https://app.invalid/[redacted]:1:2)',
   });
 });
 
@@ -96,7 +100,7 @@ test('a key-bearing Error.name, cause.name or header is logged as Error', () => 
   expect(described).toMatchObject({
     name: 'Error',
     causeName: 'Error',
-    stack: 'Error\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)',
+    stack: 'Error\n    at <anonymous> (https://app.invalid/[redacted]:1:2)',
   });
 });
 
@@ -116,7 +120,7 @@ test('a header ending like a frame location is logged as the error name', () => 
   const described = describeErrorForLog(error);
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described.stack).toBe(
-    'Error\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)',
+    'Error\n    at <anonymous> (https://app.invalid/[redacted]:1:2)',
   );
 });
 
@@ -158,9 +162,7 @@ test('a logged stack is capped at 4,000 characters with a marker', () => {
   const { stack } = describeErrorForLog(error) as { stack: string };
   // Cut at the last whole frame inside 4,000 characters.
   expect(
-    stack.endsWith(
-      `(https://app.invalid/assets/a-abcdef12.js:1:2)\n${TRUNCATED}`,
-    ),
+    stack.endsWith(`(https://app.invalid/[redacted]:1:2)\n${TRUNCATED}`),
   ).toBe(true);
   expect(stack.length).toBeLessThanOrEqual(4_000);
   expect(stack.length).toBeGreaterThan(3_900);

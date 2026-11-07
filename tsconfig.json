@@ -8,6 +8,7 @@
   },
   "include": [
     "app/**/*.ts",
+    "build/**/*.ts",
     "app/**/*.tsx",
     "shared/**/*.ts",
     "test/**/*.ts",

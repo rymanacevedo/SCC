@@ -54,11 +54,13 @@ test('logged report metadata and error text are route patterns and placeholders;
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   });
   expect(String(entry.stack)).toContain(
-    'at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+    '    at <anonymous> (https://app.invalid/[redacted]:12:34)',
   );
-  expect(String(entry.stack)).toContain('    [frame omitted]\n    at retry (');
   expect(String(entry.stack)).toContain(
-    'at loadPage (https://app.invalid/[redacted]:3:4)',
+    '    [frame omitted]\n    at <anonymous> (',
+  );
+  expect(String(entry.stack)).toContain(
+    '    at <anonymous> (https://app.invalid/[redacted]:3:4)',
   );
   expect(entry).not.toHaveProperty('providerUrl');
 });
@@ -78,7 +80,7 @@ test('a report path the browser chose reaches no log line', async () => {
     expectNoSensitiveValues(JSON.stringify(entry));
     expect(entry.url).toBe('https://app.invalid/[unknown-route]');
     expect(entry.stack).toBe(
-      'Error\n    at render (https://app.invalid/[redacted]:1:2)',
+      'Error\n    at <anonymous> (https://app.invalid/[redacted]:1:2)',
     );
   }
 });

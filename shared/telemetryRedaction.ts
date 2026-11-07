@@ -124,8 +124,8 @@ const KEY_SHAPE =
   /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[a-z0-9]{16,}(?![a-z0-9])/i;
 
 /**
- * True when a value holds a key-shaped token. The one check shared by
- * stack-frame function names and bundle asset names, so they cannot drift.
+ * True when a value holds a key-shaped token. Part of the browser's check
+ * on a bundle asset name (the Worker checks the published list instead).
  */
 export function isSensitiveToken(value: string): boolean {
   return KEY_SHAPE.test(value);
@@ -156,8 +156,9 @@ function isSafeWord(word: string): boolean {
 }
 
 /**
- * The one rule a stack frame's function-name parts and a bundle asset's
- * name parts both pass: at most 4 digits, no key shape (any case), and every
+ * The rule each part of a bundle asset's name passes in the browser (the
+ * Worker checks the published list instead): at most 4 digits, no key
+ * shape (any case), and every
  * word (split at `_`, `$`, `-`) a written word, a short number or an API
  * version. A random-looking word (`XkfQpLmZr9Ab`), a key (`sk_live_…`,
  * an access-key-style `AKIA…`) or a word mixing letters and digits (`hunter2`)

@@ -11,6 +11,7 @@ import {
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
+  KNOWN_TEST_ASSETS,
   SENSITIVE_AT_HEADER_STACK,
   SENSITIVE_DESCRIPTION,
   SENSITIVE_DYNAMIC_URL,
@@ -43,12 +44,18 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-const auth = { repo: 'acme/scc', token: 'token-123' };
+const auth = {
+  repo: 'acme/scc',
+  token: 'token-123',
+  knownAssets: KNOWN_TEST_ASSETS,
+};
 // What a stack file that is not a bundle asset becomes.
 const REDACTED_FILE = 'https://app.invalid/[redacted]';
 /** The body GitHub holds for an issue auto-reported from `payload`. */
 const filedBody = async (payload: ErrorTelemetryPayload) => {
-  const telemetry = sanitizeErrorTelemetry(payload);
+  const telemetry = sanitizeErrorTelemetry(payload, {
+    knownAssets: KNOWN_TEST_ASSETS,
+  });
   return buildAutoReportedIssueBody(
     telemetry,
     await issueFingerprint(telemetry),
@@ -100,7 +107,7 @@ const chunkFailureNextBuild = {
 
 describe('issueFingerprint', () => {
   test('is the SHA-256 hex digest of the sanitized telemetry fingerprint', async () => {
-    // The digest of {"name":"","url":"https://app.invalid/","frames":[]}.
+    // The digest of {"name":"","url":"https://app.invalid/","files":[]}.
     expect(
       await issueFingerprint(
         sanitizeErrorTelemetry({
@@ -109,7 +116,7 @@ describe('issueFingerprint', () => {
           message: 'Broken',
         }),
       ),
-    ).toBe('1fd1c3386d5b693285f573e2d94316876eeaefc00aaf3776cd2efd390efa0474');
+    ).toBe('87a060cdc309f76a8c06d5ba041d191b2e3c77e7f05a453fa2dc76c4fe467e2f');
   });
 
   test('queries, fragments and messages do not split it', async () => {
@@ -257,7 +264,7 @@ describe('issue bodies sent to GitHub', () => {
     expect(sent[0]?.title).toBe(
       'Auto-reported error: Error at /[unknown-route]',
     );
-    expect(sent[0]?.body).toContain('\nError\n    at f (');
+    expect(sent[0]?.body).toContain('\nError\n    at <anonymous> (');
   });
 
   test('through both sanitizing passes, nothing sensitive reaches title, body or fingerprint', async () => {
@@ -268,8 +275,73 @@ describe('issue bodies sent to GitHub', () => {
     await createAutoReportedIssue({ ...auth, payload: fromBrowser });
     const { title, body } = sent[0] ?? { title: '', body: '' };
     expectNoSensitiveValues(`${title}\n${body}`);
-    expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromBrowser));
+    const fromWorker = sanitizeErrorTelemetry(fromBrowser, {
+      knownAssets: KNOWN_TEST_ASSETS,
+    });
+    expect(fromWorker.stackTrace).toBe(SANITIZED_SENSITIVE_STACK);
+    expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromWorker));
     expect(title).toBe('Auto-reported error: TypeError at /summary');
+  });
+
+  test('a credential-shaped function or asset name reaches no issue; the browser keeps a well-shaped asset, the Worker only a published one', async () => {
+    const sent = captureCreatedIssues();
+    const stackTrace = [
+      'TypeError: x',
+      '    at password_correcthorse (https://scc.example/assets/a-abcdef12.js:1:2)',
+      '    at accessToken_accesstokenvalue (https://scc.example/assets/a-abcdef12.js:3:4)',
+      '    at load (https://scc.example/assets/password_correcthorse-abcdef12.js:5:6)',
+      '    at load (https://scc.example/assets/accessToken_accesstokenvalue-abcdef12.js:7:8)',
+      '    at load (https://scc.example/assets/a-abcdef12.js:123456789:123456789)',
+    ].join('\n');
+    const fromBrowser = sanitizeErrorTelemetry({ ...chunkFailure, stackTrace });
+    // The browser has no list: a well-shaped asset name passes its check.
+    expect(fromBrowser.stackTrace).toContain(
+      '/assets/password_correcthorse-abcdef12.js:5:6',
+    );
+    await createAutoReportedIssue({ ...auth, payload: fromBrowser });
+    await createAutoReportedIssue({
+      ...auth,
+      payload: { ...chunkFailure, stackTrace },
+    });
+    const fromWorker = sanitizeErrorTelemetry(fromBrowser, {
+      knownAssets: KNOWN_TEST_ASSETS,
+    });
+    for (const { title, body } of sent) {
+      expectNoSensitiveValues(`${title}\n${body}`);
+      expect(body).toContain(
+        [
+          'TypeError',
+          '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
+          '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:3:4)',
+          `    at <anonymous> (${REDACTED_FILE}:5:6)`,
+          `    at <anonymous> (${REDACTED_FILE}:7:8)`,
+          '    [frame omitted]',
+        ].join('\n'),
+      );
+    }
+    expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromWorker));
+    expect(JSON.parse(buildSanitizedTelemetryFingerprint(fromWorker))).toEqual({
+      name: 'TypeError',
+      url: 'https://app.invalid/[unknown-route]',
+      files: [
+        'https://app.invalid/assets/a-[hash].js',
+        'https://app.invalid/assets/a-[hash].js',
+        REDACTED_FILE,
+        REDACTED_FILE,
+      ],
+    });
+  });
+
+  test('without a published list, the Worker redacts every asset file', async () => {
+    const sent = captureCreatedIssues();
+    await createAutoReportedIssue({
+      repo: auth.repo,
+      token: auth.token,
+      payload: chunkFailure,
+    });
+    expect(sent[0]?.body).toContain(
+      `\nTypeError\n    at <anonymous> (${REDACTED_FILE}:12:34)\n`,
+    );
   });
 
   test('a placeholder-shaped message with a crafted label is measured, through both passes', async () => {
@@ -323,7 +395,7 @@ describe('issue bodies sent to GitHub', () => {
       'Auto-reported error: Error at /[unknown-route]',
     );
     expect(sent[0]?.body).toContain(
-      '\nError\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)\n',
+      '\nError\n    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)\n',
     );
   });
 
@@ -386,7 +458,9 @@ describe('issue bodies sent to GitHub', () => {
     expect(sent[0]?.title).toBe(
       'Auto-reported error: TypeError at /[unknown-route]',
     );
-    expect(sent[0]?.body).toContain(`    at render (${REDACTED_FILE}:1:2)`);
+    expect(sent[0]?.body).toContain(
+      `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+    );
   });
 
   test('a dev URL with an IP host reaches GitHub with the placeholder origin', async () => {
@@ -414,7 +488,7 @@ describe('issue bodies sent to GitHub', () => {
     });
     const body = sent[0]?.body ?? '';
     expect(body).toContain(
-      `${frame.replace('https://scc.example', 'https://app.invalid')}\n${TRUNCATED}\n`,
+      `    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)\n${TRUNCATED}\n`,
     );
     expect(body).toContain('- Message: `[message omitted: 9999 characters]`');
     expect(body.length).toBeLessThan(GITHUB_ISSUE_BODY_MAX);
@@ -500,14 +574,16 @@ describe('createAutoReportedIssue', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  test('reports that differ in a top frame are not deduped together', async () => {
+  test("reports that differ in a top frame's file are not deduped together", async () => {
     const first = {
       ...chunkFailure,
-      stackTrace: 'TypeError: x\n    at first (https://example.com/a.js:1:2)',
+      stackTrace:
+        'TypeError: x\n    at first (https://example.com/assets/a-abcdef12.js:1:2)',
     };
     const second = {
       ...chunkFailure,
-      stackTrace: 'TypeError: x\n    at second (https://example.com/a.js:1:2)',
+      stackTrace:
+        'TypeError: x\n    at second (https://example.com/assets/main-abcdef12.js:1:2)',
     };
     const fetchMock = githubWith([{ number: 9, body: await filedBody(first) }]);
     expect(await createAutoReportedIssue({ ...auth, payload: second })).toEqual(

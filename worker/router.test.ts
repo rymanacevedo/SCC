@@ -410,6 +410,46 @@ test('both reporting routes preserve GitHub payloads and return ok', async () =>
   });
 });
 
+test('/api/errors keeps only the asset files the ASSETS binding publishes, read once', async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = mock(
+    async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('?')) return Response.json([]);
+      bodies.push(String(init?.body));
+      return Response.json({ number: 1 }, { status: 201 });
+    },
+  ) as unknown as typeof fetch;
+  const assets = mock(async (_input: string) =>
+    Response.json(['/assets/index-BOZHR0Lk.js']),
+  );
+  const router = createApiRouter({ ...env, ASSETS: { fetch: assets } });
+  const stackTrace = [
+    'TypeError: x',
+    '    at render (https://scc.example/assets/index-BOZHR0Lk.js:1:2)',
+    '    at password_correcthorse (https://scc.example/assets/password_correcthorse-abcdef12.js:3:4)',
+  ].join('\n');
+  for (let index = 0; index < 2; index += 1)
+    await assertResponse(
+      await router.fetch(
+        contractRequest(
+          '/api/errors',
+          sanitizeErrorTelemetry({ ...report, stackTrace }),
+        ),
+      ),
+      200,
+    );
+  expect(assets).toHaveBeenCalledTimes(1);
+  const body = JSON.parse(bodies[0] ?? '{}').body as string;
+  expectNoSensitiveValues(body);
+  expect(body).toContain(
+    [
+      'TypeError',
+      '    at <anonymous> (https://app.invalid/assets/index-BOZHR0Lk.js:1:2)',
+      '    at <anonymous> (https://app.invalid/[redacted]:3:4)',
+    ].join('\n'),
+  );
+});
+
 test('a browser-sanitized report from a dev URL with an IP host is accepted by both routes', async () => {
   globalThis.fetch = mock(async (input: string | URL | Request) =>
     String(input).includes('?')

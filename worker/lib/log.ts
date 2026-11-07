@@ -2,6 +2,7 @@ import {
   sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
+import { NO_ASSETS } from '../../shared/reportAssets.ts';
 import { API_ROUTE_PATTERNS, routeOf } from '../../shared/routes.ts';
 import {
   sanitizeStackTrace,
@@ -62,7 +63,8 @@ function omittedProperty(field: OmittedField, value: unknown): string {
 
 /**
  * What a log line may carry about a thrown value: its error class name,
- * canonical stack frames, its cause's class name, and its message reduced to
+ * canonical stack frames (the Worker's own code is no client asset, so every
+ * asset file is redacted), its cause's class name, and its message reduced to
  * a length. No message text is ever logged, and nothing is stringified: a
  * thrown value that is not an Error is logged by its type alone, since
  * `String(value)` can throw (a null prototype, a throwing `toString` or
@@ -77,7 +79,9 @@ export function describeErrorForLog(error: unknown) {
       name: sanitizeErrorName(typeof name === 'string' ? name : ''),
       stack:
         typeof stack === 'string' && typeof name === 'string'
-          ? sanitizeStackTrace(stackWithHeader(name, stack), LOG_STACK_MAX)
+          ? sanitizeStackTrace(stackWithHeader(name, stack), LOG_STACK_MAX, {
+              knownAssets: NO_ASSETS,
+            })
           : undefined,
       causeName:
         cause instanceof Error && typeof cause.name === 'string'

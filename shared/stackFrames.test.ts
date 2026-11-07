@@ -22,8 +22,8 @@ describe('sanitizeStackTrace', () => {
       "TypeError: Cannot read properties of undefined (reading 'name')",
       '    at saveSummary (https://scc.example/assets/main-abcdef12.js?v=1a2b:12:34)',
       '    at https://scc.example/assets/entry.client-BUZPaea6.js:1:113',
-      '    at Array.map (<anonymous>)',
-      '    at async Promise.all (index 0)',
+      '    at <anonymous> (<anonymous>)',
+      '    at <anonymous> (index 0)',
       '    at new Builder (/srv/app/src/builder.ts:40:7)',
       '    at Object.<anonymous> [as run] (node:internal/vm:219:10)',
       '    at [eval]:1:121',
@@ -31,12 +31,12 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
         'TypeError',
-        '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+        '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:12:34)',
         '    at <anonymous> (https://app.invalid/assets/entry.client-BUZPaea6.js:1:113)',
-        '    at Array.map (<anonymous>)',
-        '    at async Promise.all (index 0)',
-        `    at new Builder (${REDACTED_FILE}:40:7)`,
-        '    at Object.<anonymous> [as run] (node:internal:219:10)',
+        '    at <anonymous> (<anonymous>)',
+        '    at <anonymous> (index 0)',
+        `    at <anonymous> (${REDACTED_FILE}:40:7)`,
+        '    at <anonymous> (node:internal:219:10)',
         `    at <anonymous> (${REDACTED_FILE}:1:121)`,
       ].join('\n'),
     );
@@ -52,10 +52,10 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
+        '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:12:34)',
         '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:5:6)',
         '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:7:8)',
-        `    at global code (${REDACTED_FILE}:1:1)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:1)`,
         '    [frame omitted]',
       ].join('\n'),
     );
@@ -76,10 +76,10 @@ describe('sanitizeStackTrace', () => {
       [
         'Error',
         '    [frame omitted]',
-        '    at retry (https://app.invalid/assets/a-abcdef12.js:9:9)',
+        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:9:9)',
         '    [frame omitted]',
-        '    at fn (https://app.invalid/assets/a-abcdef12.js:1:2)',
-        `    at fn (${REDACTED_FILE}:1:2)`,
+        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
         '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
       ].join('\n'),
     );
@@ -93,7 +93,7 @@ describe('sanitizeStackTrace', () => {
         8_000,
       ),
     ).toBe(
-      'TypeError\n    at f (https://app.invalid/assets/a-abcdef12.js:1:2)',
+      'TypeError\n    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
     );
     // Error-shaped is not enough: only a known class name is kept.
     const key = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
@@ -104,7 +104,7 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace('ChunkLoadError', 8_000)).toBe('ChunkLoadError');
   });
 
-  test('stackSummary reads the error name and the top frames', () => {
+  test("stackSummary reads the error name and the top frames' files, without coordinates or asset hashes", () => {
     const stack = sanitizeStackTrace(
       [
         'TypeError: Boom',
@@ -117,40 +117,119 @@ describe('sanitizeStackTrace', () => {
     );
     expect(stackSummary(stack, 2)).toEqual({
       name: 'TypeError',
-      frames: [
-        '    at a (https://app.invalid/assets/a-abcdef12.js:1:2)',
-        '    at b (https://app.invalid/assets/b-abcdef12.js:3:4)',
+      files: [
+        'https://app.invalid/assets/a-[hash].js',
+        'https://app.invalid/assets/b-[hash].js',
       ],
     });
+    expect(
+      stackSummary(
+        sanitizeStackTrace(
+          `Error\n    at Array.map (<anonymous>)\n    at f (/srv/a.js:1:2)`,
+          8_000,
+        ),
+        5,
+      ).files,
+    ).toEqual(['<anonymous>', REDACTED_FILE]);
     expect(
       stackSummary('    at a (https://scc.example/assets/a-abcdef12.js:1:2)', 5)
         .name,
     ).toBe('');
   });
 
-  test('a function name must be an identifier shape, else <anonymous>', () => {
+  test('a function name is never kept, whatever its shape', () => {
+    const names = [
+      'password_correcthorse',
+      'accessToken_accesstokenvalue',
+      'saveSummary',
+      'new Builder',
+      'async loadUser',
+      'Object.<anonymous> [as run]',
+      ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_'),
+      AKIA_NAME,
+      'token abc123def 5551234567',
+      'global code',
+    ];
     const stack = [
       'Error: Broken',
-      '    at token abc123def 5551234567 (https://scc.example/assets/a-abcdef12.js:1:2)',
-      'user 5551234567@https://scc.example/assets/a-abcdef12.js:3:4',
-      '    at user5551234567 (https://scc.example/assets/a-abcdef12.js:5:6)',
-      '    at hunter2 (https://scc.example/assets/a-abcdef12.js:7:8)',
-      '    at new Builder (https://scc.example/assets/a-abcdef12.js:9:9)',
-      '    at async loadUser (https://scc.example/assets/a-abcdef12.js:9:9)',
-      '    at Object.<anonymous> [as run] (https://scc.example/assets/a-abcdef12.js:9:9)',
+      ...names.map(
+        (name) =>
+          `    at ${name} (https://scc.example/assets/a-abcdef12.js:1:2)`,
+      ),
+      ...names.map(
+        (name) => `${name}@https://scc.example/assets/a-abcdef12.js:1:2`,
+      ),
     ].join('\n');
-    expect(sanitizeStackTrace(stack, 8_000)).toBe(
+    const sanitized = sanitizeStackTrace(stack, 8_000);
+    for (const name of names) expect(sanitized).not.toContain(name);
+    expect(sanitized).toBe(
       [
         'Error',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:3:4)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:5:6)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:7:8)',
-        '    at new Builder (https://app.invalid/assets/a-abcdef12.js:9:9)',
-        '    at async loadUser (https://app.invalid/assets/a-abcdef12.js:9:9)',
-        '    at Object.<anonymous> [as run] (https://app.invalid/assets/a-abcdef12.js:9:9)',
+        ...Array.from(
+          { length: names.length * 2 },
+          () =>
+            '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
+        ),
       ].join('\n'),
     );
+  });
+
+  test('a line of more than 5 digits or a column of more than 6 omits the frame', () => {
+    expect(
+      sanitizeStackTrace(
+        [
+          'Error',
+          '    at a (https://scc.example/assets/a-abcdef12.js:99999:416890)',
+          '    at b (https://scc.example/assets/a-abcdef12.js:123456789:123456789)',
+          '    at c (https://scc.example/assets/a-abcdef12.js:100000:1)',
+          '    at d (https://scc.example/assets/a-abcdef12.js:1:1234567)',
+          '    at e (https://scc.example/assets/a-abcdef12.js:1:2)',
+        ].join('\n'),
+        8_000,
+      ),
+    ).toBe(
+      [
+        'Error',
+        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:99999:416890)',
+        '    [frame omitted]',
+        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
+      ].join('\n'),
+    );
+  });
+
+  test('with knownAssets, an asset is kept only if the build published it', () => {
+    const knownAssets = new Set(['/assets/index-BOZHR0Lk.js']);
+    const stack = [
+      'Error',
+      '    at a (https://scc.example/assets/index-BOZHR0Lk.js:1:2)',
+      // Well-shaped, but not a file this build ships.
+      '    at b (https://scc.example/assets/main-abcdef12.js:1:2)',
+      '    at c (https://scc.example/assets/password_correcthorse-abcdef12.js:1:2)',
+      '    at d (node:fs:1:2)',
+    ].join('\n');
+    expect(sanitizeStackTrace(stack, 8_000, { knownAssets })).toBe(
+      [
+        'Error',
+        '    at <anonymous> (https://app.invalid/assets/index-BOZHR0Lk.js:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        '    at <anonymous> (node:fs:1:2)',
+      ].join('\n'),
+    );
+    // The browser has no list: it checks the shape, and the Worker decides.
+    expect(sanitizeStackTrace(stack, 8_000)).toContain(
+      '    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:1:2)',
+    );
+    // The browser's output, read again by the Worker, is held to the list.
+    expect(
+      sanitizeStackTrace(sanitizeStackTrace(stack, 8_000), 8_000, {
+        knownAssets,
+      }),
+    ).toBe(sanitizeStackTrace(stack, 8_000, { knownAssets }));
+    // An empty list (the Worker could not read it) redacts every asset.
+    expect(
+      sanitizeStackTrace(stack, 8_000, { knownAssets: new Set() }),
+    ).not.toContain('/assets/');
   });
 
   test('a file keeps only the app bundle asset or Node.js built-in shape, else it is redacted', () => {
@@ -179,40 +258,24 @@ describe('sanitizeStackTrace', () => {
     expect(sanitized).toBe(
       [
         'Error',
-        `    at a (${REDACTED_FILE}:1:2)`,
-        `    at b (${REDACTED_FILE}:3:4)`,
-        `    at c (${REDACTED_FILE}:5:6)`,
-        `    at d (${REDACTED_FILE}:7:8)`,
-        `    at e (${REDACTED_FILE}:9:9)`,
-        '    at f (node:internal:1:2)',
-        `    at g (${REDACTED_FILE}:1:2)`,
-        `    at h (${REDACTED_FILE}:1:2)`,
-        `    at i (${REDACTED_FILE}:1:2)`,
-        `    at j (${REDACTED_FILE}:1:2)`,
-        `    at k (${REDACTED_FILE}:1:2)`,
-        `    at l (${REDACTED_FILE}:1:2)`,
-        '    at m (https://app.invalid/assets/education-BL-Djl3_.js:1:2)',
-        '    at n (https://app.invalid/assets/ButtonLink-DCO1CjnW.js:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:3:4)`,
+        `    at <anonymous> (${REDACTED_FILE}:5:6)`,
+        `    at <anonymous> (${REDACTED_FILE}:7:8)`,
+        `    at <anonymous> (${REDACTED_FILE}:9:9)`,
+        '    at <anonymous> (node:internal:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        '    at <anonymous> (https://app.invalid/assets/education-BL-Djl3_.js:1:2)',
+        '    at <anonymous> (https://app.invalid/assets/ButtonLink-DCO1CjnW.js:1:2)',
       ].join('\n'),
     );
     // A second pass keeps what the first made.
     expect(sanitizeStackTrace(sanitized, 8_000)).toBe(sanitized);
-  });
-
-  test('the digit cap applies to the whole function name and alias, not just each part', () => {
-    for (const name of [
-      'Object.555.123.4567',
-      'run [as x_555_123_4567]',
-      'a1.b2.c3.d4.e5',
-    ])
-      expect(
-        sanitizeStackTrace(
-          `    at ${name} (https://scc.example/assets/a-abcdef12.js:1:2)`,
-          8_000,
-        ),
-      ).toBe(
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
-      );
   });
 
   test('an authority in a stack location is never kept', () => {
@@ -222,7 +285,7 @@ describe('sanitizeStackTrace', () => {
       '    at eval (//janedoe.example.com/script.js:1:7)',
       '    at a (node:https://janedoe.example.com/a.js:1:2)',
       '    at n (node://janedoe.example.com/script.js:1:2)',
-      '    at m (node:fs:1:2)',
+      '    at <anonymous> (node:fs:1:2)',
       '    at e (file://janedoe-laptop/srv/a.js:9:9)',
       '    at f (https://janedoe.example.com/assets/a-abcdef12.js:1:2)',
     ].join('\n');
@@ -231,31 +294,14 @@ describe('sanitizeStackTrace', () => {
     expect(sanitized).toBe(
       [
         'Error',
-        `    at eval (${REDACTED_FILE}:1:7)`,
-        `    at a (${REDACTED_FILE}:1:2)`,
-        `    at n (${REDACTED_FILE}:1:2)`,
-        '    at m (node:fs:1:2)',
-        `    at e (${REDACTED_FILE}:9:9)`,
-        '    at f (https://app.invalid/assets/a-abcdef12.js:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:7)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        '    at <anonymous> (node:fs:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:9:9)`,
+        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
       ].join('\n'),
     );
-  });
-
-  test('a random-looking or key-like function name becomes <anonymous>', () => {
-    for (const name of [
-      'XkfQpLmZr9Ab',
-      AKIA_NAME,
-      `Object.${AKIA_NAME}`,
-      `run [as XkfQpLmZr9Ab]`,
-    ])
-      expect(
-        sanitizeStackTrace(
-          `    at ${name} (https://scc.example/assets/a-abcdef12.js:1:2)`,
-          8_000,
-        ),
-      ).toBe(
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
-      );
   });
 
   test('stackWithHeader names a headerless stack, and leaves a V8 one alone', () => {
@@ -271,29 +317,6 @@ describe('sanitizeStackTrace', () => {
     expect(stackWithHeader('TypeError', v8)).toBe(v8);
   });
 
-  test('a key-shaped function name, dotted part or alias becomes <anonymous>', () => {
-    const key = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
-    const stack = [
-      // A normal message, then a frame-shaped line holding the key.
-      'Error: hi',
-      `    at ${key} (https://scc.example/assets/a-abcdef12.js:1:2)`,
-      `    at Object.${key} (https://scc.example/assets/a-abcdef12.js:3:4)`,
-      `    at run [as ${key}] (https://scc.example/assets/a-abcdef12.js:5:6)`,
-      `${key}@https://scc.example/assets/a-abcdef12.js:7:8`,
-    ].join('\n');
-    const sanitized = sanitizeStackTrace(stack, 8_000);
-    expect(sanitized).not.toContain(key);
-    expect(sanitized).toBe(
-      [
-        'Error',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:3:4)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:5:6)',
-        '    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:7:8)',
-      ].join('\n'),
-    );
-  });
-
   test('the first line is read as a header before it is tried as a frame', () => {
     // `Error: …@host:1:2` would otherwise parse as a Firefox frame.
     expect(
@@ -301,14 +324,16 @@ describe('sanitizeStackTrace', () => {
         'Error: failed for jane@example.com:1:2\n    at f (https://scc.example/assets/a-abcdef12.js:1:2)',
         8_000,
       ),
-    ).toBe('Error\n    at f (https://app.invalid/assets/a-abcdef12.js:1:2)');
+    ).toBe(
+      'Error\n    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
+    );
     // A Firefox stack has no header: its first line is still a frame.
     expect(
       sanitizeStackTrace(
         'saveSummary@https://scc.example/assets/a-abcdef12.js:1:2',
         8_000,
       ),
-    ).toBe('    at saveSummary (https://app.invalid/assets/a-abcdef12.js:1:2)');
+    ).toBe('    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)');
   });
 
   test('a file path that is not a bundle asset is redacted whole, digits and all', () => {
@@ -322,10 +347,10 @@ describe('sanitizeStackTrace', () => {
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
         'Error',
-        `    at call (${REDACTED_FILE}:1:2)`,
-        `    at call (${REDACTED_FILE}:3:4)`,
-        `    at call (${REDACTED_FILE}:3:4)`,
-        '    at main (https://app.invalid/assets/index-C4kL9x12.js:5:6)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:3:4)`,
+        `    at <anonymous> (${REDACTED_FILE}:3:4)`,
+        '    at <anonymous> (https://app.invalid/assets/index-C4kL9x12.js:5:6)',
       ].join('\n'),
     );
   });
@@ -360,17 +385,17 @@ describe('sanitizeStackTrace', () => {
           `    at a (node:${key}:1:2)`,
           '    at b (node:ignore_previous/instructions:1:2)',
           '    at c (node:internal/modules/cjs/loader:1:2)',
-          '    at d (node:fs:1:2)',
+          '    at <anonymous> (node:fs:1:2)',
         ].join('\n'),
         8_000,
       ),
     ).toBe(
       [
         'Error',
-        `    at a (${REDACTED_FILE}:1:2)`,
-        `    at b (${REDACTED_FILE}:1:2)`,
-        '    at c (node:internal:1:2)',
-        '    at d (node:fs:1:2)',
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        `    at <anonymous> (${REDACTED_FILE}:1:2)`,
+        '    at <anonymous> (node:internal:1:2)',
+        '    at <anonymous> (node:fs:1:2)',
       ].join('\n'),
     );
   });
@@ -381,13 +406,15 @@ describe('sanitizeStackTrace', () => {
         '    at load (https://scc.example/assets/contact-555-123-4567-abcdef12.js:1:2)',
         8_000,
       ),
-    ).toBe(`    at load (${REDACTED_FILE}:1:2)`);
+    ).toBe(`    at <anonymous> (${REDACTED_FILE}:1:2)`);
     expect(
       sanitizeStackTrace(
         '    at load (https://scc.example/assets/v2-page-12345678.js:1:2)',
         8_000,
       ),
-    ).toBe('    at load (https://app.invalid/assets/v2-page-12345678.js:1:2)');
+    ).toBe(
+      '    at <anonymous> (https://app.invalid/assets/v2-page-12345678.js:1:2)',
+    );
   });
 
   test('every listed Node.js module is a real built-in', () => {
