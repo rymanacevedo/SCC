@@ -8,6 +8,9 @@ import {
 } from 'ai';
 import { z } from 'zod';
 import {
+  BoundedExperienceSchema,
+  BoundedSkillsSchema,
+  BoundedSummarySchema,
   ExperienceSchema,
   SkillsSchema,
   SummarySchema,
@@ -136,13 +139,12 @@ export class GeneratedOutputLimitError extends Error {
 
 /**
  * Returns a section generator's result, or throws if it fails the bounded
- * schema for that generator (the Generated output limits).
+ * schema for that generator (the Generated output limits). Each generator
+ * applies its own, so a result never leaves unbounded.
  */
-export function boundGeneratedOutput<T>(
-  schema: { safeParse: (value: unknown) => { success: boolean } },
-  output: T,
-): T {
-  if (!schema.safeParse(output).success) throw new GeneratedOutputLimitError();
+function boundGeneratedOutput<T>(schema: z.core.$ZodType, output: T): T {
+  if (!z.safeParse(schema, output).success)
+    throw new GeneratedOutputLimitError();
   return output;
 }
 
@@ -205,7 +207,7 @@ export const createSummaries = async (
       `,
   });
 
-  return output.summaries;
+  return boundGeneratedOutput(BoundedSummarySchema, output.summaries);
 };
 
 export const createSkills = async (
@@ -236,7 +238,7 @@ export const createSkills = async (
           `,
   });
 
-  return output;
+  return boundGeneratedOutput(BoundedSkillsSchema, output);
 };
 
 export const createExperience = async (
@@ -274,5 +276,5 @@ export const createExperience = async (
     Use your best judgement if someone gives a term that doesn't look like a job, just send back general experience like soft skills.
     `,
   });
-  return output;
+  return boundGeneratedOutput(BoundedExperienceSchema, output);
 };

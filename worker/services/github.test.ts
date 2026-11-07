@@ -24,6 +24,21 @@ const auth = { repo: 'acme/scc', token: 'token-123' };
 /** The body GitHub holds for an issue auto-reported from `payload`. */
 const filedBody = async (payload: ErrorTelemetryPayload) =>
   buildAutoReportedIssueBody(payload, await issueFingerprint(payload));
+/** The body an issue auto-reported from `payload` held before the digest. */
+const legacyFiledBody = (payload: ErrorTelemetryPayload) =>
+  [
+    '# Auto-reported application error',
+    '',
+    `- Fingerprint: ${buildTelemetryFingerprint(payload)}`,
+    `- Timestamp: ${payload.timestamp}`,
+    `- URL: ${payload.url}`,
+    `- Message: ${payload.message}`,
+    '',
+    '## Stack trace',
+    '```',
+    payload.stackTrace ?? 'No stack trace available.',
+    '```',
+  ].join('\n');
 /** Serves `pages` of open issues, then accepts any created issue. */
 function githubWith(...pages: { number: number; body: string }[][]) {
   const fetchMock = mock(async (input: RequestInfo | URL) => {
@@ -96,6 +111,20 @@ describe('createAutoReportedIssue', () => {
 
     expect(result).toEqual({ deduped: true, issueNumber: 151 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('dedupes against an open issue filed with the legacy raw-JSON fingerprint', async () => {
+    const fetchMock = githubWith([
+      { number: 31, body: legacyFiledBody(chunkFailureNextBuild) },
+    ]);
+
+    const result = await createAutoReportedIssue({
+      ...auth,
+      payload: chunkFailure,
+    });
+
+    expect(result).toEqual({ deduped: true, issueNumber: 31 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   test('reports that differ only deep in a long stack trace are not deduped together', async () => {

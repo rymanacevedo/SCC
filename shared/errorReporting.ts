@@ -1,3 +1,4 @@
+import { truncateText } from './text.ts';
 import { z } from './zod.ts';
 
 export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
@@ -42,7 +43,7 @@ function cappedReport<const F extends Record<string, CappedField>>(fields: F) {
           return [
             key,
             typeof value === 'string' && limit !== undefined
-              ? value.slice(0, limit)
+              ? truncateText(value, limit)
               : value,
           ];
         }),

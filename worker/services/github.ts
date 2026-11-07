@@ -5,6 +5,7 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { truncateText } from '../../shared/text.ts';
 import { readBoundedText } from '../lib/body.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
 
@@ -55,8 +56,8 @@ export class GitHubIssueCreationError extends Error {
  * SHA-256 hex digest of the complete telemetry fingerprint. A fixed 64
  * characters however long or escape-heavy the report, so it never crowds the
  * body past GitHub's limit, and distinct reports never share a prefix match.
- * Issues filed before the digest carried the raw JSON, so they no longer
- * dedupe against new reports.
+ * Issues filed before the digest carried the raw JSON; deduplication still
+ * matches that legacy form (see `fingerprintMarkers`).
  */
 export async function issueFingerprint(payload: ErrorTelemetry) {
   const digest = await crypto.subtle.digest(
@@ -204,21 +205,36 @@ async function createGitHubIssue({
     body: {
       title,
       // The field limits already fit; this holds GitHub's limit for any body.
-      body: body.slice(0, GITHUB_ISSUE_BODY_MAX),
+      body: truncateText(body, GITHUB_ISSUE_BODY_MAX),
       labels,
     },
     read: (response) => response.json(),
   });
 }
 
+/**
+ * The fingerprint lines an open issue for `payload` may carry: the digest this
+ * code files, and the raw-JSON fingerprint of issues filed before the digest.
+ */
+async function fingerprintMarkers(payload: ErrorTelemetry) {
+  const fingerprint = await issueFingerprint(payload);
+  return {
+    fingerprint,
+    markers: [
+      `${FINGERPRINT_LABEL}${fingerprint}`,
+      `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
+    ],
+  };
+}
+
 async function findMatchingOpenAutoReportedIssue({
   repo,
   token,
-  fingerprint,
+  markers,
 }: {
   repo: string;
   token: string;
-  fingerprint: string;
+  markers: string[];
 }) {
   for (let page = 1; ; page += 1) {
     const params = new URLSearchParams({
@@ -239,7 +255,7 @@ async function findMatchingOpenAutoReportedIssue({
         }[],
     });
     const matchingIssue = issues.find((issue) =>
-      issue.body?.includes(`${FINGERPRINT_LABEL}${fingerprint}`),
+      markers.some((marker) => issue.body?.includes(marker)),
     );
 
     if (matchingIssue || issues.length < GITHUB_ISSUES_PAGE_SIZE) {
@@ -257,11 +273,11 @@ export async function createAutoReportedIssue({
   token: string;
   payload: ErrorTelemetry;
 }) {
-  const fingerprint = await issueFingerprint(payload);
+  const { fingerprint, markers } = await fingerprintMarkers(payload);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
-    fingerprint,
+    markers,
   });
 
   if (matchingIssue) {

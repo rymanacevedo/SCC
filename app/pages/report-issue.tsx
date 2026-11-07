@@ -3,6 +3,7 @@ import {
   REPORT_FIELD_LIMITS,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { truncateText } from '../../shared/text.ts';
 import { reportIssue } from '../api.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, type ButtonVariant } from '../ui/button.tsx';
@@ -45,7 +46,7 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
     try {
       const parsed = userIssueReportSchema.safeParse({
         description: new FormData(form).get('description'),
-        url: window.location.href.slice(0, REPORT_FIELD_LIMITS.url),
+        url: truncateText(window.location.href, REPORT_FIELD_LIMITS.url),
         timestamp: new Date().toISOString(),
       });
       if (!parsed.success) {
