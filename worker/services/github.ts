@@ -1,12 +1,17 @@
 import {
-  buildTelemetryFingerprint,
+  buildSanitizedTelemetryFingerprint,
   type ErrorTelemetryPayload as ErrorTelemetry,
   errorTelemetrySchema,
+  type SanitizedErrorTelemetry,
+  type SanitizedUserIssueReport,
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
+import { NO_ASSETS } from '../../shared/reportAssets.ts';
+import { stackSummary } from '../../shared/stackFrames.ts';
 import { truncateText } from '../../shared/text.ts';
-import { readBoundedText } from '../lib/body.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
 import { fencedBlock, inlineCode } from '../lib/markdown.ts';
 
@@ -17,7 +22,6 @@ const GITHUB_ISSUE_TITLE_MAX = 256;
 /** GitHub refuses an issue body longer than this many characters. */
 export const GITHUB_ISSUE_BODY_MAX = 65_536;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
-const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
 const GITHUB_USER_AGENT = 'scc-backend-worker';
 const FINGERPRINT_LABEL = '- Fingerprint: ';
 const GITHUB_ISSUES_PAGE_SIZE = 100;
@@ -33,14 +37,12 @@ export type GitHubIssueCreationErrorKind = 'http' | 'network' | 'timeout';
 export class GitHubIssueCreationError extends Error {
   kind: GitHubIssueCreationErrorKind;
   status?: number;
-  details?: string;
 
   constructor(
     message: string,
     options: {
       kind: GitHubIssueCreationErrorKind;
       status?: number;
-      details?: string;
       cause?: unknown;
     },
   ) {
@@ -48,22 +50,21 @@ export class GitHubIssueCreationError extends Error {
     this.name = 'GitHubIssueCreationError';
     this.kind = options.kind;
     this.status = options.status;
-    this.details = options.details;
   }
 }
 
 /**
  * The fingerprint an issue body carries and deduplication searches for: the
- * SHA-256 hex digest of the complete telemetry fingerprint. A fixed 64
- * characters however long or escape-heavy the report, so it never crowds the
- * body past GitHub's limit, and distinct reports never share a prefix match.
- * Issues filed before the digest carried the raw JSON; deduplication still
- * matches that legacy form (see `fingerprintMarkers`).
+ * SHA-256 hex digest of the sanitized telemetry fingerprint (error name, path
+ * and top frames). A fixed 64 characters, so it never crowds the body past
+ * GitHub's limit, and distinct reports never share a prefix match. An issue
+ * filed under an earlier fingerprint shape does not match and gets one
+ * duplicate; matching it would mean keeping raw report text.
  */
-export async function issueFingerprint(payload: ErrorTelemetry) {
+export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
   const digest = await crypto.subtle.digest(
     'SHA-256',
-    new TextEncoder().encode(buildTelemetryFingerprint(payload)),
+    new TextEncoder().encode(buildSanitizedTelemetryFingerprint(telemetry)),
   );
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, '0'),
@@ -71,12 +72,14 @@ export async function issueFingerprint(payload: ErrorTelemetry) {
 }
 
 /**
- * The issue body for auto-reported telemetry. The URL, message and stack trace
- * come from the browser, so they render as code and cannot fake issue
- * structure; the fingerprint line stays outside, where deduplication finds it.
+ * The issue body for auto-reported telemetry. It takes sanitized telemetry:
+ * the route-pattern URL, the message's length placeholder and the canonical
+ * stack, so no browser text reaches it. Those fields still render as code,
+ * so an identifier cannot fake issue structure; the
+ * fingerprint line stays outside, where deduplication finds it.
  */
 export function buildAutoReportedIssueBody(
-  payload: ErrorTelemetry,
+  payload: SanitizedErrorTelemetry,
   fingerprint: string,
 ) {
   return [
@@ -93,31 +96,17 @@ export function buildAutoReportedIssueBody(
 }
 
 /**
- * The issue body for a user report. The description and URL are the
- * reporter's text, so they render as code and cannot fake issue structure.
+ * The issue body for a user report: the page and the time. It takes a
+ * sanitized report; the URL comes from the browser, so it renders as code
+ * and cannot fake issue structure.
  */
-export function buildUserReportedIssueBody(payload: UserIssueReport) {
+export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   return [
     '# User-reported issue',
     '',
     `- Timestamp: ${payload.timestamp}`,
     `- URL: ${inlineCode(payload.url)}`,
-    '',
-    '## Description',
-    fencedBlock(payload.description),
   ].join('\n');
-}
-
-// A UTF-8 character is at most 4 bytes, so this many bytes always covers the snippet.
-const GITHUB_ERROR_BODY_SNIPPET_BYTES = GITHUB_ERROR_BODY_SNIPPET_MAX * 4;
-
-/** Keeps the start of a GitHub error body without buffering the rest of it. */
-async function readErrorSnippet(response: Response) {
-  const { text } = await readBoundedText(
-    response.body,
-    GITHUB_ERROR_BODY_SNIPPET_BYTES,
-  );
-  return text.slice(0, GITHUB_ERROR_BODY_SNIPPET_MAX);
 }
 
 /**
@@ -171,11 +160,12 @@ async function requestGitHub<T>({
           );
         }
         if (!response.ok) {
-          const details = await readErrorSnippet(response);
+          // The status says enough; GitHub's error body is free text, so it
+          // is never read, only cancelled.
+          await response.body?.cancel();
           throw new GitHubIssueCreationError(`GitHub ${action} failed.`, {
             kind: 'http',
             status: response.status,
-            details,
           });
         }
         return read(response);
@@ -221,29 +211,28 @@ async function createGitHubIssue({
 }
 
 /**
- * The fingerprint lines an open issue for `payload` may carry: the digest this
- * code files, and the raw-JSON fingerprint of issues filed before the digest.
+ * `Auto-reported error: TypeError at /summary`: the error name and path,
+ * never the message, which is free text.
  */
-async function fingerprintMarkers(payload: ErrorTelemetry) {
-  const fingerprint = await issueFingerprint(payload);
-  return {
-    fingerprint,
-    markers: [
-      `${FINGERPRINT_LABEL}${fingerprint}`,
-      `${FINGERPRINT_LABEL}${buildTelemetryFingerprint(payload)}`,
-    ],
-  };
+function autoReportedIssueTitle(telemetry: SanitizedErrorTelemetry) {
+  const { name } = stackSummary(telemetry.stackTrace ?? '', 0);
+  const { pathname } = new URL(telemetry.url);
+  return truncateText(
+    `${AUTO_REPORTED_TITLE_PREFIX}${name || 'Error'} at ${pathname}`,
+    GITHUB_ISSUE_TITLE_MAX,
+  );
 }
 
 async function findMatchingOpenAutoReportedIssue({
   repo,
   token,
-  markers,
+  fingerprint,
 }: {
   repo: string;
   token: string;
-  markers: string[];
+  fingerprint: string;
 }) {
+  const marker = `${FINGERPRINT_LABEL}${fingerprint}`;
   for (let page = 1; ; page += 1) {
     const params = new URLSearchParams({
       state: 'open',
@@ -262,9 +251,7 @@ async function findMatchingOpenAutoReportedIssue({
           body?: string | null;
         }[],
     });
-    const matchingIssue = issues.find((issue) =>
-      markers.some((marker) => issue.body?.includes(marker)),
-    );
+    const matchingIssue = issues.find((issue) => issue.body?.includes(marker));
 
     if (matchingIssue || issues.length < GITHUB_ISSUES_PAGE_SIZE) {
       return matchingIssue;
@@ -276,16 +263,26 @@ export async function createAutoReportedIssue({
   repo,
   token,
   payload,
+  knownAssets = NO_ASSETS,
 }: {
   repo: string;
   token: string;
   payload: ErrorTelemetry;
+  /**
+   * The asset paths the client build published; any other asset file is
+   * redacted. Without a list, every one is: no pass falls back to the
+   * asset's shape.
+   */
+  knownAssets?: ReadonlySet<string>;
 }) {
-  const { fingerprint, markers } = await fingerprintMarkers(payload);
+  // Never trust the client to have sanitized. Sanitize once: the lookup,
+  // title and body all use the same values.
+  const telemetry = sanitizeErrorTelemetry(payload, { knownAssets });
+  const fingerprint = await issueFingerprint(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
-    markers,
+    fingerprint,
   });
 
   if (matchingIssue) {
@@ -295,8 +292,8 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `${AUTO_REPORTED_TITLE_PREFIX}${payload.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
-    body: buildAutoReportedIssueBody(payload, fingerprint),
+    title: autoReportedIssueTitle(telemetry),
+    body: buildAutoReportedIssueBody(telemetry, fingerprint),
     labels: ['bug', 'auto-reported'],
   });
 }
@@ -314,7 +311,7 @@ export async function createUserReportedIssue({
     repo,
     token,
     title: 'User-reported issue',
-    body: buildUserReportedIssueBody(payload),
+    body: buildUserReportedIssueBody(sanitizeUserIssueReport(payload)),
     labels: ['bug', 'user-reported'],
   });
 }

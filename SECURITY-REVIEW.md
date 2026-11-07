@@ -23,19 +23,34 @@ place today and what is still a gap.
   browser-controlled payloads into GitHub issues with the repo token
   (`worker/services/github.ts`). In place: labels are fixed server-side
   (`bug` plus `auto-reported` or `user-reported`); the user-reported title is
-  the constant `User-reported issue`; the auto-reported title embeds
-  `payload.message`, cut to the 256-character GitHub limit; auto-reported
-  issues are deduplicated by fingerprint before a create. Gaps: the schemas
-  in `shared/errorReporting.ts` require non-empty strings, an ISO timestamp
-  and a URL but set no maximum length on `message`, `stackTrace`, `url` or
-  `description`, and `buildAutoReportedIssueBody` and
-  `buildUserReportedIssueBody` copy those fields into the issue body
-  verbatim, so a browser can post an arbitrarily long body; and the token's
-  scope is set in the Cloudflare dashboard, not checked in code. Issue
-  bodies are later read by triage agents through `gh`, so text in them is a
-  prompt-injection surface for those agents. Both body builders fence
-  reported text as code (`worker/lib/markdown.ts`), so it cannot fake issue
-  structure, though agents must still treat it as untrusted.
+  the constant `User-reported issue`; the auto-reported title is the error
+  class name and path (`Auto-reported error: TypeError at /summary`), cut
+  to the 256-character GitHub limit;
+  auto-reported issues are deduplicated by fingerprint before a create;
+  `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
+  error log store structure only: a canonical timestamp, the page's app
+  route pattern under a synthetic origin (`shared/routes.ts`, checked
+  against the app router by a test; any other path is `[unknown-route]`),
+  the error class name and canonical stack frames with no function name, a
+  bounded line and column, and a file the client build published
+  (`report-assets.json`, read by the browser from its own origin before it
+  sends and by the Worker through its `ASSETS` binding; no shape rule
+  keeps an unpublished file), a known Node.js built-in or `[redacted]`. Worker log paths are API route
+  patterns, from a second list checked against the Worker router.
+  Error messages and GitHub error bodies are free text and are never
+  stored, only their length, and a User report asks for no text at all
+  (`shared/telemetryRedaction.ts`,
+  `shared/stackFrames.ts`,
+  `docs/adr/0001-reports-are-redacted-before-storage.md`); every
+  field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
+  that cap, and the route body limit is derived from them. No real host or
+  path the browser chose is kept. Gaps: the token's scope is set in the
+  Cloudflare dashboard, not checked in code. Issue bodies are later read by
+  triage agents through `gh`; with free text, paths and function names
+  gone, the browser chooses no word in them, only among fixed values and
+  bounded numbers, which both body builders still fence as code
+  (`worker/lib/markdown.ts`), and agents must still treat them as
+  untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.

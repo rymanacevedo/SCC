@@ -2,12 +2,22 @@ import { afterEach, expect, jest, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
 import {
   ERROR_TELEMETRY_MAX_LENGTH,
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
   USER_ISSUE_REPORT_MAX_LENGTH,
 } from '../shared/errorReporting.ts';
 import { MAX_PROMPT_LENGTH } from '../shared/schemas/generation.ts';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
+import {
+  expectNoSensitiveValues,
+  KNOWN_TEST_ASSETS,
+  SENSITIVE_DESCRIPTION,
+  SENSITIVE_MESSAGE,
+  SENSITIVE_STACK,
+  SENSITIVE_URL,
+} from '../test/sensitive-reports.ts';
 import { jsonBodyLimit } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
@@ -401,6 +411,116 @@ test('both reporting routes preserve GitHub payloads and return ok', async () =>
   });
 });
 
+test('/api/errors keeps only the asset files the ASSETS binding publishes, read once', async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = mock(
+    async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('?')) return Response.json([]);
+      bodies.push(String(init?.body));
+      return Response.json({ number: 1 }, { status: 201 });
+    },
+  ) as unknown as typeof fetch;
+  const published = ['/assets/index-BOZHR0Lk.js'];
+  const assets = mock(async (_input: string) => Response.json(published));
+  const router = createApiRouter({ ...env, ASSETS: { fetch: assets } });
+  const stackTrace = [
+    'TypeError: x',
+    '    at render (https://scc.example/assets/index-BOZHR0Lk.js:1:2)',
+    '    at password_correcthorse (https://scc.example/assets/password_correcthorse-abcdef12.js:3:4)',
+  ].join('\n');
+  for (let index = 0; index < 2; index += 1)
+    await assertResponse(
+      await router.fetch(
+        contractRequest(
+          '/api/errors',
+          // The browser's pass, with the same published list.
+          sanitizeErrorTelemetry(
+            { ...report, stackTrace },
+            { knownAssets: new Set(published) },
+          ),
+        ),
+      ),
+      200,
+    );
+  expect(assets).toHaveBeenCalledTimes(1);
+  const body = JSON.parse(bodies[0] ?? '{}').body as string;
+  expectNoSensitiveValues(body);
+  expect(body).toContain(
+    [
+      'TypeError',
+      '    at <anonymous> (https://app.invalid/assets/index-BOZHR0Lk.js:1:2)',
+      '    at <anonymous> (https://app.invalid/[redacted]:3:4)',
+    ].join('\n'),
+  );
+});
+
+test('a browser-sanitized report from a dev URL with an IP host is accepted by both routes', async () => {
+  globalThis.fetch = mock(async (input: string | URL | Request) =>
+    String(input).includes('?')
+      ? Response.json([])
+      : Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const router = createApiRouter(env);
+  const fields = {
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: 'http://127.0.0.1:5173/info?step=2',
+  };
+  const telemetry = sanitizeErrorTelemetry(
+    { ...fields, message: 'Broken' },
+    { knownAssets: KNOWN_TEST_ASSETS },
+  );
+  const report = sanitizeUserIssueReport(fields);
+  expect(report.url).toBe('https://app.invalid/info');
+  for (const [path, body] of [
+    ['/api/errors', telemetry],
+    ['/api/report-issue', report],
+  ] as const)
+    expect(
+      await assertResponse(
+        await router.fetch(contractRequest(path, body)),
+        200,
+      ),
+    ).toEqual({ ok: true });
+});
+
+test("an older client's report with a description is accepted, and the description is dropped", async () => {
+  const calls = mock(
+    async (_input: string | URL | Request, _init?: RequestInit) =>
+      Response.json({ number: 1 }, { status: 201 }),
+  );
+  globalThis.fetch = calls as unknown as typeof fetch;
+  const response = await createApiRouter(env).fetch(
+    contractRequest('/api/report-issue', {
+      timestamp: '2026-10-13T00:00:00.000Z',
+      url: 'https://scc.example/summary',
+      description: SENSITIVE_DESCRIPTION,
+    }),
+  );
+  expect(await assertResponse(response, 200)).toEqual({ ok: true });
+  const sent = String(calls.mock.calls[0]?.[1]?.body);
+  expectNoSensitiveValues(sent);
+  expect(JSON.parse(sent).body).not.toContain('Description');
+});
+
+test('a browser-sanitized report from an over-limit URL of many segments is accepted', async () => {
+  globalThis.fetch = mock(async () =>
+    Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const report = sanitizeUserIssueReport({
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: `https://scc.example/${'segment/'.repeat(400)}end`,
+  });
+  expect(report.url).not.toContain('truncated');
+  expect(
+    await assertResponse(
+      await createApiRouter(env).fetch(
+        contractRequest('/api/report-issue', report),
+      ),
+      200,
+    ),
+  ).toEqual({ ok: true });
+});
+
 test('GitHub config failures are 500; HTTP and network failures are 502', async () => {
   spyOn(console, 'error').mockImplementation(() => {});
   for (const path of ['/api/errors', '/api/report-issue']) {
@@ -420,6 +540,50 @@ test('GitHub config failures are 500; HTTP and network failures are 502', async 
         502,
       );
       expect(body.error).not.toContain('private detail');
+    }
+  }
+});
+
+test('report route failure logs carry route patterns, redacted and truncated', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const sensitiveReport = {
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: SENSITIVE_URL,
+    message: SENSITIVE_MESSAGE,
+    stackTrace: SENSITIVE_STACK,
+    description: SENSITIVE_DESCRIPTION,
+  };
+  for (const path of ['/api/errors', '/api/report-issue']) {
+    for (const failure of ['http', 'network']) {
+      log.mockClear();
+      globalThis.fetch = mock(async () => {
+        if (failure === 'network')
+          throw new Error(`${SENSITIVE_MESSAGE} ${'word '.repeat(1_000)}`);
+        return new Response(
+          `Bad credentials for jane.doe@example.com token=abc123`,
+          { status: 401 },
+        );
+      }) as unknown as typeof fetch;
+      await assertResponse(
+        await createApiRouter(env).fetch(
+          contractRequest(path, sensitiveReport),
+        ),
+        502,
+      );
+      expect(log).toHaveBeenCalledTimes(1);
+      const entry = log.mock.calls[0]?.[0] as Record<string, unknown>;
+      const output = JSON.stringify(entry);
+      expectNoSensitiveValues(output);
+      expect(entry.url).toBe('https://app.invalid/summary');
+      expect(entry.category).toBe(`github_${failure}`);
+      if (failure === 'network') {
+        expect(entry.causeName).toBe('Error');
+      } else {
+        expect(entry.githubStatus).toBe(401);
+        expect(entry).not.toHaveProperty('githubResponseSnippet');
+      }
+      expect(entry.message).toMatch(/^\[message omitted: \d+ characters\]$/);
+      expect(String(entry.stack)).toContain('GitHubIssueCreationError');
     }
   }
 });

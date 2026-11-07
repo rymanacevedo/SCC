@@ -1,5 +1,17 @@
 import { afterEach, expect, test } from 'bun:test';
 import {
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
+} from '../shared/errorReporting.ts';
+import { captureFetchBodies } from '../test/capture-fetch.ts';
+import {
+  expectNoSensitiveValues,
+  KNOWN_TEST_ASSETS,
+  SENSITIVE_MESSAGE,
+  SENSITIVE_STACK,
+  SENSITIVE_URL,
+} from '../test/sensitive-reports.ts';
+import {
   createExperience,
   createSkills,
   createSummaries,
@@ -16,6 +28,27 @@ function mockFetch(
 ) {
   globalThis.fetch = handler as typeof fetch;
 }
+test('both report senders post an already-sanitized report unchanged', async () => {
+  const bodies = captureFetchBodies();
+  const timestamp = new Date().toISOString();
+  const telemetry = sanitizeErrorTelemetry(
+    {
+      timestamp,
+      url: SENSITIVE_URL,
+      message: SENSITIVE_MESSAGE,
+      stackTrace: SENSITIVE_STACK,
+    },
+    { knownAssets: KNOWN_TEST_ASSETS },
+  );
+  const report = sanitizeUserIssueReport({ timestamp, url: SENSITIVE_URL });
+  await reportError(telemetry);
+  await reportIssue(report);
+  expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
+  for (const body of bodies) {
+    expectNoSensitiveValues(body);
+    expect(JSON.parse(body).url).toBe('https://app.invalid/summary');
+  }
+});
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {
   const signal = new AbortController().signal;
   const requests: string[] = [];
@@ -38,7 +71,14 @@ test('API client sends JSON with signal and parses shared output schemas for all
   expect(
     (
       await reportError(
-        { timestamp: new Date().toISOString(), message: 'error', url: '/info' },
+        sanitizeErrorTelemetry(
+          {
+            timestamp: new Date().toISOString(),
+            message: 'error',
+            url: '/info',
+          },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
         signal,
       )
     ).ok,
@@ -46,11 +86,10 @@ test('API client sends JSON with signal and parses shared output schemas for all
   expect(
     (
       await reportIssue(
-        {
+        sanitizeUserIssueReport({
           timestamp: new Date().toISOString(),
-          description: 'issue',
           url: 'https://scc.example',
-        },
+        }),
         signal,
       )
     ).ok,
@@ -122,11 +161,14 @@ for (const [name, send] of [
     'reportError',
     (signal?: AbortSignal) =>
       reportError(
-        {
-          url: 'https://scc.example/info',
-          message: 'Failed',
-          timestamp: new Date().toISOString(),
-        },
+        sanitizeErrorTelemetry(
+          {
+            url: 'https://scc.example/info',
+            message: 'Failed',
+            timestamp: new Date().toISOString(),
+          },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
         signal,
       ),
   ],
@@ -134,11 +176,10 @@ for (const [name, send] of [
     'reportIssue',
     (signal?: AbortSignal) =>
       reportIssue(
-        {
+        sanitizeUserIssueReport({
           url: 'https://scc.example/info',
-          description: 'Failed',
           timestamp: new Date().toISOString(),
-        },
+        }),
         signal,
       ),
   ],

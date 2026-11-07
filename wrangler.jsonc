@@ -7,6 +7,8 @@
   // Becomes the default with compatibility_date 2026-11-17; drop it on that bump.
   "compatibility_flags": ["enable_request_signal"],
   "assets": {
+    // Lets the Worker read report-assets.json, the build's asset list.
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
   },

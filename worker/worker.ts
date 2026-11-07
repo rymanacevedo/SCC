@@ -1,4 +1,5 @@
 import { isClientAbort } from './lib/abort.ts';
+import { describeErrorForLog, pathForLog } from './lib/log.ts';
 import { apiError } from './lib/response.ts';
 
 export function createWorker(api: {
@@ -15,7 +16,7 @@ export function createWorker(api: {
           // oxlint-disable-next-line no-console -- Cancellations belong in Workers Logs.
           console.log({
             category: 'client_aborted',
-            path: new URL(request.url).pathname,
+            path: pathForLog(request.url),
           });
           return apiError(499, 'Client closed request');
         }
@@ -23,7 +24,7 @@ export function createWorker(api: {
         console.error({
           category: 'unknown',
           message: 'router.fetch threw',
-          error,
+          error: describeErrorForLog(error),
         });
         return apiError(500, 'Internal error');
       }

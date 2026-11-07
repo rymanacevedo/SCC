@@ -3,6 +3,12 @@ import type { Middleware } from 'remix/router';
 import { isClientAbort } from '../lib/abort.ts';
 import { UpstreamTimeoutError } from '../lib/deadline.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
+import {
+  describeErrorForLog,
+  logToken,
+  redactUrlForLog,
+  timestampForLog,
+} from '../lib/log.ts';
 import { apiError } from '../lib/response.ts';
 import {
   GeneratedOutputLimitError,
@@ -37,7 +43,11 @@ export function createRouteErrorMiddleware<T>(
         typeof payload === 'object' &&
         'timestamp' in payload &&
         'url' in payload
-          ? { timestamp: payload.timestamp, url: payload.url }
+          ? {
+              // Valid ISO, but unbounded in length: logged in canonical form.
+              timestamp: timestampForLog(payload.timestamp),
+              url: redactUrlForLog(payload.url),
+            }
           : {};
       const { category, status, details } = classifyRouteError(
         error,
@@ -48,13 +58,7 @@ export function createRouteErrorMiddleware<T>(
         route: path,
         category,
         ...reportMetadata,
-        name: error instanceof Error ? error.name : undefined,
-        stack: error instanceof Error ? error.stack : undefined,
-        causeMessage:
-          error instanceof Error && error.cause instanceof Error
-            ? error.cause.message
-            : undefined,
-        message: error instanceof Error ? error.message : String(error),
+        ...describeErrorForLog(error),
         ...details,
       });
       return apiError(status, errorMessage);
@@ -80,9 +84,11 @@ type RouteErrorClassification = {
 
 /**
  * Maps a route failure to its log category, response status and the fields
- * logged with it. Upstream failures are 502, a deadline is 504, a missing
- * variable is 500; an unrecognized error is 500 on a generation route and 502
- * on a reporting route, whose only work is the GitHub call.
+ * logged with it. No free text is logged: strings are machine tokens
+ * (`logToken`) or route patterns (`redactUrlForLog`). Upstream
+ * failures are 502, a deadline is 504, a missing variable is 500; an
+ * unrecognized error is 500 on a generation route and 502 on a reporting
+ * route, whose only work is the GitHub call.
  */
 function classifyRouteError(
   error: unknown,
@@ -95,17 +101,17 @@ function classifyRouteError(
     return {
       category: 'timeout',
       status: 504,
-      details: { upstream: error.upstream, timeoutMs: error.timeoutMs },
+      details: {
+        upstream: logToken(error.upstream),
+        timeoutMs: error.timeoutMs,
+      },
     };
   }
   if (error instanceof GitHubIssueCreationError) {
     return {
       category: `github_${error.kind}`,
       status: 502,
-      details: {
-        githubStatus: error.status,
-        githubResponseSnippet: error.details,
-      },
+      details: { githubStatus: error.status },
     };
   }
   // Once the retry budget is spent the SDK wraps the provider's failures in a
@@ -118,10 +124,12 @@ function classifyRouteError(
       status: 502,
       details: {
         providerStatus: providerError.statusCode,
-        providerUrl: providerError.url,
         isRetryable: providerError.isRetryable,
         ...(RetryError.isInstance(error)
-          ? { attempts: error.errors.length, retryReason: error.reason }
+          ? {
+              attempts: error.errors.length,
+              retryReason: logToken(error.reason),
+            }
           : {}),
       },
     };

@@ -1,7 +1,7 @@
 import {
-  type ErrorTelemetryPayload,
   reportAcknowledgementSchema,
-  type UserIssueReportPayload,
+  type SanitizedErrorTelemetry,
+  type SanitizedUserIssueReport,
 } from '../shared/errorReporting.ts';
 import type { FailureCode, Result } from '../shared/result.ts';
 import {
@@ -62,11 +62,16 @@ export const createExperience = (
   input: GenerationRequest,
   signal?: AbortSignal,
 ) => post('/api/experience', input, ExperienceSchema, signal);
+// Every report leaves the browser as route patterns, redacted and truncated, exactly
+// once. The Worker sanitizes again; this keeps the data off the wire. Both
+// senders take an already-sanitized report (the caller sanitizes once and may
+// reuse the value, as the Error telemetry dedup does); the branded types make
+// a raw payload a compile error.
 export const reportError = (
-  input: ErrorTelemetryPayload,
+  input: SanitizedErrorTelemetry,
   signal?: AbortSignal,
 ) => post('/api/errors', input, reportAcknowledgementSchema, signal);
 export const reportIssue = (
-  input: UserIssueReportPayload,
+  input: SanitizedUserIssueReport,
   signal?: AbortSignal,
 ) => post('/api/report-issue', input, reportAcknowledgementSchema, signal);

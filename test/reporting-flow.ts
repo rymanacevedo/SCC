@@ -63,22 +63,20 @@ try {
   await page.click('main section button');
   const dialog = 'main section dialog';
   assert.equal(await page.$eval(dialog, (node) => node.open), true);
-  await page.type(`${dialog} textarea`, 'The demo page threw an error');
+  // A User report carries only the page and the time: there is no text box.
+  assert.equal(await page.$(`${dialog} textarea`), null);
   await page.click(`${dialog} button[type="submit"]`);
   await page.waitForFunction(() =>
     document
       .querySelector('[role="status"]')
-      ?.textContent?.includes('Your issue has been reported'),
+      ?.textContent?.includes("We've sent this page and the time"),
   );
   const issue = reports.find((report) => report.path === '/api/report-issue');
   assert.ok(issue);
-  assert.equal(issue.body.description, 'The demo page threw an error');
-  assert.equal(issue.body.url, `${base}/throw-component`);
-  assert.deepEqual(Object.keys(issue.body).sort(), [
-    'description',
-    'timestamp',
-    'url',
-  ]);
+  // The report carries a route pattern, never the path: a demo-only route is
+  // on no route list, so it is the unknown route.
+  assert.equal(issue.body.url, 'https://app.invalid/[unknown-route]');
+  assert.deepEqual(Object.keys(issue.body).sort(), ['timestamp', 'url']);
   await page.click(`${dialog} button[type="button"]`);
   assert.equal(await page.$eval(dialog, (node) => node.open), false);
   await page.goto(`${base}/unknown`);

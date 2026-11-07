@@ -42,6 +42,20 @@ The time limit on every call the Worker makes to an upstream (the model provider
 ### Output-token limit
 The cap on how many tokens a section generator's model may produce (`SECTION_MAX_OUTPUT_TOKENS`, one per section). Reasoning tokens count against it, so each limit sits well above the section's visible JSON. A generation that stops at the limit gave no usable output, cut-short JSON or no text at all, and raises `SectionTokenLimitError`: a 502 logged as `token_limit`.
 
+## Reporting
+
+### Error telemetry
+The automatic report the app sends to `/api/errors` when a page throws: timestamp, URL, message and optional stack. The Worker turns it into an `auto-reported` GitHub issue, deduped by its fingerprint against open issues.
+_Avoid_: crash report, error log
+
+### User report
+The signal a user sends from the Report an issue dialog to `/api/report-issue`: the page and the time, nothing typed. The Worker turns it into a `user-reported` GitHub issue.
+_Avoid_: feedback, ticket
+
+### Report sanitizing
+Reducing a report to its structure: a canonical timestamp, the URL as the app route pattern it matched under the synthetic `https://app.invalid` origin (`/[unknown-route]` for any other path; the patterns are one list, `shared/routes.ts`), the error class name and canonical stack frames: no function name, a bounded line and column, and a file the client build published (`report-assets.json`), a known Node.js built-in or `[redacted]`. Free text (an error message, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[message omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). Both passes hold frames to the same published list, which the browser reads from its own origin and the Worker through its `ASSETS` binding; an unreadable list redacts every asset file. The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0001](../docs/adr/0001-reports-are-redacted-before-storage.md), system-wide).
+_Avoid_: scrubbing, anonymizing
+
 ## Generation architecture
 
 ### Generation seam

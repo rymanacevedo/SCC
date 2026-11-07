@@ -81,5 +81,11 @@ _Avoid_: download, generate
 ## API
 
 **API client**:
-The one browser module through which every builder page talks to the Worker's `/api/*` routes: three generators, error telemetry, issue reports. It returns results, never throws, and can be aborted on navigation.
+The one browser module through which every builder page talks to the Worker's `/api/*` routes: three generators, Error telemetry, User reports (sanitized before sending). It returns results, never throws, and can be aborted on navigation.
 _Avoid_: fetcher, proxy, resource route, service
+
+## Reporting
+
+- **Error telemetry**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#error-telemetry).
+- **User report**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#user-report). The Report an issue dialog sends only the page and the time.
+- **Report sanitizing**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#report-sanitizing). The browser's callers run it once before sending, so no free text leaves the browser.
