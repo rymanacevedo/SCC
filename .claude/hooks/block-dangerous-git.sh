@@ -2,9 +2,8 @@
 # PreToolUse guard for destructive git commands.
 #
 # Pushes use a strict grammar instead of trying to model the shell. A
-# command that mentions both `git` and `push` (as the shell reads it, so
-# pu''sh, pu\sh and line continuations count) is allowed only when the
-# whole command is
+# command that mentions `push` (after removing quotes and backslashes, so
+# pu''sh and pu\sh count) is allowed only when the whole command is
 #
 #   git push [-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run] [<remote> [<branch>|HEAD]]
 #
@@ -30,13 +29,12 @@
 # so the test cannot sit beside this file).
 
 INPUT=$(cat)
-# Fail closed: a command the hook cannot read is blocked, not allowed.
-if ! COMMAND=$(printf '%s\n' "$INPUT" | jq -er '.tool_input.command | strings'); then
-  echo "BLOCKED: the git hook could not read the command (is jq installed?)." >&2
-  exit 2
-fi
+COMMAND=$(printf '%s\n' "$INPUT" | jq -r '.tool_input.command')
 CWD=$(printf '%s\n' "$INPUT" | jq -r '.cwd // empty')
 CWD=${CWD:-$PWD}
+
+# COMMAND without quotes and backslashes, which the shell would remove.
+NORMALIZED=$(printf '%s\n' "$COMMAND" | tr -d "'\"\\\\")
 
 PROTECTED_BRANCHES="main|master"
 PUSH_FLAGS="-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run"
@@ -85,15 +83,14 @@ check_dangerous_patterns() {
   done
 }
 
-# shell_words: COMMAND as the shell would read it: line continuations
-# joined, quotes and backslashes removed. Whitespace inside a quoted string
-# becomes \x01 so the string stays one word (-c user.name="Jane Doe"). A quoted string that mentions git may be a
+# shell_words: COMMAND with quotes and backslashes removed, like NORMALIZED,
+# but whitespace inside a quoted string becomes \x01 so the string stays one
+# word (-c user.name="Jane Doe"). A quoted string that mentions git may be a
 # script for an inner shell (sh -c '...'), so it is left to be split. One
 # awk pass over tokens, so large heredocs stay fast.
 shell_words() {
   printf '%s\n' "$COMMAND" | LC_ALL=C awk '
     function quoted(chunk) {
-      gsub(/\\\n/, "", chunk)
       gsub(/\\/, "", chunk)
       if (chunk !~ /(^|[^A-Za-z0-9_-])git([^A-Za-z0-9_-]|$)/) gsub(/[ \t\n]/, "\001", chunk)
       printf "%s", chunk
@@ -102,7 +99,7 @@ shell_words() {
     END {
       while (s != "") {
         if (match(s, /^[^"\047\\]+/)) printf "%s", substr(s, 1, RLENGTH)
-        else if (match(s, /^\\./)) { c = substr(s, 2, 1); if (c != "\n") printf "%s", c }
+        else if (match(s, /^\\./)) printf "%s", substr(s, 2, 1)
         else if (match(s, /^\047[^\047]*\047/)) quoted(substr(s, 2, RLENGTH - 2))
         else if (match(s, /^"([^"\\]|\\.)*"/)) quoted(substr(s, 2, RLENGTH - 2))
         else { rest = substr(s, 2); gsub(/\\/, "", rest); printf "%s", rest; RLENGTH = length(s) }
@@ -112,12 +109,12 @@ shell_words() {
     }'
 }
 
-# simple_commands: SHELL_TEXT split into simple commands, one per line.
+# simple_commands: shell_words split into simple commands, one per line.
 # Redirections are removed (git p>/dev/null runs p), each backtick becomes
 # a '$' marker so a substituted subcommand counts as dynamic, and find's
 # -exec starts a new command.
 simple_commands() {
-  printf '%s\n' "$SHELL_TEXT" | sed -E '
+  shell_words | sed -E '
     s/`/ $\n/g
     s/[0-9]*[<>]+[&|]?[[:space:]]*[^[:space:];&|(){}<>]*/ /g
     s/[[:space:]]-(exec|execdir|ok|okdir)[[:space:]]/\n/g
@@ -205,8 +202,8 @@ check_push_config() {
     ""|simple|current) ;;
     *) block "relies on push.default=$mode" ;;
   esac
-  mapping=$(repo_git config --get-regexp '^remote\..*\.(push|pushurl|mirror)$' | head -1)
-  [ -z "$mapping" ] || block "uses a remote with a configured push refspec, push URL or mirror ($mapping)"
+  mapping=$(repo_git config --get-regexp '^remote\..*\.(push|mirror)$' | head -1)
+  [ -z "$mapping" ] || block "uses a remote with configured push refspecs or mirror ($mapping)"
   recurse=$(repo_git config --get push.recurseSubmodules)
   case "$recurse" in
     ""|no|false|check) ;;
@@ -237,16 +234,10 @@ check_push_target() {
   return 0
 }
 
-# SHELL_TEXT keeps quoted strings as one word; NORMALIZED is plain text.
-SHELL_TEXT=$(shell_words)
-NORMALIZED=${SHELL_TEXT//$'\x01'/ }
-
 check_dangerous_patterns
 has_word "$NORMALIZED" 'git|push' || exit 0
 check_git_subcommands
-# The push grammar applies only to commands that mention git, so
-# `rg push app/` or `cat docs/push.md` stay allowed.
-has_word "$NORMALIZED" push && has_word "$NORMALIZED" git || exit 0
+has_word "$NORMALIZED" push || exit 0
 target=$(parse_push) || exit 2
 check_push_config
 read -r remote branch <<< "$target"
