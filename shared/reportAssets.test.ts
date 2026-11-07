@@ -54,3 +54,69 @@ test('a failed read is not reused: the next report tries again', async () => {
   expect(await load()).toBe(await load());
   expect(fetchAssets).toHaveBeenCalledTimes(2);
 });
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test('a stalled body is cancelled at the deadline, and the next report reads again', async () => {
+  let cancelled = 0;
+  const fetchAssets = mock(
+    async (_signal: AbortSignal) =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('['));
+          },
+          cancel() {
+            cancelled += 1;
+          },
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+  );
+  const load = createKnownAssetsLoader(fetchAssets, 10);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
+  await tick();
+  // The body was cancelled, so the read ended: the next report retries.
+  expect(cancelled).toBe(1);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets).toHaveBeenCalledTimes(2);
+});
+
+test('a fetch that ignores the abort holds the only read: reports get the empty set and start no other', async () => {
+  const fetchAssets = mock(
+    (_signal: AbortSignal) => new Promise<Response>(() => {}),
+  );
+  const load = createKnownAssetsLoader(fetchAssets, 10);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
+  // Every later report shares the one settled result: no new read and no
+  // new handler on the stalled one.
+  const first = load();
+  for (let index = 0; index < 5; index += 1) {
+    expect(load()).toBe(first);
+    expect((await load()).size).toBe(0);
+  }
+  expect(fetchAssets).toHaveBeenCalledTimes(1);
+});
+
+test('a body past its byte cap is the empty set and is cancelled', async () => {
+  let cancelled = false;
+  const chunk = new TextEncoder().encode(' '.repeat(64 * 1024));
+  const load = createKnownAssetsLoader(
+    async () =>
+      new Response(
+        new ReadableStream({
+          pull(controller) {
+            controller.enqueue(chunk);
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+  );
+  expect((await load()).size).toBe(0);
+  expect(cancelled).toBe(true);
+});
