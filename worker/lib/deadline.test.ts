@@ -57,14 +57,19 @@ describe('withDeadline', () => {
     await expect(result).rejects.toBe(reason);
   });
 
-  test('a client already gone rejects at once with its reason', async () => {
+  test('a client already gone rejects at once with its reason, calling no upstream', async () => {
     const client = new AbortController();
     const reason = new DOMException('Client gone', 'AbortError');
     client.abort(reason);
+    let called = false;
 
     await expect(
-      withDeadline({ ...github, signal: client.signal }, hang),
+      withDeadline({ ...github, signal: client.signal }, () => {
+        called = true;
+        return hang();
+      }),
     ).rejects.toBe(reason);
+    expect(called).toBe(false);
   });
 
   test('an upstream failure before the deadline passes through unchanged', async () => {

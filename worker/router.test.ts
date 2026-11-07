@@ -211,6 +211,39 @@ test('config failures are 500 and provider APICallError is 502', async () => {
   );
 });
 
+test('a provider that stays rate-limited through the retry is a 502 logged as provider with its status', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const model = createMockJsonModel({});
+  let attempts = 0;
+  model.doGenerate = async () => {
+    attempts += 1;
+    throw new APICallError({
+      message: 'rate limited',
+      url: 'https://provider.example',
+      requestBodyValues: {},
+      statusCode: 429,
+      // Keeps the SDK's backoff short so the test stays fast.
+      responseHeaders: { 'retry-after-ms': '1' },
+      isRetryable: true,
+    });
+  };
+  await assertResponse(
+    await createApiRouter(env, { resolveModel: () => model }).fetch(
+      contractRequest('/api/summaries'),
+    ),
+    502,
+  );
+  expect(attempts).toBe(2);
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      category: 'provider',
+      providerStatus: 429,
+      isRetryable: true,
+      attempts: 2,
+    }),
+  );
+});
+
 test('a generation route answers 504 when the model never answers within the deadline', async () => {
   const log = spyOn(console, 'error').mockImplementation(() => {});
   jest.useFakeTimers();

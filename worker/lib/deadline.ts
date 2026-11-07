@@ -44,6 +44,8 @@ export async function withDeadline<T>(
   merged.addEventListener('abort', onAbort, { once: true });
   if (merged.aborted) onAbort();
   try {
+    // A client already gone gets no upstream call at all.
+    if (merged.aborted) return await aborted;
     return await Promise.race([run(merged), aborted]);
   } catch (error) {
     // Once aborted, the abort explains the failure, whatever the upstream threw.

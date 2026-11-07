@@ -1,5 +1,4 @@
 import {
-  type FinishReason,
   generateText,
   type LanguageModelUsage,
   type LanguageModel,
@@ -87,11 +86,14 @@ async function generateSection<OUTPUT>({
       signal: abortSignal,
     },
     async (signal) => {
-      let finished:
-        | { finishReason: FinishReason; usage: LanguageModelUsage }
-        | undefined;
+      const tokenLimit = (
+        usage: LanguageModelUsage | undefined,
+        cause: unknown,
+      ) =>
+        new SectionTokenLimitError(maxOutputTokens, usage?.outputTokens, cause);
+      let result;
       try {
-        const result = await generateText({
+        result = await generateText({
           model,
           abortSignal: signal,
           maxRetries: SECTION_GENERATION_MAX_RETRIES,
@@ -100,23 +102,26 @@ async function generateSection<OUTPUT>({
           prompt,
           instructions,
         });
-        finished = result;
-        return result.output;
       } catch (error) {
-        // The SDK reports the limit two ways: a parse failure while generating
-        // text (NoObjectGeneratedError), or, with no text, from `output`.
-        const stopped = NoObjectGeneratedError.isInstance(error)
-          ? error
-          : finished;
-        if (stopped?.finishReason === 'length') {
-          throw new SectionTokenLimitError(
-            maxOutputTokens,
-            stopped.usage?.outputTokens,
-            error,
-          );
+        // Text cut short at the limit fails to parse inside generateText.
+        if (
+          NoObjectGeneratedError.isInstance(error) &&
+          error.finishReason === 'length'
+        ) {
+          throw tokenLimit(error.usage, error);
         }
         throw error;
       }
+      // Stopping at the limit with no text at all skips parsing, and reading
+      // `output` throws. Output that parsed and validated is complete: use it.
+      if (result.finishReason === 'length') {
+        try {
+          return result.output;
+        } catch (error) {
+          throw tokenLimit(result.usage, error);
+        }
+      }
+      return result.output;
     },
   );
 }

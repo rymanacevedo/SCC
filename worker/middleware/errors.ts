@@ -1,4 +1,4 @@
-import { APICallError } from 'ai';
+import { APICallError, RetryError } from 'ai';
 import type { Middleware } from 'remix/router';
 import { isClientAbort } from '../lib/abort.ts';
 import { UpstreamTimeoutError } from '../lib/deadline.ts';
@@ -104,14 +104,21 @@ function classifyRouteError(
       },
     };
   }
-  if (APICallError.isInstance(error)) {
+  // Once the retry budget is spent the SDK wraps the provider's failures in a
+  // RetryError; classify the last one, so a 429 that outlasts the retry still
+  // counts as a provider failure with its status.
+  const providerError = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(providerError)) {
     return {
       category: 'provider',
       status: 502,
       details: {
-        providerStatus: error.statusCode,
-        providerUrl: error.url,
-        isRetryable: error.isRetryable,
+        providerStatus: providerError.statusCode,
+        providerUrl: providerError.url,
+        isRetryable: providerError.isRetryable,
+        ...(RetryError.isInstance(error)
+          ? { attempts: error.errors.length, retryReason: error.reason }
+          : {}),
       },
     };
   }

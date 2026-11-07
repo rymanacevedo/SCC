@@ -58,6 +58,8 @@ describe.each(sectionGenerators)(
           url: 'https://provider.example',
           requestBodyValues: {},
           statusCode: 503,
+          // Keeps the SDK's backoff short so the test stays fast.
+          responseHeaders: { 'retry-after-ms': '1' },
           isRetryable: true,
         });
       };
