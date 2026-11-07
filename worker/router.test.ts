@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, spyOn, test } from 'bun:test';
+import { afterEach, expect, jest, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
@@ -14,6 +14,7 @@ const env = {
 };
 const originalFetch = globalThis.fetch;
 afterEach(() => {
+  jest.useRealTimers();
   mock.restore();
   globalThis.fetch = originalFetch;
 });
@@ -210,6 +211,105 @@ test('config failures are 500 and provider APICallError is 502', async () => {
   );
 });
 
+test('a provider that stays rate-limited through the retry is a 502 logged as provider with its status', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const model = createMockJsonModel({});
+  let attempts = 0;
+  model.doGenerate = async () => {
+    attempts += 1;
+    throw new APICallError({
+      message: 'rate limited',
+      url: 'https://provider.example',
+      requestBodyValues: {},
+      statusCode: 429,
+      // Keeps the SDK's backoff short so the test stays fast.
+      responseHeaders: { 'retry-after-ms': '1' },
+      isRetryable: true,
+    });
+  };
+  await assertResponse(
+    await createApiRouter(env, { resolveModel: () => model }).fetch(
+      contractRequest('/api/summaries'),
+    ),
+    502,
+  );
+  expect(attempts).toBe(2);
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      category: 'provider',
+      providerStatus: 429,
+      isRetryable: true,
+      attempts: 2,
+    }),
+  );
+});
+
+test('a generation route answers 504 when the model never answers within the deadline', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  jest.useFakeTimers();
+  const model = createMockJsonModel({});
+  const started = Promise.withResolvers<void>();
+  model.doGenerate = () => {
+    started.resolve();
+    return new Promise(() => {});
+  };
+  const response = createApiRouter(env, { resolveModel: () => model }).fetch(
+    contractRequest('/api/skills'),
+  );
+  await started.promise;
+  jest.advanceTimersByTime(45_000);
+  const body = await assertResponse(await response, 504);
+  expect(body.error).toBe('Failed to generate content');
+  expect(log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      route: '/api/skills',
+      category: 'timeout',
+      upstream: 'provider',
+      timeoutMs: 45_000,
+    }),
+  );
+});
+
+test.each([
+  ['truncated JSON', '{"summaries":[{"title":"Dev'],
+  // A reasoning model can spend the whole budget before writing any text.
+  ['no text at all', ''],
+])(
+  'a generation cut off at its output-token limit with %s is a 502 logged as token_limit',
+  async (_case, text) => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    const model = createMockJsonModel({});
+    model.doGenerate = async () => ({
+      content: text ? [{ type: 'text', text }] : [],
+      finishReason: { unified: 'length', raw: 'length' },
+      usage: {
+        inputTokens: {
+          total: 10,
+          noCache: 10,
+          cacheRead: undefined,
+          cacheWrite: undefined,
+        },
+        outputTokens: { total: 6000, text: 6000, reasoning: undefined },
+      },
+      warnings: [],
+    });
+    await assertResponse(
+      await createApiRouter(env, { resolveModel: () => model }).fetch(
+        contractRequest('/api/summaries'),
+      ),
+      502,
+    );
+    expect(log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: '/api/summaries',
+        category: 'token_limit',
+        maxOutputTokens: 6000,
+        outputTokens: 6000,
+      }),
+    );
+  },
+);
+
 const report = {
   timestamp: '2026-10-13T00:00:00.000Z',
   url: 'https://scc.example/summary',
@@ -263,6 +363,27 @@ test('GitHub config failures are 500; HTTP and network failures are 502', async 
       );
       expect(body.error).not.toContain('private detail');
     }
+  }
+});
+
+test('a GitHub call that never answers is a 502 logged as github_timeout, with one attempt', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  jest.useFakeTimers();
+  for (const path of ['/api/errors', '/api/report-issue']) {
+    const hung = Promise.withResolvers<void>();
+    const calls = mock(() => {
+      hung.resolve();
+      return new Promise<Response>(() => {});
+    });
+    globalThis.fetch = calls as unknown as typeof fetch;
+    const response = createApiRouter(env).fetch(contractRequest(path, report));
+    await hung.promise;
+    jest.advanceTimersByTime(10_000);
+    await assertResponse(await response, 502);
+    expect(calls).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenLastCalledWith(
+      expect.objectContaining({ route: path, category: 'github_timeout' }),
+    );
   }
 });
 

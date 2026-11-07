@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
 import {
   createAutoReportedIssue,
   createUserReportedIssue,
@@ -8,6 +8,7 @@ import {
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
+  jest.useRealTimers();
   mock.restore();
   globalThis.fetch = originalFetch;
 });
@@ -129,5 +130,80 @@ describe('GitHub error snippet', () => {
     expect((error as GitHubIssueCreationError).details).toBe(
       body.slice(0, 300),
     );
+  });
+});
+
+describe('GitHub request deadline', () => {
+  const telemetry = {
+    timestamp: '2026-04-27T12:00:00.000Z',
+    url: 'https://example.com/',
+    message: 'Chunk failed',
+  };
+
+  /**
+   * Stubs fetch so calls matching `hangOn` never answer, ignoring their
+   * signal; the rest answer with an empty issue list. Records every call.
+   */
+  function hangingFetch(hangOn: (init?: RequestInit) => boolean) {
+    const calls: RequestInit[] = [];
+    const hung = Promise.withResolvers<void>();
+    globalThis.fetch = mock(async (_input: unknown, init?: RequestInit) => {
+      calls[calls.length] = init ?? {};
+      if (!hangOn(init)) return Response.json([]);
+      hung.resolve();
+      return new Promise<Response>(() => {});
+    }) as unknown as typeof fetch;
+    return { calls, hung: hung.promise };
+  }
+
+  test('a user-reported issue that never answers is aborted at 10s, in one attempt', async () => {
+    jest.useFakeTimers();
+    const github = hangingFetch(() => true);
+    const result = createUserReportedIssue({
+      repo: 'acme/scc',
+      token: 'token-123',
+      payload: { ...telemetry, description: 'Broken' },
+    }).catch((caught: unknown) => caught);
+
+    await github.hung;
+    jest.advanceTimersByTime(10_000);
+    const error = await result;
+
+    expect(error).toBeInstanceOf(GitHubIssueCreationError);
+    expect((error as GitHubIssueCreationError).kind).toBe('timeout');
+    expect(github.calls).toHaveLength(1);
+    expect(github.calls[0]?.signal?.aborted).toBe(true);
+  });
+
+  test('a deduplication search that never answers times out without creating an issue', async () => {
+    jest.useFakeTimers();
+    const github = hangingFetch((init) => init?.method === 'GET');
+    const result = createAutoReportedIssue({
+      repo: 'acme/scc',
+      token: 'token-123',
+      payload: telemetry,
+    }).catch((caught: unknown) => caught);
+
+    await github.hung;
+    jest.advanceTimersByTime(10_000);
+
+    expect(await result).toMatchObject({ kind: 'timeout' });
+    expect(github.calls.map((init) => init.method)).toEqual(['GET']);
+  });
+
+  test('an auto-reported issue creation that times out is attempted once', async () => {
+    jest.useFakeTimers();
+    const github = hangingFetch((init) => init?.method === 'POST');
+    const result = createAutoReportedIssue({
+      repo: 'acme/scc',
+      token: 'token-123',
+      payload: telemetry,
+    }).catch((caught: unknown) => caught);
+
+    await github.hung;
+    jest.advanceTimersByTime(10_000);
+
+    expect(await result).toMatchObject({ kind: 'timeout' });
+    expect(github.calls.map((init) => init.method)).toEqual(['GET', 'POST']);
   });
 });
