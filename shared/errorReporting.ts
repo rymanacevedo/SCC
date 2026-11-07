@@ -43,6 +43,23 @@ export const userIssueReportSchema = z.object({
   url: z.url().check(z.maxLength(REPORT_FIELD_LIMITS.url)),
 });
 
+/** Sums the field limits of one report schema, so callers never repeat its fields. */
+const totalLength = (fields: (keyof typeof REPORT_FIELD_LIMITS)[]) =>
+  fields.reduce((total, field) => total + REPORT_FIELD_LIMITS[field], 0);
+/** The most code units an error telemetry body's strings can hold together. */
+export const ERROR_TELEMETRY_MAX_LENGTH = totalLength([
+  'timestamp',
+  'url',
+  'message',
+  'stackTrace',
+]);
+/** The most code units a user issue report body's strings can hold together. */
+export const USER_ISSUE_REPORT_MAX_LENGTH = totalLength([
+  'timestamp',
+  'url',
+  'description',
+]);
+
 export type ErrorTelemetryPayload = z.infer<typeof errorTelemetrySchema>;
 export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;
 

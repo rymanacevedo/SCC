@@ -5,7 +5,10 @@ import {
   type RequestContext,
 } from 'remix/router';
 import type { z } from 'zod';
-import { REPORT_FIELD_LIMITS } from '../shared/errorReporting.ts';
+import {
+  ERROR_TELEMETRY_MAX_LENGTH,
+  USER_ISSUE_REPORT_MAX_LENGTH,
+} from '../shared/errorReporting.ts';
 import { FLAGS_PATH } from '../shared/flags.ts';
 import {
   generationRequestSchema,
@@ -44,13 +47,9 @@ import {
 import { resolveModel as defaultResolveModel } from './services/model.ts';
 
 // Each route's Body limit follows from the string caps its schema enforces.
-const { timestamp, url, message, stackTrace, description } =
-  REPORT_FIELD_LIMITS;
 const generationBodyLimit = jsonBodyLimit(MAX_PROMPT_LENGTH);
-const errorTelemetryBodyLimit = jsonBodyLimit(
-  timestamp + url + message + stackTrace,
-);
-const userIssueReportBodyLimit = jsonBodyLimit(timestamp + url + description);
+const errorTelemetryBodyLimit = jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH);
+const userIssueReportBodyLimit = jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH);
 
 export function createApiRouter(
   env: object,

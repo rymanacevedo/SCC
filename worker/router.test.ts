@@ -342,7 +342,10 @@ test('each route accepts a body of exactly its limit and refuses one byte over w
         )
       ).error,
     ).toBe('Request body too large');
-    // No Content-Length: the streamed byte count holds.
+    // No Content-Length: the streamed byte count holds on both sides of the limit.
+    const exactChunked = contractRequest(path, {}, { body: streamed(exact) });
+    expect(exactChunked.headers.get('Content-Length')).toBeNull();
+    await assertResponse(await router.fetch(exactChunked), 200);
     const chunked = contractRequest(path, {}, { body: streamed(over) });
     expect(chunked.headers.get('Content-Length')).toBeNull();
     await assertResponse(await router.fetch(chunked), 413);
