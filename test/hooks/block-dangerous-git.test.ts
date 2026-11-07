@@ -23,6 +23,10 @@ const repoConfig = {
     ['alias.p', 'push'],
     ['alias.ship', '!git push origin main'],
     ['alias.st', 'status'],
+    ['alias.pub', 'publish'],
+    ['alias.publish', 'ship'],
+    ['alias.loop1', 'loop2'],
+    ['alias.loop2', 'loop1'],
   ],
 } satisfies Record<string, string[][]>;
 type Where = keyof typeof repoConfig;
@@ -30,14 +34,23 @@ type Where = keyof typeof repoConfig;
 let root: string;
 const dirs = {} as Record<Where, string>;
 
+// Ignore the developer's global and system git config so results do not
+// depend on the machine.
+const env = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
+};
+
 function git(cwd: string, ...args: string[]) {
-  const run = Bun.spawnSync(['git', ...args], { cwd });
+  const run = Bun.spawnSync(['git', ...args], { cwd, env });
   if (run.exitCode !== 0) throw new Error(run.stderr.toString());
 }
 
 function runHook(command: string, cwd: string) {
   const run = Bun.spawnSync(['bash', hook], {
     stdin: Buffer.from(JSON.stringify({ tool_input: { command }, cwd })),
+    env,
   });
   return run.exitCode;
 }
@@ -84,6 +97,13 @@ const allowed: [string, Where][] = [
   ['git status && git log --oneline -3', 'main'],
   ['git commit -m "allow pushes"', 'main'],
   ['git st', 'aliased'],
+  ['git log -- p', 'aliased'],
+  ['git loop1', 'aliased'],
+  ['git -C /tmp status', 'main'],
+  ['git --no-pager log -1', 'main'],
+  ['git --git-dir=.git status', 'main'],
+  ['git commit -m "$(cat msg.txt)"', 'main'],
+  ['which git', 'main'],
 ];
 
 const blocked: [string, Where][] = [
@@ -157,6 +177,19 @@ const blocked: [string, Where][] = [
   ['git p origin feat', 'aliased'],
   ['git ship', 'aliased'],
   ['git -c alias.q=push q origin feat', 'feature'],
+  ['git pub', 'aliased'],
+  ['git publish', 'aliased'],
+  ['git -c alias.q=publish q', 'feature'],
+  ['GIT_CONFIG_COUNT=1 git q', 'feature'],
+  // Spellings of push that the shell assembles.
+  ["git pu''sh origin main", 'feature'],
+  ['git pu\\sh origin main', 'feature'],
+  ['git "push" origin main', 'feature'],
+  ['g\\it push origin main', 'feature'],
+  ['P=pu; git ${P}sh origin main', 'feature'],
+  ['git $(printf push) origin main', 'feature'],
+  ['git `echo push` origin main', 'feature'],
+  ['git --unknown-opt HEAD p', 'feature'],
   // Unchanged destructive patterns.
   ['git reset --hard', 'feature'],
   ['git clean -fd', 'feature'],
