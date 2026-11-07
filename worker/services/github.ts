@@ -8,6 +8,7 @@ import {
 import { truncateText } from '../../shared/text.ts';
 import { readBoundedText } from '../lib/body.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
+import { fencedBlock, inlineCode } from '../lib/markdown.ts';
 
 export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
@@ -69,6 +70,11 @@ export async function issueFingerprint(payload: ErrorTelemetry) {
   ).join('');
 }
 
+/**
+ * The issue body for auto-reported telemetry. The URL, message and stack trace
+ * come from the browser, so they render as code and cannot fake issue
+ * structure; the fingerprint line stays outside, where deduplication finds it.
+ */
 export function buildAutoReportedIssueBody(
   payload: ErrorTelemetry,
   fingerprint: string,
@@ -78,25 +84,27 @@ export function buildAutoReportedIssueBody(
     '',
     `${FINGERPRINT_LABEL}${fingerprint}`,
     `- Timestamp: ${payload.timestamp}`,
-    `- URL: ${payload.url}`,
-    `- Message: ${payload.message}`,
+    `- URL: ${inlineCode(payload.url)}`,
+    `- Message: ${inlineCode(payload.message)}`,
     '',
     '## Stack trace',
-    '```',
-    payload.stackTrace ?? 'No stack trace available.',
-    '```',
+    fencedBlock(payload.stackTrace ?? 'No stack trace available.'),
   ].join('\n');
 }
 
+/**
+ * The issue body for a user report. The description and URL are the
+ * reporter's text, so they render as code and cannot fake issue structure.
+ */
 export function buildUserReportedIssueBody(payload: UserIssueReport) {
   return [
     '# User-reported issue',
     '',
     `- Timestamp: ${payload.timestamp}`,
-    `- URL: ${payload.url}`,
+    `- URL: ${inlineCode(payload.url)}`,
     '',
     '## Description',
-    payload.description,
+    fencedBlock(payload.description),
   ].join('\n');
 }
 
