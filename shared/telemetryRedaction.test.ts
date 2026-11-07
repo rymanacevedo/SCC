@@ -49,6 +49,33 @@ describe('toPathOnlyUrl', () => {
       ),
     ).toBe('https://scc.example/node_modules/@scope/pkg/main-abc123.js');
   });
+
+  test('a segment or host with 5+ digits in total becomes [redacted], however separated', () => {
+    for (const [input, expected] of [
+      [
+        'https://scc.example/call/555-123-4567',
+        'https://scc.example/call/[redacted]',
+      ],
+      [
+        'https://scc.example/call/555.123.4567/x',
+        'https://scc.example/call/[redacted]/x',
+      ],
+      [
+        'https://scc.example/call/(555)123-4567',
+        'https://scc.example/call/[redacted]',
+      ],
+      ['https://scc.example/u/1a2b3c4d5e', 'https://scc.example/u/[redacted]'],
+      ['https://555-123-4567.example/x', REDACTED],
+    ])
+      expect(toPathOnlyUrl(input)).toBe(expected);
+    // Content-hashed asset names with fewer than 5 digits survive.
+    expect(toPathOnlyUrl('https://scc.example/assets/index-C4kL9x.js')).toBe(
+      'https://scc.example/assets/index-C4kL9x.js',
+    );
+    expect(toPathOnlyUrl('http://localhost:5173/a')).toBe(
+      'http://localhost:5173/a',
+    );
+  });
 });
 
 describe('redactTelemetryText keeps safe shapes', () => {
@@ -56,7 +83,6 @@ describe('redactTelemetryText keeps safe shapes', () => {
     for (const message of [
       "Cannot read properties of undefined (reading 'name')",
       'Failed to fetch',
-      'Unexpected token \'<\', "<!DOCTYPE "... is not valid JSON',
       'Request failed with status 502',
       'TypeError: x.y is not a function',
       'NetworkError when attempting to fetch resource.',
@@ -78,6 +104,32 @@ describe('redactTelemetryText keeps safe shapes', () => {
     expect(redactTelemetryText('see (https://scc.example/x?y=1).')).toBe(
       'see (https://scc.example/x).',
     );
+  });
+});
+
+describe('redactTelemetryText punctuation', () => {
+  test('only short ordinary punctuation, or a run of one mark, is a safe shape', () => {
+    const kept = '- [ ] task, ## Heading ``` "…" (x)! — e.g.? … ✓✓✓✓';
+    expect(redactTelemetryText(kept)).toBe(kept);
+    for (const [input, expected] of [
+      ['a !@#$%^&*() b', 'a [redacted] b'],
+      ['a $%^ b', 'a [redacted] b'],
+      ['a &*+= b', 'a [redacted] b'],
+      ['a ~|\\ b', 'a [redacted] b'],
+    ])
+      expect(redactTelemetryText(input)).toBe(expected);
+  });
+
+  test('after a credential word the first value token goes, punctuation included', () => {
+    for (const [input, expected] of [
+      ['password: !@#$%^&*()', 'password: [redacted]'],
+      ['password !!!', 'password [redacted]'],
+      ['password -> ...', 'password -> [redacted]'],
+      ['password := ;', 'password := [redacted]'],
+      ['secret " hunter two " next', 'secret " [redacted] next'],
+      ['token: ?', 'token: [redacted]'],
+    ])
+      expect(redactTelemetryText(input)).toBe(expected);
   });
 });
 
@@ -103,6 +155,12 @@ describe('redactTelemetryText replaces everything else', () => {
       [`letters ${'abcdefghij'.repeat(5)}`, 'letters [redacted]'],
       ['jwt eyJhbGciOiJub25lIn0.eyJmIjoxfQ.ZmFrZQ', 'jwt [redacted]'],
       ['tel:+15551234567', '[redacted]'],
+      ['call 555.123.4567 now', 'call [redacted] now'],
+      ['call (555)123-4567 now', 'call [redacted] now'],
+      [
+        'see https://scc.example/call/555-123-4567 now',
+        'see https://scc.example/call/[redacted] now',
+      ],
       ['ftp://u:p@x.example/a', '[redacted]'],
     ];
     for (const [input, expected] of cases)
@@ -151,9 +209,12 @@ describe('redactTelemetryText replaces everything else', () => {
     ];
     for (const [input, expected] of cases)
       expect(redactTelemetryText(input)).toBe(expected);
-    expect(redactTelemetryText("Unexpected token '<'")).toBe(
-      "Unexpected token '<'",
-    );
+    // The first token after a credential word goes, whatever its shape.
+    expect(
+      redactTelemetryText(
+        'Unexpected token \'<\', "<!DOCTYPE "... is not valid JSON',
+      ),
+    ).toBe('Unexpected token [redacted] "<!DOCTYPE "... is not valid JSON');
   });
 
   test('is linear: each adversarial input stays well inside its budget', () => {

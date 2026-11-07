@@ -30,7 +30,10 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   expect(JSON.parse(bodies[0] ?? '{}')).toEqual({
     url: 'https://scc.example/info',
     message: error.message,
-    stackTrace: error.stack,
+    // A real stack, as canonical frames; the checkout path may be redacted.
+    stackTrace: expect.stringMatching(
+      /^Error: Page failed\n    at <anonymous> \(\S+error-reporting\.test\.ts:\d+:\d+\)/,
+    ),
     timestamp: expect.any(String),
   });
   expect(JSON.stringify(bodies)).not.toContain('Private');

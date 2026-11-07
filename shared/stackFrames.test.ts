@@ -70,6 +70,23 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
+  test('a file path segment with 5+ digits in total becomes [redacted]', () => {
+    const stack = [
+      'Error: Broken',
+      '    at call (https://scc.example/call/555-123-4567/a.js:1:2)',
+      '    at call (/srv/users/555.123.4567/a.js:3:4)',
+      '    at main (https://scc.example/assets/index-C4kL9x.js:5:6)',
+    ].join('\n');
+    expect(sanitizeStackTrace(stack, 8_000)).toBe(
+      [
+        'Error: Broken',
+        '    at call (https://scc.example/call/[redacted]/a.js:1:2)',
+        '    at call (/srv/users/[redacted]/a.js:3:4)',
+        '    at main (https://scc.example/assets/index-C4kL9x.js:5:6)',
+      ].join('\n'),
+    );
+  });
+
   test('an over-long stack is cut at a frame boundary with a marker', () => {
     const frame = '    at frame (https://scc.example/a.js:1:2)';
     const sanitized = sanitizeStackTrace(

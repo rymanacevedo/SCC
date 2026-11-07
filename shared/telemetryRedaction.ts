@@ -16,17 +16,26 @@ export const TRUNCATED = '… [truncated]';
 export const SANITIZE_INPUT_FACTOR = 4;
 const WHITESPACE = /\s/;
 
-// A URL path segment: a plain file or directory name, `@scope` allowed, no
-// run of 5+ digits (ids, phone numbers), at most 64 characters.
+// A URL path segment: a plain file or directory name, `@scope` allowed, at
+// most 64 characters.
 const SAFE_SEGMENT = /^@?[\w.~+()[\]-]{1,64}$/;
-const DIGIT_RUN = /\d{5}/;
+// Five digits, however separated, may be a phone number or an id:
+// `555-123-4567`, `555.123.4567`, `1a2b3c4d5e`.
+const DIGIT = /\d/g;
+const MAX_DIGITS = 4;
+
+/** True when `value` holds more digits in total than a short number may. */
+export function hasTooManyDigits(value: string): boolean {
+  return (value.match(DIGIT)?.length ?? 0) > MAX_DIGITS;
+}
 
 /** Keeps a path's plain segments; any other segment becomes `[redacted]`. */
 export function sanitizePathSegments(path: string, separator: RegExp): string {
   return path
     .split(separator)
     .map((segment) =>
-      segment === '' || (SAFE_SEGMENT.test(segment) && !DIGIT_RUN.test(segment))
+      segment === '' ||
+      (SAFE_SEGMENT.test(segment) && !hasTooManyDigits(segment))
         ? segment
         : REDACTED,
     )
@@ -45,6 +54,8 @@ export function toPathOnlyUrl(value: string): string {
     return REDACTED;
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return REDACTED;
+  // A host can carry a phone number too (`555-123-4567.example`).
+  if (hasTooManyDigits(url.hostname)) return REDACTED;
   return `${url.origin}${sanitizePathSegments(url.pathname, /\//)}`;
 }
 
@@ -54,7 +65,15 @@ const TRAILING_WRAPPERS = new Set(')]}>"\'`.,:;!?…');
 // Kept after a redacted token, so sentences still read.
 const SENTENCE_PUNCTUATION = /[.,;:!?…]+$/;
 // The safe core shapes.
-const PUNCTUATION_ONLY = /^[\p{P}\p{S}]{1,16}$/u;
+// Punctuation is safe only as short ordinary punctuation (`'<',`, `"…"`,
+// `- [ ]`) or a run of one mark (`##`, `\`\`\``, `...`). A mixed symbol run
+// such as `!@#$%^&*()` can be a password, so it is redacted.
+const ORDINARY_PUNCTUATION = /^[.,;:!?()[\]{}<>'"`\-–—…/]{1,4}$/u;
+const REPEATED_MARK = /^([\p{P}\p{S}])\1{0,15}$/u;
+
+function isSafePunctuation(raw: string): boolean {
+  return ORDINARY_PUNCTUATION.test(raw) || REPEATED_MARK.test(raw);
+}
 const WORD = /^\p{L}+(?:['’-]\p{L}+)*$/u;
 const WORD_MAX = 24;
 const NUMBER = /^\d{1,4}$/;
@@ -111,7 +130,9 @@ const PLAIN_NAME = /^[a-z][a-z_-]{0,63}$/;
 // Auth schemes: after `Authorization: bearer` the credential is next.
 const AUTH_SCHEMES = new Set(['basic', 'bearer', 'digest', 'token']);
 // A separator written as its own token keeps the credential context.
-const SEPARATOR_TOKENS = new Set([':', '=', '-', '–', '—', '=>', ':=']);
+const SEPARATOR_TOKENS = new Set([':', '=', ':=', '->', '=>', '-', '–', '—']);
+// An opening quote alone after a credential word opens its quoted value.
+const LONE_QUOTES = new Set(['"', "'"]);
 
 /** `password`, `Password:`, `api_key=`, `x-api-key:` and `set-cookie` count. */
 function isCredentialName(value: string): boolean {
@@ -141,7 +162,7 @@ function openedQuote(value: string): string | undefined {
 
 /** The safe rendering of a token, or undefined when it must be redacted. */
 function renderSafe({ leading, core, trailing, raw }: Token) {
-  if (PUNCTUATION_ONLY.test(raw)) return raw;
+  if (isSafePunctuation(raw)) return raw;
   if (HTTP_URL.test(core)) {
     const url = toPathOnlyUrl(core);
     return url === REDACTED ? undefined : `${leading}${url}${trailing}`;
@@ -191,15 +212,22 @@ export function redactTelemetryText(value: string): string {
     if (joined && isCredentialName(joined[1] ?? '')) {
       rendered.push(undefined);
       quote = openedQuote(`${joined[2] ?? ''}${token.trailing}`);
-    } else if (afterCredential && !PUNCTUATION_ONLY.test(raw)) {
+    } else if (afterCredential && SEPARATOR_TOKENS.has(raw)) {
+      // `password : x`: the separator keeps the context for the value.
+      rendered.push(raw);
+      credentialNext = true;
+    } else if (afterCredential && LONE_QUOTES.has(raw)) {
+      // `secret " two words "`: the value runs to the closing quote.
+      rendered.push(raw);
+      quote = raw;
+    } else if (afterCredential) {
+      // The first value token goes, whatever its shape, punctuation included.
       rendered.push(undefined);
       quote = openedQuote(raw);
       credentialNext = AUTH_SCHEMES.has(token.core.toLowerCase());
     } else {
       rendered.push(renderSafe(token));
-      credentialNext =
-        isCredentialName(token.core) ||
-        (afterCredential && SEPARATOR_TOKENS.has(raw));
+      credentialNext = isCredentialName(token.core);
     }
   }
   // A number beside anything else with a digit is part of a longer number.
@@ -219,8 +247,11 @@ export function redactTelemetryText(value: string): string {
       output += `${separator}${text}`;
       continue;
     }
-    // Redacted: collapse into the previous [redacted] if there is one.
-    const punctuation = SENTENCE_PUNCTUATION.exec(token?.raw ?? '')?.[0] ?? '';
+    // Redacted: collapse into the previous [redacted] if there is one. Its
+    // sentence punctuation stays, unless the token was all punctuation.
+    const punctuation = token?.core
+      ? (SENTENCE_PUNCTUATION.exec(token.raw)?.[0] ?? '')
+      : '';
     const previousRedacted = index > 0 && rendered[index - 1] === undefined;
     if (previousRedacted)
       output = `${output.replace(/[.,;:!?…]*$/, '')}${punctuation}`;

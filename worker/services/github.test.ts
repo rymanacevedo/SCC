@@ -244,6 +244,7 @@ describe('issue bodies sent to GitHub', () => {
         '    at loadPage (https://scc.example/assets/page.js:3:4)',
         '    [frame omitted]',
         '    at fn (https://scc.example/a(b).js:7:8)',
+        '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
         '```',
       ].join('\n'),
     );
@@ -267,6 +268,35 @@ describe('issue bodies sent to GitHub', () => {
       'See https://scc.example/a(b) or [redacted] or call [redacted].',
     );
     expect(body).toContain('Authorization: [redacted]\nCookie: [redacted]');
+    expect(body).toContain(
+      'Then password: [redacted] and https://scc.example/call/[redacted] failed too.',
+    );
+  });
+
+  test('a formatted phone number in a report URL path reaches neither body nor fingerprint', async () => {
+    const sent = captureCreatedIssues();
+    const url = 'https://scc.example/call/555-987-6543';
+    await createAutoReportedIssue({
+      ...auth,
+      payload: { ...chunkFailure, url },
+    });
+    await createUserReportedIssue({
+      ...auth,
+      payload: {
+        timestamp: chunkFailure.timestamp,
+        url,
+        description: 'Broken',
+      },
+    });
+    for (const { title, body } of sent) {
+      expectNoSensitiveValues(`${title}\n${body}`);
+      expect(body).toContain('- URL: `https://scc.example/call/[redacted]`');
+    }
+    expect(
+      buildSanitizedTelemetryFingerprint(
+        sanitizeErrorTelemetry({ ...chunkFailure, url }),
+      ),
+    ).not.toContain('555');
   });
 
   test('over-long fields are cut to their limits with a marker', async () => {

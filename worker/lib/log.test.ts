@@ -48,6 +48,7 @@ test('an Error is logged with redacted name, message, cause and stack', () => {
       '    at loadPage (https://scc.example/assets/page.js:3:4)',
       '    [frame omitted]',
       '    at fn (https://scc.example/a(b).js:7:8)',
+      '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
     ].join('\n'),
   );
 });

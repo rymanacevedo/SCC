@@ -32,6 +32,8 @@ export const SENSITIVE_VALUES = [
   'json-three',
   'ref=',
   '1111111111',
+  '555-987-6543',
+  '!@#$%^&*()',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -68,6 +70,7 @@ export const SENSITIVE_STACK = [
   `    GET ${SENSITIVE_PAREN_URL} for phone:555-765-4321 and tel:+15557654321`,
   `    body ${SENSITIVE_COMPACT_JSON}`,
   '    at fn (https://alice:hunter2@scc.example/a(b).js?token=abc123#fragment:7:8)',
+  '    at dial (https://scc.example/call/555-987-6543/a.js:9:9)',
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [
@@ -79,6 +82,7 @@ export const SENSITIVE_DESCRIPTION = [
   `The page sent ${SENSITIVE_COMPACT_JSON}`,
   'Authorization: bearer short-secret',
   'Cookie: theme=dark; sid=private-value; b=second-cookie',
+  'Then password: !@#$%^&*() and https://scc.example/call/555-987-6543 failed too.',
 ].join('\n');
 
 export function expectNoSensitiveValues(output: string) {
