@@ -263,3 +263,19 @@ test('GitHub config failures are 500; HTTP and network failures are 502', async 
     }
   }
 });
+
+test('GET /api/flags returns every known flag and rejects other methods', async () => {
+  const router = createApiRouter({});
+  const body = await assertResponse(
+    await router.fetch(contractRequest('/api/flags', {}, { method: 'GET' })),
+    200,
+  );
+  expect(body).toEqual({ flags: {} });
+  for (const method of ['POST', 'PUT', 'OPTIONS']) {
+    const response = await router.fetch(
+      contractRequest('/api/flags', {}, { method }),
+    );
+    expect(response.headers.get('Allow')).toBe('GET');
+    await assertResponse(response, 405);
+  }
+});
