@@ -90,8 +90,13 @@ test('a fetch that ignores the abort holds the only read: reports get the empty 
   const load = createKnownAssetsLoader(fetchAssets, 10);
   expect((await load()).size).toBe(0);
   expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
-  for (let index = 0; index < 5; index += 1)
+  // Every later report shares the one settled result: no new read and no
+  // new handler on the stalled one.
+  const first = load();
+  for (let index = 0; index < 5; index += 1) {
+    expect(load()).toBe(first);
     expect((await load()).size).toBe(0);
+  }
   expect(fetchAssets).toHaveBeenCalledTimes(1);
 });
 

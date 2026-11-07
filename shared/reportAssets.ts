@@ -65,48 +65,41 @@ export type ReportAssetsFetch = (signal: AbortSignal) => Promise<Response>;
  */
 export const REPORT_ASSETS_TIMEOUT_MS = 5_000;
 
-/** One read of the list, and the deadline it is held to. */
-type Attempt = {
-  read: Promise<ReadonlySet<string> | undefined>;
-  deadline: Promise<undefined>;
-};
-
 /**
  * The asset paths the client build published (`report-assets.json`), read
  * on first use and reused after. Anything but a JSON list of asset paths (no
  * fetcher, a failed fetch, a 404, the SPA fallback's `index.html`, invalid
  * JSON, a body past its byte cap, a list of the wrong shape, a read past
  * `timeoutMs`) is the empty set, so every asset file is redacted. A failure
- * is not reused: the next report tries again. At most one read runs at a
- * time: while a read the deadline cut off has not yet ended, a report gets
- * the empty set at once rather than starting another.
+ * is not reused: once the read has ended, the next report tries again. At
+ * most one read runs at a time, and every report shares its one result: while
+ * a read the deadline cut off has not yet ended, a report gets that settled
+ * empty set at once, starting no read and adding nothing to the stalled one.
  */
 export function createKnownAssetsLoader(
   fetchAssets: ReportAssetsFetch | undefined,
   timeoutMs = REPORT_ASSETS_TIMEOUT_MS,
 ): () => Promise<ReadonlySet<string>> {
-  let known: ReadonlySet<string> | undefined;
-  let attempt: Attempt | undefined;
-  return async () => {
-    if (known) return known;
-    if (!fetchAssets) return NO_ASSETS;
-    attempt ??= startAttempt(fetchAssets, timeoutMs, (result) => {
-      known = result;
-      attempt = undefined;
+  let loaded: Promise<ReadonlySet<string>> | undefined;
+  return () => {
+    if (!fetchAssets) return Promise.resolve(NO_ASSETS);
+    loaded ??= readWithin(fetchAssets, timeoutMs, (known) => {
+      if (known === undefined) loaded = undefined;
     });
-    return (await Promise.race([attempt.read, attempt.deadline])) ?? NO_ASSETS;
+    return loaded;
   };
 }
 
 /**
- * Starts one read under its own deadline, which aborts the read's signal.
- * `settled` runs once the read itself ends, success or not.
+ * One read under its own deadline, which aborts the read's signal: the list,
+ * or the empty set at the deadline or on any failure. `settled` runs once
+ * the read itself ends, success or not, which may be after the deadline.
  */
-function startAttempt(
+function readWithin(
   fetchAssets: ReportAssetsFetch,
   timeoutMs: number,
-  settled: (result: ReadonlySet<string> | undefined) => void,
-): Attempt {
+  settled: (known: ReadonlySet<string> | undefined) => void,
+): Promise<ReadonlySet<string>> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<undefined>((resolve) => {
@@ -115,14 +108,14 @@ function startAttempt(
       resolve(undefined);
     }, timeoutMs);
   });
-  const read = readKnownAssets(fetchAssets, controller.signal).then(
-    (result) => {
-      clearTimeout(timer);
-      settled(result);
-      return result;
-    },
-  );
-  return { read, deadline };
+  const read = readKnownAssets(fetchAssets, controller.signal).then((known) => {
+    clearTimeout(timer);
+    settled(known);
+    return known;
+  });
+  // Raced once per read: callers share this one promise, so a read that
+  // never settles holds one handler, however many reports wait.
+  return Promise.race([read, deadline]).then((known) => known ?? NO_ASSETS);
 }
 
 /** The list, or undefined for any failure; never rejects. */

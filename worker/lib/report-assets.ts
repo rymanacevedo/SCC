@@ -9,7 +9,8 @@ type AssetsFetcher = {
   fetch(input: string, init: { signal: AbortSignal }): Promise<Response>;
 };
 
-// Any origin reaches the binding; the synthetic one names no real host.
+// Any origin reaches the binding. This reuses the synthetic report origin,
+// which names no real host; the binding ignores the origin either way.
 const REPORT_ASSETS_URL = `${REPORT_ORIGIN}/${REPORT_ASSETS_FILE}`;
 
 function isAssetsFetcher(value: unknown): value is AssetsFetcher {
