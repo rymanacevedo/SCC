@@ -1,21 +1,16 @@
+import { flagsBinding, readFlags } from './flags.ts';
 // The one route exposing the resolved flag set: GET /api/flags returns
 // {"flags": {...}} with every known flag. Register it in the Worker's API
 // router; it needs no request body and reveals nothing beyond the flag names.
-import { FLAGS_PATH } from '../shared/flags.ts';
-import { type FlagsEnv, readFlags } from './flags.ts';
-
-export const FLAGS_ROUTE = FLAGS_PATH;
+import { apiError } from './lib/response.ts';
 
 export async function handleFlagsRequest(
   request: Request,
-  env: FlagsEnv,
+  env: object,
 ): Promise<Response> {
   if (request.method !== 'GET') {
-    return Response.json(
-      { error: 'Method not allowed' },
-      { status: 405, headers: { Allow: 'GET' } },
-    );
+    return apiError(405, 'Method not allowed', undefined, { Allow: 'GET' });
   }
-  const flags = await readFlags(env);
+  const flags = await readFlags({ FLAGS: flagsBinding(env) });
   return Response.json({ flags }, { headers: { 'Cache-Control': 'no-store' } });
 }

@@ -65,3 +65,23 @@ test('a failed load settles to the defaults and the next load retries', async ()
   expect(client.current()).toEqual({ alpha: true, beta: false });
   expect(calls).toHaveLength(3);
 });
+
+test('a throwing subscriber neither corrupts the loaded set nor stops the others', async () => {
+  const { fetcher } = stubFetch([
+    () => Promise.resolve(Response.json({ flags: { alpha: true } })),
+  ]);
+  const client = createFlagClient({ defaults, fetcher });
+  const seen: Array<Record<string, boolean>> = [];
+  let throws = 0;
+  client.subscribe(() => {
+    throws += 1;
+    throw new Error('listener failed');
+  });
+  client.subscribe((set) => seen.push(set));
+
+  const loaded = await client.load();
+  expect(loaded).toEqual({ alpha: true, beta: false });
+  expect(client.current()).toBe(loaded);
+  expect(seen).toEqual([loaded]);
+  expect(throws).toBe(1);
+});

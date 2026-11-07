@@ -9,7 +9,7 @@ locally, so a flip is live on the next request and needs no deploy.
 | schema: every flag and its default (all off) | `shared/flags.ts` |
 | reader over the `FLAGS` binding, no cache | `worker/flags.ts` |
 | route exposing the resolved set | `worker/flags-route.ts` (`GET /api/flags`) |
-| client reader, defaults on failure | `app/flags.ts` (`loadFlags()`, `getFlags()`, `subscribeFlags()`) |
+| client reader, defaults on failure | `app/flags.ts` (`flags.load()`, `flags.current()`, `flags.subscribe()`) |
 
 The app id (`APP_ID` below) is the `app_id` on the `FLAGS` entry of the
 `flagship` array in `wrangler.jsonc`.
