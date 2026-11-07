@@ -75,10 +75,15 @@ const allowed: [string, Where][] = [
   ['git status', 'main'],
   ['GIT_OPTIONAL_LOCKS=0 git push origin feat', 'main'],
   ['env git push origin feat', 'main'],
-  ['git push --no-verify -uv origin feat', 'main'],
+  ['git push -uv origin feat', 'main'],
   ['git push -n origin feat', 'main'],
   ['git -c push.default=current push', 'feature'],
   ['git -c push.default=simple push origin feat', 'main'],
+  // Earlier segments that are resolved precisely.
+  ['cd {feature} && git push', 'main'],
+  ['cd ../feature && git push origin HEAD', 'main'],
+  ['git checkout -b feat2 && git push -u origin feat2', 'main'],
+  ['git -c alias.st=status st', 'main'],
 ];
 
 const blocked: [string, Where][] = [
@@ -136,6 +141,28 @@ const blocked: [string, Where][] = [
   ['git push --no-verify --forc origin feat', 'feature'],
   ['git push -nf origin feat', 'feature'],
   ['git push --unknown origin feat', 'feature'],
+  ['git push --no-verify origin feat', 'feature'],
+  // Abbreviated destination refs.
+  ['git push origin heads/main', 'feature'],
+  ['git push origin feat:heads/main', 'feature'],
+  // Earlier segments change the directory or branch the push runs in.
+  ['git switch main && git push origin HEAD', 'feature'],
+  ['git checkout main && git push', 'feature'],
+  ['cd {main} && git push', 'feature'],
+  ['cd {main} && git push origin HEAD', 'feature'],
+  ['cd ../repo && git push', 'feature'],
+  ['cd $HOME && git push origin feat', 'feature'],
+  ['cd /nonexistent; git push origin feat', 'feature'],
+  ['popd && git push origin feat', 'feature'],
+  ['env -C {main} git push', 'feature'],
+  // Aliases that expand to push cannot be parsed.
+  ['git -c alias.p=push p origin main', 'feature'],
+  ['git -c alias.p=push p origin feat', 'feature'],
+  ['git -c "alias.p=!git push origin main" p', 'feature'],
+  [
+    'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.p GIT_CONFIG_VALUE_0=push git p origin feat',
+    'feature',
+  ],
   ['git reset --hard', 'feature'],
   ['git clean -fd', 'feature'],
   ['git branch -D feat', 'feature'],

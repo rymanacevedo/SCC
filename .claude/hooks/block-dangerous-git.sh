@@ -8,6 +8,12 @@
 # config (remote.*.push, remote.*.mirror, push.default other than
 # simple/current) because the hook cannot see where those land.
 #
+# Commands run in order, so earlier segments are tracked: `cd`/`pushd` move
+# the directory the push is checked against; an unresolvable directory
+# change, `popd` or `env -C` blocks any later push; `git switch`/`checkout`
+# blocks a later push that depends on the current branch (bare, HEAD, @).
+# Git aliases that expand to push are blocked, since they cannot be parsed.
+#
 # Tests: test/hooks/block-dangerous-git.test.ts (bun test skips dot-dirs,
 # so the test cannot sit beside this file).
 
@@ -49,8 +55,14 @@ SUBCOMMAND_AT=0 # index in WORDS of the subcommand
 REMOTE=""       # explicit remote (positional or --repo), may be empty
 REFSPECS=()     # explicit refspecs
 
+# --- Per-command state -----------------------------------------------------
+# Carried across segments in order by the main loop and track_context.
+# CWD (above) is the directory later segments run in.
+CWD_UNKNOWN=0    # a directory change could not be resolved
+BRANCH_CHANGED=0 # an earlier segment may have switched branches
+
 is_protected() {
-  echo "$1" | grep -qxE "$PROTECTED_BRANCHES"
+  echo "${1##*/}" | grep -qxE "$PROTECTED_BRANCHES"
 }
 
 # Runs git against the repo the push targets: same env prefix, global
@@ -91,7 +103,7 @@ parse_push_args() {
     case "$w" in
       --) ;;
       --set-upstream|--quiet|--verbose|--progress|--no-progress|--verify|\
-      --no-verify|--follow-tags|--no-follow-tags|--atomic|--no-atomic|\
+      --follow-tags|--no-follow-tags|--atomic|--no-atomic|\
       --dry-run|--porcelain|--thin|--no-thin|--signed|--signed=*|--no-signed|\
       --ipv4|--ipv6|--recurse-submodules=*|--no-recurse-submodules|\
       --push-option=*) ;;
@@ -146,8 +158,8 @@ check_refspec() {
     *'*'*) block "uses wildcard refspec '$ref'" ;;
   esac
   dest=${ref##*:}
-  dest=${dest#refs/heads/}
   if [ "$dest" = "HEAD" ] || [ "$dest" = "@" ]; then
+    [ "$BRANCH_CHANGED" -eq 1 ] && block "pushes HEAD after an earlier branch switch in the same command"
     dest=$(current_branch)
     [ -z "$dest" ] && block "pushes a detached HEAD"
   fi
@@ -159,11 +171,30 @@ check_refspec() {
 # check_invocation <git-index>: checks one `git ...` invocation in WORDS.
 check_invocation() {
   parse_globals "$1"
-  [ "${WORDS[$SUBCOMMAND_AT]}" = "push" ] || return 0
+  local sub=${WORDS[$SUBCOMMAND_AT]}
+  case "$sub" in
+    switch|checkout) BRANCH_CHANGED=1; return 0 ;;
+    push) ;;
+    "") return 0 ;;
+    *)
+      # An alias (from config, -c or GIT_CONFIG_*) that runs push.
+      if target_git config --get "alias.$sub" | grep -qE '(^|[^[:alnum:]_-])push([^[:alnum:]_-]|$)'; then
+        block "uses git alias '$sub', which expands to a push"
+      fi
+      return 0 ;;
+  esac
+
+  [ "$CWD_UNKNOWN" -eq 1 ] && block "pushes after a directory change the hook cannot resolve"
+  for w in "${WORDS[@]:0:$1}"; do
+    case "$w" in
+      -C|--chdir|--chdir=*) block "pushes under 'env -C', which the hook cannot resolve" ;;
+    esac
+  done
   parse_push_args
   check_push_config
 
   if [ "${#REFSPECS[@]}" -eq 0 ]; then
+    [ "$BRANCH_CHANGED" -eq 1 ] && block "is a bare push after an earlier branch switch in the same command"
     # With push.default simple/current a bare push sends the current branch
     # to the same name.
     local branch
@@ -183,9 +214,29 @@ check_invocation() {
 # substitution. Quotes are dropped so `sh -c "git push ..."` is still seen.
 SEGMENTS=$(echo "$COMMAND" | tr -d "\"'" | sed -E 's/(&|\||;|\(|\)|\{|\}|`|\$)/\n/g')
 
+# track_context: apply a cd/pushd/popd segment to CWD.
+track_context() {
+  local i=0 dir
+  while [[ "${WORDS[$i]}" == *=* ]]; do i=$((i + 1)); done
+  case "${WORDS[$i]}" in
+    cd|pushd)
+      i=$((i + 1))
+      while [[ "${WORDS[$i]}" == -* && "${WORDS[$i]}" != "-" ]]; do i=$((i + 1)); done
+      dir=${WORDS[$i]}
+      case "$dir" in
+        ""|-) CWD_UNKNOWN=1; return ;;
+        "~"|"~/"*) dir=$HOME${dir#\~} ;;
+        /*) ;;
+        *) dir=$CWD/$dir ;;
+      esac
+      if [ -d "$dir" ]; then CWD=$(cd "$dir" && pwd); else CWD_UNKNOWN=1; fi ;;
+    popd|chdir) CWD_UNKNOWN=1 ;;
+  esac
+}
+
 while IFS= read -r segment; do
-  echo "$segment" | grep -qE '(^|[[:space:]])push([[:space:]]|$)' || continue
   read -ra WORDS <<< "$segment"
+  track_context
   ENV_ARGS=()
   for idx in "${!WORDS[@]}"; do
     case "${WORDS[$idx]}" in
