@@ -121,11 +121,19 @@ Source: `AGENTS.md`.
 
 Source: the `standard` ruleset on the default branch (repository settings,
 applied through the GitHub API, not a file in this repo) and the `council`
-skill it requires.
+skill it requires. This section describes external configuration; check it
+with `gh api repos/rymanacevedo/SCC/rulesets`, and update it when the ruleset
+changes.
 
 Every PR goes through the same review before it merges, whoever opened it:
 
-- Every PR gets a council round and a security review, run from this repo's attached sandbox with `/council <PR>`, before merge.
-- The `standard` ruleset on the default branch requires both statuses, `council/review` and `security/daybreak`, beside `ci`; a PR cannot merge without them.
-- A PR opened outside a sandbox (by hand from the host, or by another runner) waits, red, until someone runs `/council <PR>` in the attached sandbox.
-- A push that changes the diff needs a new round and a new security review. Merging the base into the branch without changing the diff only re-posts the statuses.
+- Every PR gets a council round and a security review, run from this repo's
+  attached sandbox with `/council <PR>`, before merge.
+- The `standard` ruleset on the default branch requires both statuses,
+  `council/review` and `security/daybreak`, beside `ci`; a PR cannot merge
+  without them.
+- A PR opened outside a sandbox (by hand from the host, or by another runner)
+  waits, red, until someone runs `/council <PR>` in the attached sandbox.
+- A push that changes the diff needs a new round and a new security review.
+  Merging the base into the branch without changing the diff only re-posts
+  the statuses.
