@@ -27,6 +27,12 @@ The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues
 ### Same-origin guard
 The middleware that replaces CORS now that UI and API share one origin: rejects requests marked `Sec-Fetch-Site: cross-site` with 403 and bodies without the `application/json` content type with 415. Absent fetch-site metadata is accepted, including command-line callers. No configuration, no allowed-origin variable.
 
+### Body limit
+The 1 MiB cap on any `/api/*` JSON body (`MAX_JSON_BODY_BYTES`). The Worker reads at most that many bytes and cancels the rest, so a body never has to fit in memory whole. A larger body gets a 413 Error envelope before validation or any model call.
+
+### Client cancellation
+A request whose client disconnected before the response. `request.signal` aborts, the generation route passes that signal to the provider so the call stops, and the Worker entry logs it once as `client_aborted` with a 499. It is not a route failure: the router rethrows the abort reason once the signal fires, and the route error middleware rethrows it rather than log it.
+
 ## Generation architecture
 
 ### Generation seam

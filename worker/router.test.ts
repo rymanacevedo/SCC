@@ -1,5 +1,6 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
+import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
 import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
@@ -317,10 +318,10 @@ test('a client disconnect aborts the provider call', async () => {
     abortSignal?.throwIfAborted();
     throw new Error('provider ignored the abort');
   };
-  // Set after construction: the test DOM's AbortController is not Bun's, so the
-  // Request constructor rejects it. contractRequest attaches `cf` the same way.
-  const request = contractRequest('/api/summaries');
-  Object.defineProperty(request, 'signal', { value: controller.signal });
+  const request = withSignal(
+    contractRequest('/api/summaries'),
+    controller.signal,
+  );
   const error = spyOn(console, 'error').mockImplementation(() => {});
   // The router rethrows the abort; the Worker entry turns it into a 499.
   await expect(

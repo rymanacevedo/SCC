@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from 'bun:test';
+import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
 import { createApiRouter } from './router.ts';
@@ -42,9 +43,10 @@ test('the Worker logs a client disconnect during generation as a cancellation, n
     abortSignal?.throwIfAborted();
     throw new Error('provider ignored the abort');
   };
-  const request = contractRequest('/api/summaries');
-  // The test DOM's AbortController is not Bun's, so attach it after construction.
-  Object.defineProperty(request, 'signal', { value: controller.signal });
+  const request = withSignal(
+    contractRequest('/api/summaries'),
+    controller.signal,
+  );
   const log = spyOn(console, 'log').mockImplementation(() => {});
   const error = spyOn(console, 'error').mockImplementation(() => {});
   try {

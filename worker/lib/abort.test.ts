@@ -1,12 +1,9 @@
 import { expect, test } from 'bun:test';
+import { withSignal } from '../../test/abortable-request.ts';
 import { isClientAbort } from './abort.ts';
 
-function requestWith(signal: AbortSignal) {
-  const request = new Request('https://scc.example/api/summaries');
-  // The test DOM's AbortController is not Bun's, so attach it after construction.
-  Object.defineProperty(request, 'signal', { value: signal });
-  return request;
-}
+const requestWith = (signal: AbortSignal) =>
+  withSignal(new Request('https://scc.example/api/summaries'), signal);
 
 test('isClientAbort matches the abort reason or an AbortError once aborted', () => {
   const controller = new AbortController();
@@ -18,6 +15,22 @@ test('isClientAbort matches the abort reason or an AbortError once aborted', () 
   controller.abort();
   expect(isClientAbort(request, controller.signal.reason)).toBe(true);
   expect(isClientAbort(request, abortError)).toBe(true);
+});
+
+test('isClientAbort matches a DOMException AbortError distinct from the reason', () => {
+  const controller = new AbortController();
+  controller.abort(new Error('client went away'));
+  const providerAbort = new DOMException(
+    'The operation was aborted',
+    'AbortError',
+  );
+  expect(providerAbort).not.toBe(controller.signal.reason);
+  expect(isClientAbort(requestWith(controller.signal), providerAbort)).toBe(
+    true,
+  );
+  expect(
+    isClientAbort(requestWith(controller.signal), { name: 'AbortError' }),
+  ).toBe(true);
 });
 
 test('isClientAbort leaves an unrelated failure after a disconnect a failure', () => {

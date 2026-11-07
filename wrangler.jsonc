@@ -16,9 +16,6 @@
   },
   "observability": {
     "enabled": true,
-    "traces": {
-      "enabled": true,
-    },
   },
   "flagship": [
     { "binding": "FLAGS", "app_id": "60edd5e7-cc0b-4bb1-a9cd-db6decd34208" },
