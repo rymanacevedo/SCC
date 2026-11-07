@@ -55,23 +55,63 @@ test('a failed read is not reused: the next report tries again', async () => {
   expect(fetchAssets).toHaveBeenCalledTimes(2);
 });
 
-test('a stalled fetch or body is the empty set at the deadline, aborted and not reused', async () => {
-  const never = () => new Promise<never>(() => {});
-  // The fetcher never answers, and ignores the signal.
-  const stalledFetch = mock(async (_signal: AbortSignal) => never());
-  // The headers arrive, then the body never ends.
-  const stalledBody = mock(
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test('a stalled body is cancelled at the deadline, and the next report reads again', async () => {
+  let cancelled = 0;
+  const fetchAssets = mock(
     async (_signal: AbortSignal) =>
-      new Response(new ReadableStream({ start() {} }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('['));
+          },
+          cancel() {
+            cancelled += 1;
+          },
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
   );
-  for (const fetchAssets of [stalledFetch, stalledBody]) {
-    const load = createKnownAssetsLoader(fetchAssets, 10);
+  const load = createKnownAssetsLoader(fetchAssets, 10);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
+  await tick();
+  // The body was cancelled, so the read ended: the next report retries.
+  expect(cancelled).toBe(1);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets).toHaveBeenCalledTimes(2);
+});
+
+test('a fetch that ignores the abort holds the only read: reports get the empty set and start no other', async () => {
+  const fetchAssets = mock(
+    (_signal: AbortSignal) => new Promise<Response>(() => {}),
+  );
+  const load = createKnownAssetsLoader(fetchAssets, 10);
+  expect((await load()).size).toBe(0);
+  expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
+  for (let index = 0; index < 5; index += 1)
     expect((await load()).size).toBe(0);
-    expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
-    // The timed-out read is not cached: the next report reads again.
-    expect((await load()).size).toBe(0);
-    expect(fetchAssets).toHaveBeenCalledTimes(2);
-  }
+  expect(fetchAssets).toHaveBeenCalledTimes(1);
+});
+
+test('a body past its byte cap is the empty set and is cancelled', async () => {
+  let cancelled = false;
+  const chunk = new TextEncoder().encode(' '.repeat(64 * 1024));
+  const load = createKnownAssetsLoader(
+    async () =>
+      new Response(
+        new ReadableStream({
+          pull(controller) {
+            controller.enqueue(chunk);
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+  );
+  expect((await load()).size).toBe(0);
+  expect(cancelled).toBe(true);
 });

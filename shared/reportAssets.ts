@@ -1,3 +1,4 @@
+import { readBoundedText } from './boundedText.ts';
 import { z } from './zod.ts';
 
 /**
@@ -23,6 +24,9 @@ export const NO_ASSETS: ReadonlySet<string> = new Set();
 
 // Far above any real build: the app ships a few dozen files.
 const REPORT_ASSETS_MAX = 2_000;
+// The most bytes a read takes: 2,000 paths of at most 70 characters, with
+// room to spare. A longer body is not a list this build published.
+const REPORT_ASSETS_MAX_BYTES = 256 * 1024;
 
 /** The published list: asset paths only, and a bounded number of them. */
 export const reportAssetsSchema = z
@@ -56,58 +60,72 @@ export type ReportAssetsFetch = (signal: AbortSignal) => Promise<Response>;
 
 /**
  * How long a read of the list may take, fetch and body together. Past it the
- * read is aborted and counts as failed, so no report waits on a stalled
- * read.
+ * read is aborted (its body cancelled) and counts as failed, so no report
+ * waits on a stalled read.
  */
 export const REPORT_ASSETS_TIMEOUT_MS = 5_000;
+
+/** One read of the list, and the deadline it is held to. */
+type Attempt = {
+  read: Promise<ReadonlySet<string> | undefined>;
+  deadline: Promise<undefined>;
+};
 
 /**
  * The asset paths the client build published (`report-assets.json`), read
  * on first use and reused after. Anything but a JSON list of asset paths (no
  * fetcher, a failed fetch, a 404, the SPA fallback's `index.html`, invalid
- * JSON, a list of the wrong shape, a read past `timeoutMs`) is the empty
- * set, so every asset file is redacted. A failure is not reused: the next
- * report tries again.
+ * JSON, a body past its byte cap, a list of the wrong shape, a read past
+ * `timeoutMs`) is the empty set, so every asset file is redacted. A failure
+ * is not reused: the next report tries again. At most one read runs at a
+ * time: while a read the deadline cut off has not yet ended, a report gets
+ * the empty set at once rather than starting another.
  */
 export function createKnownAssetsLoader(
   fetchAssets: ReportAssetsFetch | undefined,
   timeoutMs = REPORT_ASSETS_TIMEOUT_MS,
 ): () => Promise<ReadonlySet<string>> {
-  let loaded: Promise<ReadonlySet<string>> | undefined;
-  return () => {
-    loaded ??= readWithin(fetchAssets, timeoutMs).then((known) => {
-      if (known === undefined) loaded = undefined;
-      return known ?? NO_ASSETS;
+  let known: ReadonlySet<string> | undefined;
+  let attempt: Attempt | undefined;
+  return async () => {
+    if (known) return known;
+    if (!fetchAssets) return NO_ASSETS;
+    attempt ??= startAttempt(fetchAssets, timeoutMs, (result) => {
+      known = result;
+      attempt = undefined;
     });
-    return loaded;
+    return (await Promise.race([attempt.read, attempt.deadline])) ?? NO_ASSETS;
   };
 }
 
-/** The list, or undefined if it cannot be read within `timeoutMs`. */
-async function readWithin(
-  fetchAssets: ReportAssetsFetch | undefined,
+/**
+ * Starts one read under its own deadline, which aborts the read's signal.
+ * `settled` runs once the read itself ends, success or not.
+ */
+function startAttempt(
+  fetchAssets: ReportAssetsFetch,
   timeoutMs: number,
-): Promise<ReadonlySet<string> | undefined> {
-  if (!fetchAssets) return undefined;
+  settled: (result: ReadonlySet<string> | undefined) => void,
+): Attempt {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  // Settles at the deadline even if the fetcher ignores the signal.
-  const timedOut = new Promise<undefined>((resolve) => {
+  const deadline = new Promise<undefined>((resolve) => {
     timer = setTimeout(() => {
       controller.abort();
       resolve(undefined);
     }, timeoutMs);
   });
-  try {
-    return await Promise.race([
-      readKnownAssets(fetchAssets, controller.signal),
-      timedOut,
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
+  const read = readKnownAssets(fetchAssets, controller.signal).then(
+    (result) => {
+      clearTimeout(timer);
+      settled(result);
+      return result;
+    },
+  );
+  return { read, deadline };
 }
 
+/** The list, or undefined for any failure; never rejects. */
 async function readKnownAssets(
   fetchAssets: ReportAssetsFetch,
   signal: AbortSignal,
@@ -115,11 +133,19 @@ async function readKnownAssets(
   try {
     const response = await fetchAssets(signal);
     const type = response.headers.get('content-type') ?? '';
-    if (!response.ok || !type.includes('application/json')) {
+    if (signal.aborted || !response.ok || !type.includes('application/json')) {
       await response.body?.cancel();
       return undefined;
     }
-    const parsed = reportAssetsSchema.safeParse(await response.json());
+    // Cancelled on abort, so a body that never ends cannot outlive the
+    // deadline.
+    const { text, truncated } = await readBoundedText(
+      response.body,
+      REPORT_ASSETS_MAX_BYTES,
+      signal,
+    );
+    if (truncated) return undefined;
+    const parsed = reportAssetsSchema.safeParse(JSON.parse(text));
     return parsed.success ? new Set(parsed.data) : undefined;
   } catch {
     return undefined;

@@ -1,3 +1,5 @@
+import { readBoundedText } from '../../shared/boundedText.ts';
+
 /** The most UTF-8 bytes JSON spends on one UTF-16 code unit: a `\uXXXX` escape. */
 const MAX_JSON_BYTES_PER_CODE_UNIT = 6;
 /** Room for keys, punctuation and whitespace around a body's strings. */
@@ -10,38 +12,6 @@ const JSON_STRUCTURE_BYTES = 1024;
  */
 export function jsonBodyLimit(maxStringLength: number) {
   return maxStringLength * MAX_JSON_BYTES_PER_CODE_UNIT + JSON_STRUCTURE_BYTES;
-}
-
-export type BoundedText = { text: string; truncated: boolean };
-
-/**
- * Reads at most `maxBytes` of a body stream and cancels the rest, so an
- * oversized or unbounded body never has to fit in Worker memory.
- */
-export async function readBoundedText(
-  body: ReadableStream<Uint8Array> | null,
-  maxBytes: number,
-): Promise<BoundedText> {
-  if (!body) return { text: '', truncated: false };
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let text = '';
-  let remaining = maxBytes;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) return { text: text + decoder.decode(), truncated: false };
-      if (value.byteLength > remaining) {
-        text += decoder.decode(value.subarray(0, remaining));
-        await reader.cancel();
-        return { text, truncated: true };
-      }
-      remaining -= value.byteLength;
-      text += decoder.decode(value, { stream: true });
-    }
-  } finally {
-    reader.releaseLock();
-  }
 }
 
 export type BoundedJson =
