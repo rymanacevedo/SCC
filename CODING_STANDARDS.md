@@ -1,33 +1,18 @@
 <!-- standard:draft -->
 # Coding Standards
 
-The rules a reviewer applies by judgement. Anything a tool enforces is not
-repeated here: `bun run check` (oxfmt, oxlint), `bun run typecheck` and
-`bun test` run in the pre-commit and pre-push hooks and in the `ci` workflow,
-and `.oxlintrc.json`, `.oxfmtrc.json` and `tsconfig*.json` are the source of
-truth for formatting, lint and type rules. The Review section is the
-Standard's fixed text; the ruleset it describes lives in repository settings
-(`gh api repos/rymanacevedo/SCC/rulesets`), not in this repo. The owner
-reviews this file and deletes the first line (the draft marker) to adopt it.
-
-## Priorities and maintainability
-
-Source: `AGENTS.md`, which owns the full text.
-
-- Performance and reliability first. Under a tradeoff, correctness and
-  robustness beat short-term convenience.
-- Shared logic is extracted before new functionality is added. Duplicate
-  logic across files is a smell; change existing code rather than adding
-  local logic beside it.
-
-## Lint warnings
-
-Source: `.oxlintrc.json`. `oxlint` exits 0 on warnings, so `bun run check`
-passes a PR that adds them.
-
-- A PR adds no warnings: no new `console` calls (`no-console`), no new `!`
-  non-null assertions (`typescript/no-non-null-assertion`), and a key on
-  every list element (`react/jsx-key`).
+- The rules a reviewer applies by judgement. A rule a tool enforces is not
+  repeated here.
+- `bun run check` (oxfmt, oxlint), `bun run typecheck` and `bun test` run in
+  the `ci` workflow. Pre-commit runs lint-staged on the staged files;
+  pre-push runs typecheck and the tests.
+- `.oxlintrc.json`, `.oxfmtrc.json` and `tsconfig*.json` are the source of
+  truth for formatting, lint and type rules.
+- The Review section is the Standard's fixed text. The ruleset it describes
+  lives in repository settings (`gh api repos/rymanacevedo/SCC/rulesets`),
+  not in this repo.
+- The owner reviews this file and deletes the first line (the draft marker)
+  to adopt it.
 
 ## Tests
 
