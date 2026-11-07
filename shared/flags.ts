@@ -12,17 +12,29 @@ export const FLAG_DEFAULTS = {
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;
 export type Flags = Record<FlagName, boolean>;
+// A flag set with its defaults: FLAG_DEFAULTS in the app, any set in tests.
+export type FlagDefaults = Readonly<Record<string, boolean>>;
 
-export const FLAG_NAMES = Object.keys(FLAG_DEFAULTS) as FlagName[];
+// The one parser for a flag value, stored (KV string) or transmitted (JSON
+// boolean). Anything else is undefined: the caller keeps the default.
+export function parseFlagValue(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
 
-// Only known flags with a boolean value survive; anything else is the default.
-export function resolveFlags(raw: Partial<Record<string, unknown>>): Flags {
+// Every known flag: raw's value where it parses, the default otherwise.
+// Unknown names in raw are dropped.
+export function resolveFlags(
+  raw: Readonly<Record<string, unknown>>,
+  defaults: FlagDefaults = FLAG_DEFAULTS,
+): Flags {
   // Built as a plain record so this typechecks while FLAG_DEFAULTS is empty
   // (FlagName is `never` then); only known names are ever written.
-  const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
-  for (const name of FLAG_NAMES) {
-    const value = raw[name];
-    if (typeof value === 'boolean') flags[name] = value;
+  const flags: Record<string, boolean> = {};
+  for (const [name, fallback] of Object.entries(defaults)) {
+    flags[name] = parseFlagValue(raw[name]) ?? fallback;
   }
   return flags as Flags;
 }

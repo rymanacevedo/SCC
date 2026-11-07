@@ -1,8 +1,9 @@
 <!-- standard:draft -->
 # Coding Standards
 
-Drafted from the repo's lint, format and TypeScript configuration plus
-`AGENTS.md`. Every rule below is stated by one of those sources. The owner
+Drafted from the repo's lint, format and TypeScript configuration,
+`AGENTS.md` and the repository's branch ruleset. Every rule below names its
+source. The owner
 reviews this file and deletes the first line (the draft marker) to adopt it.
 
 ## Priorities
@@ -117,6 +118,10 @@ Source: `AGENTS.md`.
   See `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md`.
 
 ## Review
+
+Source: the `standard` ruleset on the default branch (repository settings,
+applied through the GitHub API, not a file in this repo) and the `council`
+skill it requires.
 
 Every PR goes through the same review before it merges, whoever opened it:
 

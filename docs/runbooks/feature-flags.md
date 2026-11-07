@@ -9,7 +9,7 @@ deploy.
 | schema: every flag and its default (all off) | `shared/flags.ts` |
 | reader with a short cache | `worker/flags.ts` |
 | route exposing the resolved set | `worker/flags-route.ts` (`GET /api/flags`) |
-| client hook, defaults on failure | `app/flags.ts` (`useFlags()`) |
+| client reader, defaults until loaded or on failure | `app/flags.ts` (`loadFlags()`, `getFlags()`) |
 
 ## Flip a flag
 
@@ -33,9 +33,18 @@ bunx wrangler kv key delete --binding FLAGS --remote <flagName>      # back to t
 
 ## Setup (once)
 
-Create the namespace and put its id on the `FLAGS` binding in
-`wrangler.jsonc`, replacing the placeholder:
+Until the namespace exists, `wrangler.jsonc` declares no `FLAGS` binding and
+the reader serves every default. Create the namespace, then add the binding
+with the id the command prints:
 
 ```sh
 bunx wrangler kv namespace create FLAGS
 ```
+
+```jsonc
+// wrangler.jsonc
+"kv_namespaces": [{ "binding": "FLAGS", "id": "<id from the command above>" }],
+```
+
+Run `bun run types` afterwards so `worker-configuration.d.ts` picks up the
+binding.

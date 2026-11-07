@@ -7,7 +7,6 @@ import {
 import type { z } from 'zod';
 import { generationRequestSchema } from '../shared/schemas/generation.ts';
 import { FLAGS_ROUTE, handleFlagsRequest } from './flags-route.ts';
-import type { FlagsEnv } from './flags.ts';
 import {
   validateGeoEnvironment,
   validateGithubEnvironment,
@@ -103,10 +102,10 @@ export function createApiRouter(
     );
   }
   // Public, read-only, no body: the route answers 405 for anything but GET.
-  // FLAGS is bound in wrangler.jsonc; readFlags() falls back to the defaults
-  // when the binding or KV is unavailable, so no environment validation here.
+  // readFlags() checks the FLAGS binding itself and serves the defaults
+  // without one, so no environment validation here.
   router.route('ANY', FLAGS_ROUTE, {
-    handler: ({ request }) => handleFlagsRequest(request, env as FlagsEnv),
+    handler: ({ request }) => handleFlagsRequest(request, env),
   });
   generationRoute('/api/summaries', createSummaries);
   generationRoute('/api/skills', createSkills);
