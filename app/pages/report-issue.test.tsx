@@ -55,6 +55,15 @@ test('the error page Report an issue opens the report dialog', async () => {
   expect(dialog.open).toBe(true);
   expect(dialog.querySelector('h2')?.textContent).toBe('Report an issue');
 });
+test('the report description stops at the length the Worker accepts', () => {
+  const view = render(
+    <Shell>
+      <p>Builder remains available</p>
+    </Shell>,
+  );
+  cleanups.push(view.cleanup);
+  expect(view.$('textarea')?.getAttribute('maxlength')).toBe('10000');
+});
 test('report modal validates, submits only explicit description, and shows failure then success', async () => {
   const requests: { path: string; body: Record<string, unknown> }[] = [];
   let resolve!: (response: Response) => void;

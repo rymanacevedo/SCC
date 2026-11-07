@@ -50,12 +50,16 @@ export function createGeoRestrictionMiddleware({
   };
 }
 
-export function bodyValidation<T>(schema: z.core.$ZodType<T>) {
+/** Reads at most `maxBytes` of a JSON body (413 past it), then validates it. */
+export function bodyValidation<T>(
+  schema: z.core.$ZodType<T>,
+  maxBytes: number,
+) {
   const key = createContextKey<T>();
   const middleware: Middleware = async (context, next) => {
     let body: BoundedJson;
     try {
-      body = await readBoundedJson(context.request);
+      body = await readBoundedJson(context.request, maxBytes);
     } catch {
       return apiError(400, 'Invalid JSON body', {
         formErrors: ['Invalid JSON body'],

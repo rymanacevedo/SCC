@@ -1,5 +1,16 @@
-/** Upper bound for any `/api/*` JSON body, well above a real resume prompt. */
-export const MAX_JSON_BODY_BYTES = 1024 * 1024;
+/** The most UTF-8 bytes JSON spends on one UTF-16 code unit: a `\uXXXX` escape. */
+const MAX_JSON_BYTES_PER_CODE_UNIT = 6;
+/** Room for keys, punctuation and whitespace around a body's strings. */
+const JSON_STRUCTURE_BYTES = 1024;
+
+/**
+ * The Body limit for a route whose schema caps its strings at `maxStringLength`
+ * code units in total. Sized for the worst-case encoding, so every body the
+ * schema would accept fits, and the schema, not the byte count, refuses the rest.
+ */
+export function jsonBodyLimit(maxStringLength: number) {
+  return maxStringLength * MAX_JSON_BYTES_PER_CODE_UNIT + JSON_STRUCTURE_BYTES;
+}
 
 export type BoundedText = { text: string; truncated: boolean };
 
@@ -37,10 +48,14 @@ export type BoundedJson =
   | { ok: true; value: unknown }
   | { ok: false; reason: 'too_large' };
 
-/** Reads a JSON body, or reports it too large without buffering it whole. */
+/**
+ * Reads a JSON body, or reports it too large without buffering it whole. A
+ * declared Content-Length over the limit is refused before any byte is read;
+ * the streamed count still holds when the header is absent or understated.
+ */
 export async function readBoundedJson(
   request: Request,
-  maxBytes = MAX_JSON_BODY_BYTES,
+  maxBytes: number,
 ): Promise<BoundedJson> {
   const declared = Number(request.headers.get('Content-Length'));
   if (declared > maxBytes) {

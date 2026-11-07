@@ -1,4 +1,7 @@
-import { shouldSkipDuplicateTelemetryReport } from '../shared/errorReporting.ts';
+import {
+  boundTelemetry,
+  shouldSkipDuplicateTelemetryReport,
+} from '../shared/errorReporting.ts';
 import type { Result } from '../shared/result.ts';
 import { reportError } from './api.ts';
 
@@ -29,14 +32,14 @@ export async function reportErrorTelemetry(
   try {
     if (isNotFoundResponse(error)) return { ok: true, value: { ok: true } };
     // Explicit allowlist: never serialize the thrown object or the User.
-    const telemetry = {
+    const telemetry = boundTelemetry({
       url,
       timestamp: new Date().toISOString(),
       message: errorMessage(error),
       ...(error instanceof Error && error.stack
         ? { stackTrace: error.stack }
         : {}),
-    };
+    });
     if (shouldSkipDuplicateTelemetryReport(telemetry))
       return { ok: true, value: { ok: true } };
     return await reportError(telemetry);

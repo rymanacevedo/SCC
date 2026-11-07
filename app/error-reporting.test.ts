@@ -37,3 +37,16 @@ test('reporting failure resolves to a failed Result', async () => {
     error: 'network',
   });
 });
+test('auto-report truncates oversized telemetry instead of sending a body the Worker refuses', async () => {
+  const bodies: Record<string, string>[] = [];
+  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ ok: true });
+  }) as unknown as typeof fetch;
+  const error = new Error('m'.repeat(5_000));
+  error.stack = 's'.repeat(50_000);
+  await reportErrorTelemetry(error, `https://scc.example/${'a'.repeat(5_000)}`);
+  expect(bodies[0]?.message).toHaveLength(1_000);
+  expect(bodies[0]?.stackTrace).toHaveLength(16_000);
+  expect(bodies[0]?.url).toHaveLength(2_048);
+});

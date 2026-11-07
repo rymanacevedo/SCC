@@ -9,6 +9,13 @@ import {
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
 
+/**
+ * Bounds each provider response and its cost. Reasoning models spend part of
+ * this on reasoning tokens, so it sits far above the few hundred tokens a
+ * section's JSON takes.
+ */
+const MAX_OUTPUT_TOKENS = 16_000;
+
 export const createSummaries = async (
   prompt: string,
   model: LanguageModel,
@@ -17,6 +24,7 @@ export const createSummaries = async (
   const { output } = await generateText({
     model,
     abortSignal,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
     output: Output.object({
       schema: z.object({
         summaries: SummarySchema,
@@ -75,6 +83,7 @@ export const createSkills = async (
   const { output } = await generateText({
     model,
     abortSignal,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
     output: Output.object({
       schema: SkillsSchema,
     }),
@@ -105,6 +114,7 @@ export const createExperience = async (
   const { output } = await generateText({
     model,
     abortSignal,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
     output: Output.object({
       schema: ExperienceSchema,
     }),

@@ -95,7 +95,7 @@ test('geo restriction normalizes countries, fails closed even when XX is configu
 });
 
 test('Profanity filter passes clean prompts and refuses the unchanged word list, case-insensitively', async () => {
-  const body = bodyValidation(generationRequestSchema);
+  const body = bodyValidation(generationRequestSchema, 64 * 1024);
   const router = throwawayRouter([
     body.middleware,
     createProfanityFilter(body.key),
@@ -133,7 +133,7 @@ test('Profanity filter passes clean prompts and refuses the unchanged word list,
 });
 
 test('Profanity filter names the longest matched term and ignores terms inside other words', async () => {
-  const body = bodyValidation(generationRequestSchema);
+  const body = bodyValidation(generationRequestSchema, 64 * 1024);
   const router = throwawayRouter([
     body.middleware,
     createProfanityFilter(body.key),

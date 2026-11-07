@@ -31,7 +31,14 @@ export const SummarySchema = z.array(
   }),
 );
 
+/**
+ * The longest prompt a Generation request may carry, in UTF-16 code units. A
+ * full resume's jobs serialize to a few thousand; this bounds Worker CPU and the
+ * provider payload without refusing a real one.
+ */
+export const MAX_PROMPT_LENGTH = 50_000;
+
 export const generationRequestSchema = z.object({
-  prompt: z.string().check(z.minLength(1)),
+  prompt: z.string().check(z.minLength(1), z.maxLength(MAX_PROMPT_LENGTH)),
 });
 export type GenerationRequest = z.infer<typeof generationRequestSchema>;

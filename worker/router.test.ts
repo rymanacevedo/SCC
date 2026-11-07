@@ -3,7 +3,6 @@ import { APICallError } from 'ai';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
-import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
 const env = {
@@ -283,16 +282,86 @@ test('GET /api/flags returns every known flag and rejects other methods', async 
   }
 });
 
-test('oversized bodies are 413 before validation or the model', async () => {
+// Each route's Body limit, in bytes: the worst-case JSON size of its capped fields.
+const bodyLimits = {
+  '/api/summaries': 301_024,
+  '/api/errors': 115_696,
+  '/api/report-issue': 73_696,
+} as const;
+/** A valid body padded with trailing JSON whitespace to exactly `bytes`. */
+const paddedBody = (payload: unknown, bytes: number) => {
+  const json = JSON.stringify(payload);
+  return json + ' '.repeat(bytes - json.length);
+};
+const streamed = (text: string) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      const bytes = new TextEncoder().encode(text);
+      for (let start = 0; start < bytes.length; start += 16_384)
+        controller.enqueue(bytes.subarray(start, start + 16_384));
+      controller.close();
+    },
+  });
+
+test('each route accepts a body of exactly its limit and refuses one byte over with 413', async () => {
+  globalThis.fetch = mock(async (input: string | URL | Request) =>
+    String(input).includes('?')
+      ? Response.json([])
+      : Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const resolveModel = mock(() => createMockJsonModel({ summaries: [] }));
+  const router = createApiRouter(env, { resolveModel });
+  const payloads = {
+    '/api/summaries': { prompt: '<job>Software Developer</job>' },
+    '/api/errors': report,
+    '/api/report-issue': report,
+  };
+  for (const [path, limit] of Object.entries(bodyLimits)) {
+    const payload = payloads[path as keyof typeof payloads];
+    const exact = paddedBody(payload, limit);
+    const over = paddedBody(payload, limit + 1);
+    await assertResponse(
+      await router.fetch(contractRequest(path, {}, { body: exact })),
+      200,
+    );
+    // Content-Length declared; neither the schema nor the model is reached.
+    expect(
+      (
+        await assertResponse(
+          await router.fetch(
+            contractRequest(
+              path,
+              {},
+              {
+                body: over,
+                headers: { 'Content-Length': String(over.length) },
+              },
+            ),
+          ),
+          413,
+        )
+      ).error,
+    ).toBe('Request body too large');
+    // No Content-Length: the streamed byte count holds.
+    const chunked = contractRequest(path, {}, { body: streamed(over) });
+    expect(chunked.headers.get('Content-Length')).toBeNull();
+    await assertResponse(await router.fetch(chunked), 413);
+  }
+  expect(resolveModel).toHaveBeenCalledTimes(1);
+});
+
+test('a prompt over its cap is a 400 validation failure, not a model call', async () => {
   const resolveModel = mock(() => createMockJsonModel({}));
-  const response = await createApiRouter(env, { resolveModel }).fetch(
-    contractRequest('/api/summaries', {
-      prompt: 'x'.repeat(MAX_JSON_BODY_BYTES),
-    }),
+  const body = await assertResponse(
+    await createApiRouter(env, { resolveModel }).fetch(
+      contractRequest('/api/summaries', { prompt: 'x'.repeat(50_001) }),
+    ),
+    400,
   );
-  expect((await assertResponse(response, 413)).error).toBe(
-    'Request body too large',
-  );
+  expect(
+    (body.issues as { fieldErrors: Record<string, unknown> }).fieldErrors
+      .prompt,
+  ).toBeDefined();
   expect(resolveModel).not.toHaveBeenCalled();
 });
 

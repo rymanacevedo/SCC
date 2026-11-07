@@ -1,6 +1,12 @@
 import { expect, test } from 'bun:test';
 import { zodSchema } from 'ai';
-import { ExperienceSchema, SkillsSchema, SummarySchema } from './generation.ts';
+import {
+  ExperienceSchema,
+  generationRequestSchema,
+  MAX_PROMPT_LENGTH,
+  SkillsSchema,
+  SummarySchema,
+} from './generation.ts';
 
 // Expected values were captured from the full `zod` build before the client moved to `zod/mini`.
 const jsonSchemaFor = async (schema: Parameters<typeof zodSchema>[0]) =>
@@ -55,4 +61,15 @@ test('the model is asked for experience with their descriptions', async () => {
   expect(await jsonSchemaFor(ExperienceSchema)).toEqual(
     suggestions('experience'),
   );
+});
+
+test('a Generation request prompt is accepted up to its cap and refused one character over', () => {
+  expect(MAX_PROMPT_LENGTH).toBe(50_000);
+  const at = generationRequestSchema.safeParse({ prompt: 'x'.repeat(50_000) });
+  expect(at.success).toBe(true);
+  const over = generationRequestSchema.safeParse({
+    prompt: 'x'.repeat(50_001),
+  });
+  expect(over.success).toBe(false);
+  expect(generationRequestSchema.safeParse({ prompt: '' }).success).toBe(false);
 });
