@@ -14,14 +14,19 @@ import {
   timestampForLog,
 } from './log.ts';
 
-test('a thrown value that is not an Error is logged only as its length', () => {
-  const thrown = `${SENSITIVE_MESSAGE} ${SENSITIVE_URL}`;
-  expect(describeErrorForLog(thrown)).toEqual({
-    message: `[thrown value omitted: ${thrown.length} characters]`,
-  });
-  expect(describeErrorForLog({ email: 'jane.doe@example.com' })).toEqual({
-    message: '[thrown value omitted: 15 characters]',
-  });
+test('a thrown value that is not an Error is logged only by its type', () => {
+  for (const [thrown, type] of [
+    [`${SENSITIVE_MESSAGE} ${SENSITIVE_URL}`, 'string'],
+    [{ email: 'jane.doe@example.com' }, 'object'],
+    [Object.create(null), 'object'],
+    [['jane.doe@example.com'], 'array'],
+    [null, 'null'],
+    [undefined, 'undefined'],
+    [5551234567, 'number'],
+  ] as const)
+    expect(describeErrorForLog(thrown)).toEqual({
+      message: `[thrown ${type} omitted]`,
+    });
 });
 
 test('a log string is kept only as a short machine token', () => {
@@ -61,6 +66,7 @@ test('an Error is logged as its class name, frames, cause class and message leng
       '    at fn (https://scc.example/a(b).js:7:8)',
       '    at dial (https://scc.example/call/[redacted]/a.js:9:9)',
       '    at <anonymous> (https://scc.example/reset/[redacted]/a.js:1:2)',
+      '    at keyed (https://scc.example/k/[redacted]/a.js:1:2)',
     ].join('\n'),
   });
 });

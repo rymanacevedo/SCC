@@ -1,5 +1,12 @@
 import { expect } from 'bun:test';
 
+/** A key-shaped URL path segment, assembled so no key sits in source. */
+export const SENSITIVE_KEY_SEGMENT = [
+  'sk',
+  'live',
+  'AbCdEfGhIjKlMnOpQrStUvWx',
+].join('_');
+
 /**
  * Every leak shape council review found in the report pipeline, as values
  * planted in the fixtures below. None of these strings may appear in any sink
@@ -53,6 +60,7 @@ export const SENSITIVE_VALUES = [
   'dotjoinedvalue',
   'pluralvalue',
   '765 - 4321',
+  SENSITIVE_KEY_SEGMENT,
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -91,6 +99,7 @@ export const SENSITIVE_STACK = [
   '    at fn (https://alice:hunter2@scc.example/a(b).js?token=abc123#fragment:7:8)',
   '    at dial (https://scc.example/call/555-987-6543/a.js:9:9)',
   '    at token abc123def 5551234567 (https://scc.example/reset/XkfQpLmZr9Ab/a.js:1:2)',
+  `    at keyed (https://scc.example/k/${SENSITIVE_KEY_SEGMENT}/a.js:1:2)`,
 ].join('\n');
 
 export const SENSITIVE_DESCRIPTION = [

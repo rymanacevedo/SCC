@@ -30,13 +30,15 @@ place today and what is still a gap.
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
   error log store structure only: a canonical timestamp, the URL as
   origin + plain path, the error class name and canonical stack frames.
-  Messages, descriptions and GitHub error bodies are free text and are never
-  stored, only their length (`shared/telemetryRedaction.ts`,
+  Error messages and GitHub error bodies are free text and are never
+  stored, only their length, and a User report asks for no text at all
+  (`shared/telemetryRedaction.ts`,
   `shared/stackFrames.ts`,
   `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); every
   field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
   that cap, and the route body limit is derived from them. Gaps: a plain-word
-  path segment can still be personal (`/u/janedoe`); and the token's
+  path segment or a hostname can still be personal (`/u/janedoe`); and the
+  token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`; with free text gone,
   the browser controls only identifiers and plain path segments in them,

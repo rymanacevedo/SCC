@@ -81,7 +81,7 @@ test('fingerprint is not split by query strings, fragments or redacted values', 
 });
 test('normalizes an oversized timestamp to a bounded canonical value in both reports', () => {
   const oversized = `2026-10-13T00:00:00.${'1'.repeat(70_000)}Z`;
-  const base = { url: 'https://scc.example/x', message: 'm', description: 'd' };
+  const base = { url: 'https://scc.example/x', message: 'm' };
   expect(
     sanitizeErrorTelemetry({ ...base, timestamp: oversized }).timestamp,
   ).toBe('2026-10-13T00:00:00.111Z');
@@ -115,12 +115,10 @@ test('sanitizing keeps structure only: free text is reduced to its length', () =
     sanitizeUserIssueReport({
       timestamp: telemetry.timestamp,
       url: 'https://scc.example/info#fragment',
-      description: 'Email me at jane@example.com',
     }),
   ).toEqual({
     timestamp: telemetry.timestamp,
     url: 'https://scc.example/info',
-    description: '[description omitted: 28 characters]',
   });
 });
 
@@ -130,11 +128,7 @@ test('a sanitized report always passes its schema, whatever its URL and timestam
     'about:blank',
     'https://555-123-4567.example/x',
   ]) {
-    const report = sanitizeUserIssueReport({
-      timestamp: 'not a time',
-      url,
-      description: 'Broken',
-    });
+    const report = sanitizeUserIssueReport({ timestamp: 'not a time', url });
     expect(userIssueReportSchema.safeParse(report).success).toBe(true);
     expect(
       errorTelemetrySchema.safeParse(
@@ -171,7 +165,6 @@ test('dedupes through one second, expires afterwards, and reset permits reportin
 const report = {
   timestamp: '2026-10-14T00:00:00.000Z',
   url: 'https://scc.example/info',
-  description: 'The page failed',
 };
 const longUrl = (length: number) =>
   `https://scc.example/${'a'.repeat(length - 'https://scc.example/'.length)}`;
@@ -202,20 +195,22 @@ test('error telemetry fields are accepted at their caps and refused one characte
 });
 
 test('user issue report fields are accepted at their caps and refused one character over', () => {
-  const caps = { url: longUrl(2_048), description: 'd'.repeat(10_000) };
-  expect(userIssueReportSchema.safeParse({ ...report, ...caps }).success).toBe(
+  const url = longUrl(2_048);
+  expect(userIssueReportSchema.safeParse({ ...report, url }).success).toBe(
     true,
   );
   expect(
-    userIssueReportSchema.safeParse({ ...report, ...caps, url: `${caps.url}x` })
-      .success,
+    userIssueReportSchema.safeParse({ ...report, url: `${url}x` }).success,
   ).toBe(false);
-  expect(
-    userIssueReportSchema.safeParse({
-      ...report,
-      description: `${caps.description}x`,
-    }).success,
-  ).toBe(false);
+});
+
+test("an older client's description is stripped by the schema, not refused", () => {
+  const parsed = userIssueReportSchema.safeParse({
+    ...report,
+    description: 'Email me at jane.doe@example.com',
+  });
+  expect(parsed.success).toBe(true);
+  expect(parsed.data).toEqual(report);
 });
 
 test('sanitizing bounds oversized fields so both reports stay valid', () => {
@@ -234,9 +229,8 @@ test('sanitizing bounds oversized fields so both reports stay valid', () => {
   expect(errorTelemetrySchema.safeParse(telemetry).success).toBe(true);
   const report = sanitizeUserIssueReport({
     timestamp: '2026-10-14T00:00:00.000Z',
-    url: 'https://scc.example/info',
-    description: 'word '.repeat(3_000),
+    url: longUrl(5_000),
   });
-  expect(report.description).toBe('[description omitted: 15000 characters]');
+  expect(report.url.length).toBeLessThanOrEqual(REPORT_FIELD_LIMITS.url);
   expect(userIssueReportSchema.safeParse(report).success).toBe(true);
 });

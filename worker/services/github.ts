@@ -54,12 +54,11 @@ export class GitHubIssueCreationError extends Error {
 
 /**
  * The fingerprint an issue body carries and deduplication searches for: the
- * SHA-256 hex digest of the complete sanitized telemetry fingerprint. A fixed
- * 64 characters however long or escape-heavy the report, so it never crowds
- * the body past GitHub's limit, and distinct reports never share a prefix
- * match. Issues filed before the digest carried the raw JSON; deduplication
- * still matches that legacy form, computed from sanitized values (see
- * `fingerprintMarkers`).
+ * SHA-256 hex digest of the sanitized telemetry fingerprint (error name, path
+ * and top frames). A fixed 64 characters, so it never crowds the body past
+ * GitHub's limit, and distinct reports never share a prefix match. An issue
+ * filed under an earlier fingerprint shape does not match and gets one
+ * duplicate; matching it would mean keeping raw report text.
  */
 export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
   const digest = await crypto.subtle.digest(
@@ -95,9 +94,9 @@ export function buildAutoReportedIssueBody(
 }
 
 /**
- * The issue body for a user report. It takes a sanitized report, so redaction
- * runs before rendering. The description and URL are the reporter's text, so
- * they render as code and cannot fake issue structure.
+ * The issue body for a user report: the page and the time. It takes a
+ * sanitized report; the URL comes from the browser, so it renders as code
+ * and cannot fake issue structure.
  */
 export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   return [
@@ -105,9 +104,6 @@ export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
     '',
     `- Timestamp: ${payload.timestamp}`,
     `- URL: ${inlineCode(payload.url)}`,
-    '',
-    '## Description',
-    fencedBlock(payload.description),
   ].join('\n');
 }
 
@@ -213,24 +209,6 @@ async function createGitHubIssue({
 }
 
 /**
- * The fingerprint lines an open issue for `telemetry` may carry: the digest
- * this code files, and the raw-JSON form issues carried before the digest.
- * Both come from sanitized values, so no raw report text is ever compared or
- * sent; an issue filed from unsanitized values before sanitizing does not
- * match, and gets one duplicate.
- */
-async function fingerprintMarkers(telemetry: SanitizedErrorTelemetry) {
-  const fingerprint = await issueFingerprint(telemetry);
-  return {
-    fingerprint,
-    markers: [
-      `${FINGERPRINT_LABEL}${fingerprint}`,
-      `${FINGERPRINT_LABEL}${buildSanitizedTelemetryFingerprint(telemetry)}`,
-    ],
-  };
-}
-
-/**
  * `Auto-reported error: TypeError at /summary`: the error name and path,
  * never the message, which is free text.
  */
@@ -246,12 +224,13 @@ function autoReportedIssueTitle(telemetry: SanitizedErrorTelemetry) {
 async function findMatchingOpenAutoReportedIssue({
   repo,
   token,
-  markers,
+  fingerprint,
 }: {
   repo: string;
   token: string;
-  markers: string[];
+  fingerprint: string;
 }) {
+  const marker = `${FINGERPRINT_LABEL}${fingerprint}`;
   for (let page = 1; ; page += 1) {
     const params = new URLSearchParams({
       state: 'open',
@@ -270,9 +249,7 @@ async function findMatchingOpenAutoReportedIssue({
           body?: string | null;
         }[],
     });
-    const matchingIssue = issues.find((issue) =>
-      markers.some((marker) => issue.body?.includes(marker)),
-    );
+    const matchingIssue = issues.find((issue) => issue.body?.includes(marker));
 
     if (matchingIssue || issues.length < GITHUB_ISSUES_PAGE_SIZE) {
       return matchingIssue;
@@ -292,11 +269,11 @@ export async function createAutoReportedIssue({
   // Never trust the client to have sanitized. Sanitize once: the lookup,
   // title and body all use the same values.
   const telemetry = sanitizeErrorTelemetry(payload);
-  const { fingerprint, markers } = await fingerprintMarkers(telemetry);
+  const fingerprint = await issueFingerprint(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({
     repo,
     token,
-    markers,
+    fingerprint,
   });
 
   if (matchingIssue) {

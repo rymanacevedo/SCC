@@ -21,7 +21,6 @@ export const REPORT_FIELD_LIMITS = {
   url: 2_048,
   message: 1_000,
   stackTrace: 16_000,
-  description: 10_000,
 } as const;
 
 type CappedField = {
@@ -72,12 +71,12 @@ export const errorTelemetrySchema = errorTelemetry.schema;
 /** The most code units an error telemetry body's strings can hold together. */
 export const ERROR_TELEMETRY_MAX_LENGTH = errorTelemetry.maxLength;
 
+/**
+ * A User report: the page and the time, nothing the user typed. An older
+ * client may still send a `description`; the object schema strips unknown
+ * keys, so it is dropped here, before any sink sees it.
+ */
 const userIssueReport = cappedReport({
-  description: {
-    maxLength: REPORT_FIELD_LIMITS.description,
-    schema: (maxLength: number) =>
-      z.string().check(z.trim(), z.minLength(1), z.maxLength(maxLength)),
-  },
   timestamp: timestampField,
   url: {
     maxLength: REPORT_FIELD_LIMITS.url,
@@ -154,7 +153,7 @@ export function sanitizeErrorTelemetry(
 
 /**
  * The only form of a User report that may be sent or stored: the canonical
- * timestamp, the path-only URL, and the description reduced to its length.
+ * timestamp and the path-only URL.
  */
 export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,
@@ -162,7 +161,6 @@ export function sanitizeUserIssueReport(
   return {
     timestamp: sanitizeReportTimestamp(report.timestamp),
     url: sanitizeReportUrl(report.url),
-    description: omittedText('description', report.description),
   } as SanitizedUserIssueReport;
 }
 

@@ -59,6 +59,11 @@ describe('toPathOnlyUrl', () => {
       '/node_modules/@scope/pkg/error-reporting.test.ts',
       '/w/Foo_(bar)/[slug]/(group)/page',
       '/orders/1234/items',
+      '/components/UserProfile.tsx',
+      '/lib/getElementById.js',
+      '/polyfills/XMLHttpRequest.js',
+      '/api/user_settings/display_name',
+      '/README.md',
     ])
       expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
         `https://scc.example${path}`,
@@ -74,6 +79,21 @@ describe('toPathOnlyUrl', () => {
       ['/x%20y/ok', '/[redacted]/ok'],
       [`/${'a'.repeat(65)}`, '/[redacted]'],
       ['/assets/NotAHash9-12345678.js', '/assets/[redacted]'],
+      // Key-shaped and mixed-case segments, built so no key sits in source.
+      [
+        `/k/${['sk', 'live', 'AbCdEfGhIjKlMnOpQrStUvWx'].join('_')}`,
+        '/k/[redacted]',
+      ],
+      [
+        `/k/${['pk', 'test', 'abcdefghijklmnopqrstuvwx'].join('_')}`,
+        '/k/[redacted]',
+      ],
+      [
+        `/k/${['ghp', 'abcdefghijklmnopqrstuvwxyzabcdefghij'].join('_')}`,
+        '/k/[redacted]',
+      ],
+      [`/k/${['xoxb', 'abcdefghijklmnopqrstuvwx'].join('-')}`, '/k/[redacted]'],
+      ['/reset/XkfQpLmZrAbWy', '/reset/[redacted]'],
     ])
       expect(toPathOnlyUrl(`https://scc.example${path}`)).toBe(
         `https://scc.example${expected}`,

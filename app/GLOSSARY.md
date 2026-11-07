@@ -87,5 +87,5 @@ _Avoid_: fetcher, proxy, resource route, service
 ## Reporting
 
 - **Error telemetry**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#error-telemetry).
-- **User report**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#user-report).
+- **User report**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#user-report). The Report an issue dialog sends only the page and the time.
 - **Report sanitizing**: see [`worker/GLOSSARY.md`](../worker/GLOSSARY.md#report-sanitizing). The browser's callers run it once before sending, so no free text leaves the browser.

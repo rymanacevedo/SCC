@@ -21,6 +21,49 @@ test('unknown API paths return a JSON 404 Error envelope for every method', asyn
   }
 });
 
+test('a thrown value that cannot be stringified still gets the JSON 500', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const unstringifiable: unknown[] = [
+    Object.create(null),
+    {
+      toString() {
+        throw new Error('toString threw');
+      },
+    },
+    {
+      [Symbol.toPrimitive]() {
+        throw new Error('toPrimitive threw');
+      },
+    },
+    Object.defineProperty(new Error('x'), 'message', {
+      get() {
+        throw new Error('getter threw');
+      },
+    }),
+  ];
+  try {
+    for (const thrown of unstringifiable) {
+      log.mockClear();
+      const worker = createWorker({
+        fetch: async () => {
+          throw thrown;
+        },
+      });
+      const response = await worker.fetch(
+        new Request('https://scc.example/api/anything'),
+      );
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'Internal error' });
+      expect(log).toHaveBeenCalledTimes(1);
+    }
+    expect(log.mock.calls[0]?.[0]).toMatchObject({
+      error: { message: '[error unreadable]' },
+    });
+  } finally {
+    log.mockRestore();
+  }
+});
+
 test('the Worker converts thrown errors to a 500 without leaking details', async () => {
   const log = spyOn(console, 'error').mockImplementation(() => {});
   try {

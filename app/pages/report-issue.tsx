@@ -1,35 +1,32 @@
 import { type Handle, on, ref } from 'remix/component';
-import {
-  REPORT_FIELD_LIMITS,
-  sanitizeUserIssueReport,
-  userIssueReportSchema,
-} from '../../shared/errorReporting.ts';
+import { sanitizeUserIssueReport } from '../../shared/errorReporting.ts';
 import { reportIssue } from '../api.ts';
 import { Alert } from '../ui/alert.tsx';
 import { Button, type ButtonVariant } from '../ui/button.tsx';
-import { controlClass, FieldError } from '../ui/field.tsx';
 
 const REPORT_FAILURE_MESSAGE =
   'Your issue could not be reported. Please try again.';
+const REPORT_SUCCESS_MESSAGE =
+  "Thank you. We've sent this page and the time to support.";
 
 interface ReportIssueProps {
   /** The opener's style: outline in the footer, primary on the error page. */
   variant?: ButtonVariant;
 }
 
-/** The Report an issue button and the dialog it opens. */
+/**
+ * The Report an issue button and the dialog it opens. A User report carries
+ * only the page and the time: nothing the user could type is sent.
+ */
 export function ReportIssue(handle: Handle<ReportIssueProps>) {
   let dialog: HTMLDialogElement;
-  let form: HTMLFormElement;
   let pending = false;
   let message = '';
-  let fieldError = '';
   let success = false;
   let opener: HTMLButtonElement;
 
   function open() {
     message = '';
-    fieldError = '';
     success = false;
     void handle.update();
     dialog.showModal();
@@ -44,23 +41,11 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
     event.preventDefault();
     if (pending) return;
     try {
-      // Only the description is the user's to fix; sanitizing bounds the rest.
-      const description = userIssueReportSchema.shape.description.safeParse(
-        new FormData(form).get('description'),
-      );
-      if (!description.success) {
-        fieldError = 'Please describe what happened.';
-        await handle.update();
-        form.querySelector('textarea')?.focus();
-        return;
-      }
       pending = true;
       message = '';
-      fieldError = '';
       await handle.update();
       const result = await reportIssue(
         sanitizeUserIssueReport({
-          description: description.data,
           url: window.location.href,
           timestamp: new Date().toISOString(),
         }),
@@ -68,10 +53,7 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
       );
       if (handle.signal.aborted) return;
       success = result.ok;
-      message = result.ok
-        ? 'Thank you. Your issue has been reported.'
-        : REPORT_FAILURE_MESSAGE;
-      if (result.ok) form.reset();
+      message = result.ok ? REPORT_SUCCESS_MESSAGE : REPORT_FAILURE_MESSAGE;
     } catch {
       message = REPORT_FAILURE_MESSAGE;
     } finally {
@@ -109,46 +91,14 @@ export function ReportIssue(handle: Handle<ReportIssueProps>) {
             id={`${handle.id}-help`}
             className="text-sm leading-6 text-slate-600"
           >
-            Describe what happened and we'll send the report to support.
+            We'll send this page and the time to support.
           </p>
         </div>
         <form
           novalidate
           className="space-y-4"
-          mix={[
-            ref((node) => {
-              form = node;
-            }),
-            on<HTMLFormElement>('submit', submit),
-          ]}
+          mix={on<HTMLFormElement>('submit', submit)}
         >
-          <div>
-            <label
-              htmlFor={`${handle.id}-description`}
-              className="block text-sm font-medium text-gray-700"
-            >
-              What happened?
-            </label>
-            <textarea
-              id={`${handle.id}-description`}
-              name="description"
-              required
-              maxLength={REPORT_FIELD_LIMITS.description}
-              rows={6}
-              placeholder="Describe the issue you ran into."
-              aria-invalid={fieldError ? 'true' : undefined}
-              aria-describedby={
-                fieldError ? `${handle.id}-description-error` : undefined
-              }
-              className={controlClass('textarea', Boolean(fieldError))}
-            />
-            {fieldError ? (
-              <FieldError
-                id={`${handle.id}-description-error`}
-                errors={[fieldError]}
-              />
-            ) : null}
-          </div>
           {message && success ? (
             <p role="status" className="text-sm text-slate-700">
               {message}

@@ -4,7 +4,6 @@ import { render } from 'remix/component/test';
 import { captureFetchBodies } from '../../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
-  SENSITIVE_DESCRIPTION,
   SENSITIVE_URL,
 } from '../../test/sensitive-reports.ts';
 import { ERROR_MODAL_MESSAGE } from '../error-reporting.ts';
@@ -61,16 +60,20 @@ test('the error page Report an issue opens the report dialog', async () => {
   expect(dialog.open).toBe(true);
   expect(dialog.querySelector('h2')?.textContent).toBe('Report an issue');
 });
-test('the report description stops at the length the Worker accepts', () => {
+test('the report dialog has no text box and says what it sends', () => {
   const view = render(
     <Shell>
       <p>Builder remains available</p>
     </Shell>,
   );
   cleanups.push(view.cleanup);
-  expect(view.$('textarea')?.getAttribute('maxlength')).toBe('10000');
+  expect(view.$('dialog textarea')).toBeNull();
+  expect(view.$('dialog input')).toBeNull();
+  expect(view.$('dialog')?.textContent).toContain(
+    "We'll send this page and the time to support.",
+  );
 });
-test('report modal validates, submits only explicit description, and shows failure then success', async () => {
+test('report modal submits the page and time once, and shows failure then success', async () => {
   const requests: { path: string; body: Record<string, unknown> }[] = [];
   let resolve!: (response: Response) => void;
   globalThis.fetch = ((path: RequestInfo | URL, init?: RequestInit) => {
@@ -92,7 +95,6 @@ test('report modal validates, submits only explicit description, and shows failu
   await view.act(() => (view.$('footer button') as HTMLButtonElement).click());
   expect(dialog.open).toBe(true);
   const form = view.$('dialog form') as HTMLFormElement;
-  const textarea = view.$('textarea') as HTMLTextAreaElement;
   async function submit() {
     await view.act(async () => {
       form.dispatchEvent(
@@ -101,15 +103,6 @@ test('report modal validates, submits only explicit description, and shows failu
       await Promise.resolve();
     });
   }
-  textarea.value = '   ';
-  await submit();
-  expect(requests).toHaveLength(0);
-  expect(view.$('[role="alert"]')?.textContent).toBe(
-    'Please describe what happened.',
-  );
-  expect(textarea.getAttribute('aria-invalid')).toBe('true');
-  expect(textarea.className).toContain('border-red-500');
-  textarea.value = '  The page failed  ';
   await submit();
   await submit();
   expect(requests).toHaveLength(1);
@@ -117,8 +110,6 @@ test('report modal validates, submits only explicit description, and shows failu
   expect(requests[0]).toEqual({
     path: '/api/report-issue',
     body: {
-      // Only the length of the trimmed description is sent.
-      description: '[description omitted: 15 characters]',
       // happy-dom's about:blank is not an http(s) URL: the placeholder origin.
       url: 'https://redacted.invalid/',
       timestamp: expect.any(String),
@@ -131,16 +122,14 @@ test('report modal validates, submits only explicit description, and shows failu
     await new Promise((done) => setTimeout(done, 0));
   });
   expect(view.$('[role="alert"]')?.textContent).toContain('Please try again');
-  expect(textarea.value).toBe('  The page failed  ');
   await submit();
   await view.act(async () => {
     resolve(Response.json({ ok: true }));
     await new Promise((done) => setTimeout(done, 0));
   });
-  expect(view.$('[role="status"]')?.textContent).toContain(
-    'Your issue has been reported',
+  expect(view.$('[role="status"]')?.textContent).toBe(
+    "Thank you. We've sent this page and the time to support.",
   );
-  expect(textarea.value).toBe('');
   await view.act(() =>
     (view.$('dialog button[type="button"]') as HTMLButtonElement).click(),
   );
@@ -148,7 +137,7 @@ test('report modal validates, submits only explicit description, and shows failu
   expect(view.container.textContent).toContain('Builder remains available');
 });
 
-test('the report sends a path-only URL and a redacted description', async () => {
+test('the report sends only a path-only URL and the time', async () => {
   const bodies = captureFetchBodies();
   const previousUrl = window.location.href;
   // happy-dom starts on about:blank; its setURL is the only way to navigate.
@@ -159,7 +148,6 @@ test('the report sends a path-only URL and a redacted description', async () => 
   cleanups.push(() => happyDOM.setURL(previousUrl));
   const view = render(<Shell />);
   cleanups.push(view.cleanup);
-  (view.$('textarea') as HTMLTextAreaElement).value = SENSITIVE_DESCRIPTION;
   await view.act(async () => {
     (view.$('form') as HTMLFormElement).dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true }),
@@ -169,10 +157,8 @@ test('the report sends a path-only URL and a redacted description', async () => 
   expect(bodies).toHaveLength(1);
   expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
+  expect(Object.keys(sent).sort()).toEqual(['timestamp', 'url']);
   expect(sent.url).toBe('https://scc.example/summary');
-  expect(sent.description).toBe(
-    `[description omitted: ${SENSITIVE_DESCRIPTION.length} characters]`,
-  );
 });
 
 test('a network failure shows plain failure copy and leaves the modal usable', async () => {
@@ -181,7 +167,6 @@ test('a network failure shows plain failure copy and leaves the modal usable', a
   }) as unknown as typeof fetch;
   const view = render(<Shell />);
   cleanups.push(view.cleanup);
-  (view.$('textarea') as HTMLTextAreaElement).value = 'Cannot continue';
   await view.act(async () => {
     (view.$('form') as HTMLFormElement).dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true }),

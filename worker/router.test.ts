@@ -422,7 +422,7 @@ test('a browser-sanitized report from a dev URL with an IP host is accepted by b
     url: 'http://127.0.0.1:5173/info?step=2',
   };
   const telemetry = sanitizeErrorTelemetry({ ...fields, message: 'Broken' });
-  const report = sanitizeUserIssueReport({ ...fields, description: 'Broken' });
+  const report = sanitizeUserIssueReport(fields);
   expect(report.url).toBe('https://redacted.invalid/info');
   for (const [path, body] of [
     ['/api/errors', telemetry],
@@ -434,6 +434,25 @@ test('a browser-sanitized report from a dev URL with an IP host is accepted by b
         200,
       ),
     ).toEqual({ ok: true });
+});
+
+test("an older client's report with a description is accepted, and the description is dropped", async () => {
+  const calls = mock(
+    async (_input: string | URL | Request, _init?: RequestInit) =>
+      Response.json({ number: 1 }, { status: 201 }),
+  );
+  globalThis.fetch = calls as unknown as typeof fetch;
+  const response = await createApiRouter(env).fetch(
+    contractRequest('/api/report-issue', {
+      timestamp: '2026-10-13T00:00:00.000Z',
+      url: 'https://scc.example/summary',
+      description: SENSITIVE_DESCRIPTION,
+    }),
+  );
+  expect(await assertResponse(response, 200)).toEqual({ ok: true });
+  const sent = String(calls.mock.calls[0]?.[1]?.body);
+  expectNoSensitiveValues(sent);
+  expect(JSON.parse(sent).body).not.toContain('Description');
 });
 
 test('GitHub config failures are 500; HTTP and network failures are 502', async () => {

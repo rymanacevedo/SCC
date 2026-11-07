@@ -6,7 +6,6 @@ import {
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
-  SENSITIVE_DESCRIPTION,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
@@ -37,11 +36,7 @@ test('both report senders post an already-sanitized report unchanged', async () 
     message: SENSITIVE_MESSAGE,
     stackTrace: SENSITIVE_STACK,
   });
-  const report = sanitizeUserIssueReport({
-    timestamp,
-    url: SENSITIVE_URL,
-    description: `${SENSITIVE_DESCRIPTION} ${'word '.repeat(2_000)}`,
-  });
+  const report = sanitizeUserIssueReport({ timestamp, url: SENSITIVE_URL });
   await reportError(telemetry);
   await reportIssue(report);
   expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
@@ -49,9 +44,6 @@ test('both report senders post an already-sanitized report unchanged', async () 
     expectNoSensitiveValues(body);
     expect(JSON.parse(body).url).toBe('https://scc.example/summary');
   }
-  expect(report.description).toMatch(
-    /^\[description omitted: \d+ characters\]$/,
-  );
 });
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {
   const signal = new AbortController().signal;
@@ -89,7 +81,6 @@ test('API client sends JSON with signal and parses shared output schemas for all
       await reportIssue(
         sanitizeUserIssueReport({
           timestamp: new Date().toISOString(),
-          description: 'issue',
           url: 'https://scc.example',
         }),
         signal,
@@ -177,7 +168,6 @@ for (const [name, send] of [
       reportIssue(
         sanitizeUserIssueReport({
           url: 'https://scc.example/info',
-          description: 'Failed',
           timestamp: new Date().toISOString(),
         }),
         signal,

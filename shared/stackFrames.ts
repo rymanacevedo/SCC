@@ -43,9 +43,7 @@ function sanitizeFile(file: string): string {
   const path = query === -1 ? file : file.slice(0, query);
   const scheme = SCHEME_PREFIX.exec(path)?.[0] ?? '';
   const sanitized = sanitizePathSegments(path.slice(scheme.length), /[/\\]/);
-  return sanitized.includes(REDACTED) && !sanitized.replace(REDACTED, '')
-    ? REDACTED
-    : `${scheme}${sanitized}`;
+  return sanitized === REDACTED ? REDACTED : `${scheme}${sanitized}`;
 }
 
 function sanitizeLocation(location: string): string | undefined {

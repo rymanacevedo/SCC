@@ -5,6 +5,7 @@ import {
 import { sanitizeStackTrace } from '../../shared/stackFrames.ts';
 import {
   omittedText,
+  REDACTED,
   sanitizeErrorName,
 } from '../../shared/telemetryRedaction.ts';
 
@@ -33,24 +34,45 @@ export function timestampForLog(value: unknown) {
   return typeof value === 'string' ? sanitizeReportTimestamp(value) : value;
 }
 
+/** `null`, `array` or the `typeof` of a thrown value; never its contents. */
+function thrownType(value: unknown): string {
+  if (value === null) return 'null';
+  return Array.isArray(value) ? 'array' : typeof value;
+}
+
+/** A string property's length placeholder; any other value, its type. */
+function omittedProperty(field: string, value: unknown): string {
+  return typeof value === 'string'
+    ? omittedText(field, value)
+    : `[${field} omitted: ${thrownType(value)}]`;
+}
+
 /**
  * What a log line may carry about a thrown value: its error class name,
  * canonical stack frames, its cause's class name, and its message reduced to
- * a length. No message text is ever logged.
+ * a length. No message text is ever logged, and nothing is stringified: a
+ * thrown value that is not an Error is logged by its type alone, since
+ * `String(value)` can throw (a null prototype, a throwing `toString` or
+ * `Symbol.toPrimitive`). A getter that throws yields a fixed placeholder.
  */
 export function describeErrorForLog(error: unknown) {
-  if (!(error instanceof Error))
-    return { message: omittedText('thrown value', String(error)) };
-  return {
-    name: sanitizeErrorName(error.name),
-    stack:
-      error.stack === undefined
-        ? undefined
-        : sanitizeStackTrace(error.stack, LOG_STACK_MAX),
-    causeName:
-      error.cause instanceof Error
-        ? sanitizeErrorName(error.cause.name)
-        : undefined,
-    message: omittedText('message', error.message),
-  };
+  try {
+    if (!(error instanceof Error))
+      return { message: `[thrown ${thrownType(error)} omitted]` };
+    const { name, stack, cause, message } = error;
+    return {
+      name: typeof name === 'string' ? sanitizeErrorName(name) : REDACTED,
+      stack:
+        typeof stack === 'string'
+          ? sanitizeStackTrace(stack, LOG_STACK_MAX)
+          : undefined,
+      causeName:
+        cause instanceof Error && typeof cause.name === 'string'
+          ? sanitizeErrorName(cause.name)
+          : undefined,
+      message: omittedProperty('message', message),
+    };
+  } catch {
+    return { message: '[error unreadable]' };
+  }
 }

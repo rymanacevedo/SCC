@@ -73,6 +73,23 @@ test('errors that differ only by query string or redacted data are sent once', a
     message: '[message omitted: 32 characters]',
   });
 });
+test('an error with no stack still reports its class name, so different classes stay apart', async () => {
+  const bodies = captureFetchBodies();
+  const withoutStack = (error: Error) =>
+    Object.defineProperty(error, 'stack', { value: undefined });
+  await reportErrorTelemetry(
+    withoutStack(new TypeError('a')),
+    'https://scc.example/summary',
+  );
+  await reportErrorTelemetry(
+    withoutStack(new RangeError('b')),
+    'https://scc.example/summary',
+  );
+  expect(bodies.map((body) => JSON.parse(body).stackTrace)).toEqual([
+    'TypeError',
+    'RangeError',
+  ]);
+});
 test('reporting failure resolves to a failed Result', async () => {
   globalThis.fetch = (async () => {
     throw new Error('offline');

@@ -180,12 +180,10 @@ describe('Education', () => {
 test('Issue reports keep Zod default messages', () => {
   expect(
     errorsFor(userIssueReportSchema, {
-      description: '  ',
       timestamp: 'x',
       url: 'nope',
     }),
   ).toEqual({
-    description: ['Too small: expected string to have >=1 characters'],
     timestamp: ['Invalid ISO datetime'],
     url: ['Invalid URL'],
   });

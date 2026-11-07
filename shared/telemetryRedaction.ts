@@ -1,7 +1,7 @@
 /**
- * Report sanitizing primitives. Reports never store free text: a message, a
- * description or an upstream response body is replaced by a placeholder that
- * shows only its length. What remains is structural and fail-closed: an error
+ * Report sanitizing primitives. Reports never store free text: a message or
+ * an upstream response body is replaced by a placeholder that shows only its
+ * length. What remains is structural and fail-closed: an error
  * class name, a path-only URL, a canonical timestamp and canonical stack
  * frames (`stackFrames.ts`). Runs in the browser before a report is sent and
  * again on the Worker before a report reaches a GitHub issue or Workers Logs.
@@ -22,7 +22,7 @@ export const REDACTED_ORIGIN = 'https://redacted.invalid';
 // field costs bounded CPU however large the request body was.
 export const SANITIZE_INPUT_FACTOR = 4;
 
-/** `[description omitted: 142 characters]`: free text, reduced to its length. */
+/** `[message omitted: 142 characters]`: free text, reduced to its length. */
 export function omittedText(field: string, value: string): string {
   return `[${field} omitted: ${value.length} characters]`;
 }
@@ -57,20 +57,44 @@ const SEGMENT_NUMBER = /^\d{1,4}$/;
 const VERSION = /^v\d{1,3}$/i;
 const FILE_EXTENSION = /\.[A-Za-z]{1,5}$/;
 const CONTENT_HASH = /^[A-Za-z0-9]{4,16}$/;
+// The whole segment shaped like a key: a short lower-case prefix, an
+// optional short tag, then 16+ letters or digits (`sk_live_…`, `pk_test_…`,
+// `ghp_…`, `xoxb-…`). One structural rule rather than a list of prefixes.
+const KEY_SHAPED_SEGMENT =
+  /^[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[A-Za-z0-9]{16,}$/;
+// A word with this share of upper-case letters, past this length, looks
+// random rather than written (`AbCdEfGh…`, `XkfQpLmZrAb`); `UserProfile`,
+// `getElementById` and `XMLHttpRequest` stay. All-capitals is a word too.
+const MIXED_CASE_MIN_LENGTH = 8;
+const MAX_UPPER_SHARE = 0.4;
+const UPPER = /[A-Z]/g;
+
+function looksRandom(word: string): boolean {
+  if (word.length < MIXED_CASE_MIN_LENGTH || word === word.toUpperCase())
+    return false;
+  return (word.match(UPPER)?.length ?? 0) / word.length > MAX_UPPER_SHARE;
+}
 
 function isSafeSegmentPart(part: string): boolean {
   return (
-    SEGMENT_WORD.test(part) || SEGMENT_NUMBER.test(part) || VERSION.test(part)
+    (SEGMENT_WORD.test(part) && !looksRandom(part)) ||
+    SEGMENT_NUMBER.test(part) ||
+    VERSION.test(part)
   );
 }
 
 /**
  * A plain path segment (`api`, `v1`, `users`, `1234`, `index-C4kL9x.js`,
- * `@scope`, `(group)`, `[slug]`) with at most 4 digits in total. A
- * random-looking token such as `XkfQpLmZr9Ab` is not.
+ * `@scope`, `(group)`, `[slug]`) with at most 4 digits in total. It is
+ * judged whole as well as by its parts: a random-looking token such as
+ * `XkfQpLmZr9Ab`, or a key-shaped one such as `sk_live_…`, is not.
  */
 function isSafeSegment(segment: string): boolean {
-  if (!SEGMENT_CHARACTERS.test(segment) || hasTooManyDigits(segment))
+  if (
+    !SEGMENT_CHARACTERS.test(segment) ||
+    hasTooManyDigits(segment) ||
+    KEY_SHAPED_SEGMENT.test(segment)
+  )
     return false;
   const bare = segment.replace(/^@/, '').replace(SEGMENT_WRAPPERS, '');
   const parts = bare.split(SEGMENT_PART_SEPARATORS).filter(Boolean);

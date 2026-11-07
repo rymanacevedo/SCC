@@ -49,11 +49,11 @@ The automatic report the app sends to `/api/errors` when a page throws: timestam
 _Avoid_: crash report, error log
 
 ### User report
-The report a user writes in the Report an issue dialog, sent to `/api/report-issue`: description, timestamp and URL. The Worker turns it into a `user-reported` GitHub issue.
+The signal a user sends from the Report an issue dialog to `/api/report-issue`: the page and the time, nothing typed. The Worker turns it into a `user-reported` GitHub issue.
 _Avoid_: feedback, ticket
 
 ### Report sanitizing
-Reducing a report to its structure: a canonical timestamp, the URL as origin + plain path, the error class name and canonical stack frames. Free text (a message, a description, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[description omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
+Reducing a report to its structure: a canonical timestamp, the URL as origin + plain path, the error class name and canonical stack frames. Free text (an error message, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[message omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
 _Avoid_: scrubbing, anonymizing
 
 ## Generation architecture
