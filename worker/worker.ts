@@ -1,3 +1,4 @@
+import { isClientAbort } from './lib/abort.ts';
 import { apiError } from './lib/response.ts';
 
 export function createWorker(api: {
@@ -10,7 +11,7 @@ export function createWorker(api: {
       } catch (error) {
         // The router rethrows the abort reason once the client disconnects. Nobody
         // reads this response, so log the cancellation without counting a failure.
-        if (request.signal.aborted) {
+        if (isClientAbort(request, error)) {
           // oxlint-disable-next-line no-console -- Cancellations belong in Workers Logs.
           console.log({
             category: 'client_aborted',

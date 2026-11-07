@@ -1,5 +1,6 @@
 import { APICallError } from 'ai';
 import type { Middleware } from 'remix/router';
+import { isClientAbort } from '../lib/abort.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { apiError } from '../lib/response.ts';
 import { GitHubIssueCreationError } from '../services/github.ts';
@@ -19,6 +20,8 @@ export function createRouteErrorMiddleware<T>(
     try {
       return await next();
     } catch (error) {
+      // A disconnect is not a route failure. The Worker entry logs it once.
+      if (isClientAbort(context.request, error)) throw error;
       const payload = context.get(key);
       const reportMetadata =
         !generation &&

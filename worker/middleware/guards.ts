@@ -2,7 +2,7 @@ import { Filter } from 'bad-words';
 import { createContextKey, type Middleware } from 'remix/router';
 import { z } from 'zod';
 import type { GenerationRequest } from '../../shared/schemas/generation.ts';
-import { readBoundedJson } from '../lib/body.ts';
+import { type BoundedJson, readBoundedJson } from '../lib/body.ts';
 import { apiError } from '../lib/response.ts';
 
 export const sameOriginGuard: Middleware = ({ request }, next) => {
@@ -53,7 +53,7 @@ export function createGeoRestrictionMiddleware({
 export function bodyValidation<T>(schema: z.core.$ZodType<T>) {
   const key = createContextKey<T>();
   const middleware: Middleware = async (context, next) => {
-    let body: Awaited<ReturnType<typeof readBoundedJson>>;
+    let body: BoundedJson;
     try {
       body = await readBoundedJson(context.request);
     } catch {

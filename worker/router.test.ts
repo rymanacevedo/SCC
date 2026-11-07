@@ -321,9 +321,12 @@ test('a client disconnect aborts the provider call', async () => {
   // Request constructor rejects it. contractRequest attaches `cf` the same way.
   const request = contractRequest('/api/summaries');
   Object.defineProperty(request, 'signal', { value: controller.signal });
+  const error = spyOn(console, 'error').mockImplementation(() => {});
   // The router rethrows the abort; the Worker entry turns it into a 499.
   await expect(
     createApiRouter(env, { resolveModel: () => model }).fetch(request),
   ).rejects.toMatchObject({ name: 'AbortError' });
   expect(providerSignal?.aborted).toBe(true);
+  // The route error middleware rethrows instead of logging a failure.
+  expect(error).not.toHaveBeenCalled();
 });

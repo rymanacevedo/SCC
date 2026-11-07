@@ -33,13 +33,20 @@ export async function readBoundedText(
   }
 }
 
+export type BoundedJson =
+  | { ok: true; value: unknown }
+  | { ok: false; reason: 'too_large' };
+
 /** Reads a JSON body, or reports it too large without buffering it whole. */
 export async function readBoundedJson(
   request: Request,
   maxBytes = MAX_JSON_BODY_BYTES,
-): Promise<{ ok: true; value: unknown } | { ok: false; reason: 'too_large' }> {
+): Promise<BoundedJson> {
   const declared = Number(request.headers.get('Content-Length'));
-  if (declared > maxBytes) return { ok: false, reason: 'too_large' };
+  if (declared > maxBytes) {
+    await request.body?.cancel();
+    return { ok: false, reason: 'too_large' };
+  }
   const { text, truncated } = await readBoundedText(request.body, maxBytes);
   if (truncated) return { ok: false, reason: 'too_large' };
   // JSON.parse throws on malformed input; callers map that to a 400.

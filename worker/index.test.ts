@@ -1,4 +1,6 @@
 import { expect, spyOn, test } from 'bun:test';
+import { contractRequest } from '../test/contract-request.ts';
+import { createMockJsonModel } from '../test/mock-model.ts';
 import { createApiRouter } from './router.ts';
 import { createWorker } from './worker.ts';
 
@@ -32,20 +34,26 @@ test('the Worker converts thrown errors to a 500 without leaking details', async
   }
 });
 
-test('the Worker logs a client disconnect as a cancellation, not a failure', async () => {
+test('the Worker logs a client disconnect during generation as a cancellation, not a failure', async () => {
   const controller = new AbortController();
-  const request = new Request('https://scc.example/api/summaries');
+  const model = createMockJsonModel({});
+  model.doGenerate = async ({ abortSignal }) => {
+    controller.abort();
+    abortSignal?.throwIfAborted();
+    throw new Error('provider ignored the abort');
+  };
+  const request = contractRequest('/api/summaries');
   // The test DOM's AbortController is not Bun's, so attach it after construction.
   Object.defineProperty(request, 'signal', { value: controller.signal });
   const log = spyOn(console, 'log').mockImplementation(() => {});
   const error = spyOn(console, 'error').mockImplementation(() => {});
   try {
-    const worker = createWorker({
-      fetch: async () => {
-        controller.abort();
-        throw controller.signal.reason;
-      },
-    });
+    const worker = createWorker(
+      createApiRouter(
+        { ALLOWED_COUNTRIES: 'US', OPENAI_API_KEY: 'test' },
+        { resolveModel: () => model },
+      ),
+    );
     const response = await worker.fetch(request);
     expect(response.status).toBe(499);
     expect(log).toHaveBeenCalledWith({
