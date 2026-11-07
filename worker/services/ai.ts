@@ -1,10 +1,78 @@
-import { generateText, type LanguageModel, Output } from 'ai';
+import {
+  generateText,
+  type LanguageModel,
+  Output,
+  type OutputInterface,
+} from 'ai';
 import { z } from 'zod';
 import {
   ExperienceSchema,
   SkillsSchema,
   SummarySchema,
 } from '../../shared/schemas/generation.ts';
+import { withDeadline } from '../lib/deadline.ts';
+
+/**
+ * Longest a section generator may run, retries and backoff included. A
+ * reasoning model answers a section in well under this; past it the user is
+ * better served by a 504 they can retry than by an open request.
+ */
+export const SECTION_GENERATION_DEADLINE_MS = 45_000;
+
+/**
+ * One retry absorbs a transient 429 or 5xx. More would spend the deadline on
+ * backoff and multiply the cost of a struggling provider.
+ */
+export const SECTION_GENERATION_MAX_RETRIES = 1;
+
+/**
+ * Output-token limits per section. The default model reasons, and reasoning
+ * tokens count against the limit, so each sits well above its visible JSON:
+ * summaries are 3-5 sentences per job, possibly several jobs; skills and
+ * experience are two short string lists, experience bullets being longer.
+ */
+export const SECTION_MAX_OUTPUT_TOKENS = {
+  summaries: 6000,
+  skills: 3000,
+  experience: 4000,
+} as const;
+
+/** The one bounded model call every section generator makes. */
+async function generateSection<OUTPUT>({
+  prompt,
+  model,
+  abortSignal,
+  output,
+  instructions,
+  maxOutputTokens,
+}: {
+  prompt: string;
+  model: LanguageModel;
+  abortSignal?: AbortSignal;
+  output: OutputInterface<OUTPUT>;
+  instructions: string;
+  maxOutputTokens: number;
+}): Promise<OUTPUT> {
+  return withDeadline(
+    {
+      upstream: 'ai',
+      timeoutMs: SECTION_GENERATION_DEADLINE_MS,
+      signal: abortSignal,
+    },
+    async (signal) => {
+      const result = await generateText({
+        model,
+        abortSignal: signal,
+        maxRetries: SECTION_GENERATION_MAX_RETRIES,
+        maxOutputTokens,
+        output,
+        prompt,
+        instructions,
+      });
+      return result.output;
+    },
+  );
+}
 
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
@@ -14,9 +82,10 @@ export const createSummaries = async (
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.summaries,
     output: Output.object({
       schema: z.object({
         summaries: SummarySchema,
@@ -72,9 +141,10 @@ export const createSkills = async (
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.skills,
     output: Output.object({
       schema: SkillsSchema,
     }),
@@ -102,9 +172,10 @@ export const createExperience = async (
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.experience,
     output: Output.object({
       schema: ExperienceSchema,
     }),
