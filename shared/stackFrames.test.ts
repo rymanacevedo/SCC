@@ -375,6 +375,21 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
+  test('an asset name whose parts each pass but spell a long number is redacted', () => {
+    expect(
+      sanitizeStackTrace(
+        '    at load (https://scc.example/assets/contact-555-123-4567-abcdef12.js:1:2)',
+        8_000,
+      ),
+    ).toBe(`    at load (${REDACTED_FILE}:1:2)`);
+    expect(
+      sanitizeStackTrace(
+        '    at load (https://scc.example/assets/v2-page-12345678.js:1:2)',
+        8_000,
+      ),
+    ).toBe('    at load (https://app.invalid/assets/v2-page-12345678.js:1:2)');
+  });
+
   test('every listed Node.js module is a real built-in', () => {
     for (const name of NODE_BUILTIN_MODULES)
       if (name !== 'internal') expect(builtinModules).toContain(name);

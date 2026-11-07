@@ -47,7 +47,6 @@ export const SECTION_MAX_OUTPUT_TOKENS = {
  * no usable output: JSON cut short, or no text at all when a reasoning model
  * spent the whole budget thinking.
  */
-// Listed in KNOWN_ERROR_NAMES (shared/telemetryRedaction.ts); an unlisted name is reported as `Error`.
 export class SectionTokenLimitError extends Error {
   readonly maxOutputTokens: number;
   readonly outputTokens: number | undefined;
@@ -131,7 +130,6 @@ async function generateSection<OUTPUT>({
 }
 
 /** A section generator's result has an array or string over its limit. */
-// Listed in KNOWN_ERROR_NAMES (shared/telemetryRedaction.ts); an unlisted name is reported as `Error`.
 export class GeneratedOutputLimitError extends Error {
   constructor() {
     super('Generated output exceeds its limits.');

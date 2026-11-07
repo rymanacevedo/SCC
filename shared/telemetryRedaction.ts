@@ -29,6 +29,9 @@ export const SANITIZE_INPUT_FACTOR = 4;
 export const OMITTED_FIELDS = ['message', 'text'] as const;
 export type OmittedField = (typeof OMITTED_FIELDS)[number];
 
+// The largest length a placeholder shows: a longer text shows this, so the
+// number always fits the 4 digits a second pass accepts.
+const OMITTED_LENGTH_MAX = 9_999;
 // A placeholder this code built, for one of its own labels, with at most a
 // 4-digit length: `[message omitted: 142 characters]`.
 const OMITTED_TEXT = new RegExp(
@@ -40,11 +43,15 @@ const OMITTED_TEXT = new RegExp(
  * A second pass (the Worker, after the browser) keeps the first pass's
  * length: a placeholder with the same label and a length of at most 4
  * digits is parsed and rebuilt from its number, never passed on as given.
- * Anything else, such as a crafted label, is measured as new text.
+ * Anything else, such as a crafted label, is measured as new text. A
+ * length past 9,999 shows as 9999.
  */
 export function omittedText(field: OmittedField, value: string): string {
   const [, label, length] = OMITTED_TEXT.exec(value) ?? [];
-  const count = label === field ? Number(length) : value.length;
+  const count = Math.min(
+    label === field ? Number(length) : value.length,
+    OMITTED_LENGTH_MAX,
+  );
   return `[${field} omitted: ${count} characters]`;
 }
 

@@ -104,6 +104,12 @@ describe('free text is reduced to its length', () => {
     expect(omittedText('message', '')).toBe('[message omitted: 0 characters]');
   });
 
+  test('a text past 9,999 characters shows 9999, which a second pass keeps', () => {
+    const once = omittedText('message', 'x'.repeat(12_000));
+    expect(once).toBe('[message omitted: 9999 characters]');
+    expect(omittedText('message', once)).toBe(once);
+  });
+
   test("a second pass keeps the first pass's placeholder, not its own length", () => {
     const once = omittedText('message', 'Save failed for jane.doe@example.com');
     expect(omittedText('message', once)).toBe(once);

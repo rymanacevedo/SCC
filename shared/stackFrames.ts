@@ -37,7 +37,8 @@ const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
 const HTTP_SCHEME = /^https?:\/\//i;
 // The app's own bundle files, as Vite names them: `/assets/<name>-<hash>.js`
 // with an 8-character base64url content hash (`/assets/entry.client-BUZPaea6.js`,
-// `/assets/education-BL-Djl3_.js`). The name's parts pass the identifier rule.
+// `/assets/education-BL-Djl3_.js`). The name's parts pass the identifier rule,
+// and the whole name, hash left out, stays under the digit cap.
 const ASSET_PATH =
   /^\/assets\/([A-Za-z][\w.-]{0,47})-[\w-]{8}\.(?:js|mjs|css)$/;
 const ASSET_NAME_SEPARATORS = /[.-]+/;
@@ -51,27 +52,41 @@ export const NODE_BUILTIN_MODULES: ReadonlySet<string> = new Set([
   'async_hooks',
   'buffer',
   'child_process',
+  'cluster',
+  'console',
   'crypto',
+  'dgram',
+  'diagnostics_channel',
   'dns',
+  'domain',
   'events',
   'fs',
   'http',
+  'http2',
   'https',
+  'inspector',
   'internal',
   'module',
   'net',
   'os',
   'path',
+  'perf_hooks',
   'process',
+  'punycode',
   'querystring',
   'readline',
+  'repl',
   'stream',
   'string_decoder',
   'timers',
   'tls',
+  'trace_events',
+  'tty',
   'url',
   'util',
+  'v8',
   'vm',
+  'wasi',
   'worker_threads',
   'zlib',
 ]);
@@ -106,6 +121,7 @@ function sanitizeFile(file: string): string {
   const name = path === undefined ? undefined : ASSET_PATH.exec(path)?.[1];
   return name !== undefined &&
     !isSensitiveToken(name) &&
+    !hasTooManyDigits(name) &&
     name
       .split(ASSET_NAME_SEPARATORS)
       .filter(Boolean)

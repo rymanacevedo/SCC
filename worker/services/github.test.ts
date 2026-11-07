@@ -416,7 +416,7 @@ describe('issue bodies sent to GitHub', () => {
     expect(body).toContain(
       `${frame.replace('https://scc.example', 'https://app.invalid')}\n${TRUNCATED}\n`,
     );
-    expect(body).toContain('- Message: `[message omitted: 50000 characters]`');
+    expect(body).toContain('- Message: `[message omitted: 9999 characters]`');
     expect(body.length).toBeLessThan(GITHUB_ISSUE_BODY_MAX);
   });
 });

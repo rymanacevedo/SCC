@@ -83,6 +83,7 @@ export const SENSITIVE_VALUES = [
   'janedoe.example.com',
   '555.123.4567',
   '555_987_6543',
+  '555-123-4567',
   'correct horse battery staple',
   // Words a browser could choose in a path: they must reach no issue, since
   // triage agents read issues.
@@ -182,6 +183,8 @@ export const SENSITIVE_STACK = [
   // Node.js locations that are no built-in module: a key and a word.
   `    at load (node:${SENSITIVE_NODE_KEY}:3:6)`,
   '    at load (node:ignore/previous:3:7)',
+  // A bundle asset whose name parts each pass, but spell a phone number.
+  '    at load (https://scc.example/assets/contact-555-123-4567-abcdef12.js:3:8)',
   // File paths that are not bundle assets, spelling words.
   `    at render (https://scc.example${SENSITIVE_INJECTION_PATH}.js:4:1)`,
   '    at render (https://scc.example/experience/janedoe.js:4:2)',
@@ -215,6 +218,7 @@ export const SANITIZED_SENSITIVE_STACK = [
   `    at load (${FILE}:3:5)`,
   `    at load (${FILE}:3:6)`,
   `    at load (${FILE}:3:7)`,
+  `    at load (${FILE}:3:8)`,
   `    at render (${FILE}:4:1)`,
   `    at render (${FILE}:4:2)`,
 ].join('\n');

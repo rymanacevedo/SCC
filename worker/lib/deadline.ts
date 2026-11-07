@@ -2,7 +2,6 @@
 export type Upstream = 'provider' | 'github';
 
 /** An upstream call ran past its deadline and was aborted. */
-// Listed in KNOWN_ERROR_NAMES (shared/telemetryRedaction.ts); an unlisted name is reported as `Error`.
 export class UpstreamTimeoutError extends Error {
   readonly upstream: Upstream;
   readonly timeoutMs: number;
