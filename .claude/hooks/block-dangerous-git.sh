@@ -2,12 +2,16 @@
 # PreToolUse guard for destructive git commands.
 #
 # Plain pushes of a feature branch are allowed so agents can push unattended.
-# Still blocked: force pushes, deletes/mirrors, and anything that targets a
-# protected branch (main/master), including a bare `git push` from one.
+# Still blocked: force pushes, deletes, mirrors, bulk pushes, and anything
+# that targets a protected branch (main/master), including a bare
+# `git push` from one.
+#
+# Tests: test/hooks/block-dangerous-git.test.ts
 
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command')
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+CWD=${CWD:-$PWD}
 
 PROTECTED_BRANCHES="main|master"
 
@@ -32,57 +36,123 @@ for pattern in "${DANGEROUS_PATTERNS[@]}"; do
   fi
 done
 
-# Check every `git push` in the command, including chained ones (&&, ||, ;, |).
-SEGMENTS=$(echo "$COMMAND" | sed -E 's/(&&|\|\||;|\|)/\n/g')
+is_protected() {
+  echo "$1" | grep -qxE "$PROTECTED_BRANCHES"
+}
 
-while IFS= read -r segment; do
-  # Match `git push` and `git -C <dir> push`.
-  if ! echo "$segment" | grep -qE '(^|[[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push([[:space:]]|$)'; then
-    continue
-  fi
+# Runs git against the repo the push targets: same env prefix, global
+# options and cwd as the original command.
+target_git() {
+  (cd "$CWD" 2>/dev/null && env "${env_args[@]}" git "${global_args[@]}" "$@" 2>/dev/null)
+}
 
-  read -ra words <<< "$segment"
-  seen_push=0
-  positional=()
-  for w in "${words[@]}"; do
-    if [ "$seen_push" -eq 0 ]; then
-      [ "$w" = "push" ] && seen_push=1
-      continue
-    fi
+current_branch() {
+  target_git symbolic-ref --short -q HEAD
+}
+
+# Checks one `git ... push ...` invocation; words[start] is "git".
+check_push() {
+  local start=$1 i=$((start + 1)) n=${#words[@]} w
+  global_args=()
+
+  # Git global options before the subcommand. Values matter for -C,
+  # --git-dir, --work-tree and -c, so keep them for target_git.
+  while [ "$i" -lt "$n" ]; do
+    w=${words[$i]}
     case "$w" in
-      --force|--force-with-lease*|--force-if-includes|--mirror|--delete|--prune|--all|--tags)
+      -C|-c|--git-dir|--work-tree|--namespace|--config-env|--super-prefix)
+        global_args+=("$w" "${words[$((i + 1))]}"); i=$((i + 2)) ;;
+      -*) global_args+=("$w"); i=$((i + 1)) ;;
+      *) break ;;
+    esac
+  done
+  [ "${words[$i]}" = "push" ] || return 1
+  i=$((i + 1))
+
+  local remote="" positional=()
+  while [ "$i" -lt "$n" ]; do
+    w=${words[$i]}
+    case "$w" in
+      --) ;;
+      --force|--force=*|--force-with-lease|--force-with-lease=*|--force-if-includes|\
+      --mirror|--delete|--prune|--all|--branches|--tags)
         block "uses '$w'" ;;
+      --repo) remote=${words[$((i + 1))]}; i=$((i + 1)) ;;
+      --repo=*) remote=${w#--repo=} ;;
+      -o|--push-option|--receive-pack|--exec)
+        i=$((i + 1)) ;;
       -[!-]*)
-        # Short flags, possibly combined (e.g. -uf). Block -f and -d.
-        if [[ "$w" == *f* || "$w" == *d* ]]; then block "uses '$w'"; fi ;;
+        # Short flags, possibly combined (e.g. -uf). Block -f and -d; -o
+        # takes a value (attached or as the next word).
+        local flags=${w#-}
+        if [[ "$flags" == *o* ]]; then
+          flags=${flags%%o*}
+          [ "${w#*o}" = "" ] && i=$((i + 1))
+        fi
+        if [[ "$flags" == *f* || "$flags" == *d* ]]; then block "uses '$w'"; fi ;;
       -*) ;;
       *) positional+=("$w") ;;
     esac
+    i=$((i + 1))
   done
 
-  # positional[0] is the remote; the rest are refspecs.
-  refspecs=("${positional[@]:1}")
+  local refspecs
+  if [ -n "$remote" ]; then
+    refspecs=("${positional[@]}")
+  else
+    refspecs=("${positional[@]:1}")
+  fi
+
   if [ "${#refspecs[@]}" -eq 0 ]; then
-    # Bare push sends the current branch, so check what that is.
-    branch=$(git -C "${CWD:-.}" symbolic-ref --short -q HEAD 2>/dev/null)
-    if [ -z "$branch" ] || echo "$branch" | grep -qxE "$PROTECTED_BRANCHES"; then
+    # A bare push sends the current branch, unless push.default=matching
+    # makes it send every branch that exists on the remote.
+    local branch mode
+    branch=$(current_branch)
+    mode=$(target_git config --get push.default)
+    if [ "$mode" = "matching" ]; then
+      block "is a bare push with push.default=matching"
+    fi
+    if [ -z "$branch" ] || is_protected "$branch"; then
       block "pushes from '${branch:-detached HEAD}' without an explicit feature branch"
     fi
   fi
 
+  local ref dest
   for ref in "${refspecs[@]}"; do
     case "$ref" in
       +*) block "force-pushes refspec '$ref'" ;;
       :*) block "deletes a remote ref with '$ref'" ;;
+      *'*'*) block "uses wildcard refspec '$ref'" ;;
     esac
-    dest="${ref##*:}"
-    dest="${dest#refs/heads/}"
-    if [ "$dest" = "HEAD" ]; then
-      dest=$(git -C "${CWD:-.}" symbolic-ref --short -q HEAD 2>/dev/null)
+    dest=${ref##*:}
+    dest=${dest#refs/heads/}
+    if [ "$dest" = "HEAD" ] || [ "$dest" = "@" ]; then
+      dest=$(current_branch)
       [ -z "$dest" ] && block "pushes a detached HEAD"
     fi
-    if echo "$dest" | grep -qxE "$PROTECTED_BRANCHES"; then
+    if is_protected "$dest"; then
       block "targets protected ref '$dest'"
+    fi
+  done
+  return 0
+}
+
+# Split into simple commands: chains, pipes, subshells, groups, command
+# substitution. Quotes are dropped so `sh -c "git push ..."` is still seen.
+SEGMENTS=$(echo "$COMMAND" | tr -d "\"'" | sed -E 's/(&|\||;|\(|\)|\{|\}|`|\$)/\n/g')
+
+while IFS= read -r segment; do
+  read -ra words <<< "$segment"
+  echo "$segment" | grep -qE '(^|[[:space:]])push([[:space:]]|$)' || continue
+
+  env_args=()
+  for idx in "${!words[@]}"; do
+    w=${words[$idx]}
+    case "$w" in
+      GIT_*=*) env_args+=("$w") ;;
+    esac
+    if [ "${w##*/}" = "git" ]; then
+      check_push "$idx"
     fi
   done
 done <<< "$SEGMENTS"
