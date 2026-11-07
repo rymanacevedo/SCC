@@ -12,17 +12,31 @@ export const FLAG_DEFAULTS = {
   // exampleFlag: false,
 } as const satisfies Record<string, false>;
 
+// The one route path, used by the Worker route and the client.
+export const FLAGS_PATH = '/api/flags';
+
+export type FlagDefaults = Readonly<Record<string, boolean>>;
+export type FlagSet<D extends FlagDefaults> = Record<keyof D & string, boolean>;
 export type FlagName = keyof typeof FLAG_DEFAULTS;
-export type Flags = Record<FlagName, boolean>;
+export type Flags = FlagSet<typeof FLAG_DEFAULTS>;
 
-export const FLAG_NAMES: readonly string[] = Object.keys(FLAG_DEFAULTS);
+export function flagNames<D extends FlagDefaults>(
+  defaults: D,
+): (keyof D & string)[] {
+  return Object.keys(defaults) as (keyof D & string)[];
+}
 
-// Only known flags with a boolean value survive; anything else is the default.
-export function resolveFlags(raw: Partial<Record<string, unknown>>): Flags {
-  const flags: Record<string, boolean> = { ...FLAG_DEFAULTS };
-  for (const name of FLAG_NAMES) {
+// Only known flags with a boolean value survive; anything else is the
+// default. The defaults map is a parameter so tests can use a fixture set
+// without adding a production flag.
+export function resolveFlags<D extends FlagDefaults = typeof FLAG_DEFAULTS>(
+  raw: Partial<Record<string, unknown>>,
+  defaults: D = FLAG_DEFAULTS as D,
+): FlagSet<D> {
+  const flags: Record<string, boolean> = { ...defaults };
+  for (const name of flagNames(defaults)) {
     const value = raw[name];
     if (typeof value === 'boolean') flags[name] = value;
   }
-  return flags as Flags;
+  return flags as FlagSet<D>;
 }

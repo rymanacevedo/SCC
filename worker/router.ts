@@ -37,8 +37,10 @@ import {
 } from './services/github.ts';
 import { resolveModel as defaultResolveModel } from './services/model.ts';
 
-// The FLAGS binding when env carries one. A test env, or a local run before
-// the Flagship app exists, has none; every flag then reads as its default.
+// The FLAGS binding when env carries one. Without it every flag reads as its
+// default: expected in tests and in local dev before the app exists, a
+// misconfiguration in a deploy, so it is logged once per isolate.
+let missingBindingLogged = false;
 function flagsBinding(env: object): FlagsEnv['FLAGS'] {
   if (
     'FLAGS' in env &&
@@ -47,6 +49,14 @@ function flagsBinding(env: object): FlagsEnv['FLAGS'] {
     'getBooleanValue' in env.FLAGS
   ) {
     return env.FLAGS as FlagsEnv['FLAGS'];
+  }
+  if (!missingBindingLogged) {
+    missingBindingLogged = true;
+    console.error({
+      event: 'flags_binding_missing',
+      category: 'configuration',
+      detail: 'no FLAGS binding in env; every flag reads as its default',
+    });
   }
   return {
     getBooleanValue: (_key, defaultValue) => Promise.resolve(defaultValue),
@@ -119,9 +129,6 @@ export function createApiRouter(
     );
   }
   // Public, read-only, no body: the route answers 405 for anything but GET.
-  // A test env, or a local run before the Flagship app exists, has no FLAGS
-  // binding; every flag then reads as its default, so no environment
-  // validation here.
   router.route('ANY', FLAGS_ROUTE, {
     handler: ({ request }) =>
       handleFlagsRequest(request, { FLAGS: flagsBinding(env) }),

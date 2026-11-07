@@ -9,7 +9,7 @@ locally, so a flip is live on the next request and needs no deploy.
 | schema: every flag and its default (all off) | `shared/flags.ts` |
 | reader over the `FLAGS` binding, no cache | `worker/flags.ts` |
 | route exposing the resolved set | `worker/flags-route.ts` (`GET /api/flags`) |
-| client hook, defaults on failure | `app/flags.ts` (`useFlags()`) |
+| client reader, defaults on failure | `app/flags.ts` (`loadFlags()`, `getFlags()`, `subscribeFlags()`) |
 
 The app id (`APP_ID` below) is the `app_id` on the `FLAGS` entry of the
 `flagship` array in `wrangler.jsonc`.
@@ -55,9 +55,10 @@ bunx wrangler flagship flags pull <APP_ID>
 
 ## Setup (once)
 
-Create the app and put its id on the `FLAGS` binding in `wrangler.jsonc`,
-replacing the placeholder `REPLACE_WITH_FLAGSHIP_APP_ID`. The `--json` form,
-because Wrangler must not edit `wrangler.jsonc` (the scaffold owns it):
+Done for this Worker: the `FLAGS` binding in `wrangler.jsonc` carries the
+app id. For a new Worker or a new account, create the app and put its id on
+the binding by hand. The `--json` form, because Wrangler must not edit
+`wrangler.jsonc` (the scaffold owns it):
 
 ```sh
 bunx wrangler flagship apps create <worker name> --json | jq -r .id

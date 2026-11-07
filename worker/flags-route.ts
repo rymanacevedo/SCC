@@ -1,9 +1,10 @@
 // The one route exposing the resolved flag set: GET /api/flags returns
 // {"flags": {...}} with every known flag. Register it in the Worker's API
 // router; it needs no request body and reveals nothing beyond the flag names.
+import { FLAGS_PATH } from '../shared/flags.ts';
 import { type FlagsEnv, readFlags } from './flags.ts';
 
-export const FLAGS_ROUTE = '/api/flags';
+export const FLAGS_ROUTE = FLAGS_PATH;
 
 export async function handleFlagsRequest(
   request: Request,
