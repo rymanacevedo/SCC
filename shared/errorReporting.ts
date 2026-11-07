@@ -1,3 +1,4 @@
+import { sanitizeTelemetryText, toPathOnlyUrl } from './telemetryRedaction.ts';
 import { z } from './zod.ts';
 
 export const reportAcknowledgementSchema = z.object({ ok: z.literal(true) });
@@ -18,6 +19,56 @@ export const userIssueReportSchema = z.object({
 export type ErrorTelemetryPayload = z.infer<typeof errorTelemetrySchema>;
 export type UserIssueReportPayload = z.infer<typeof userIssueReportSchema>;
 
+// Per-field caps applied at write time, before a report is sent, stored in a
+// GitHub issue, or fingerprinted. Together they stay far below GitHub's
+// 65,536-character issue body limit.
+export const TELEMETRY_FIELD_MAX = {
+  url: 2_000,
+  message: 1_000,
+  stackTrace: 8_000,
+  description: 8_000,
+} as const;
+
+function sanitizeReportUrl(url: string): string {
+  return sanitizeTelemetryText(toPathOnlyUrl(url), TELEMETRY_FIELD_MAX.url);
+}
+
+/** The only form of error telemetry that may be sent, stored or fingerprinted. */
+export function sanitizeErrorTelemetry(
+  telemetry: ErrorTelemetryPayload,
+): ErrorTelemetryPayload {
+  return {
+    timestamp: telemetry.timestamp,
+    url: sanitizeReportUrl(telemetry.url),
+    message: sanitizeTelemetryText(
+      telemetry.message,
+      TELEMETRY_FIELD_MAX.message,
+    ),
+    ...(telemetry.stackTrace === undefined
+      ? {}
+      : {
+          stackTrace: sanitizeTelemetryText(
+            telemetry.stackTrace,
+            TELEMETRY_FIELD_MAX.stackTrace,
+          ),
+        }),
+  };
+}
+
+/** The only form of a user report that may be sent or stored. */
+export function sanitizeUserIssueReport(
+  report: UserIssueReportPayload,
+): UserIssueReportPayload {
+  return {
+    timestamp: report.timestamp,
+    url: sanitizeReportUrl(report.url),
+    description: sanitizeTelemetryText(
+      report.description,
+      TELEMETRY_FIELD_MAX.description,
+    ),
+  };
+}
+
 const STACK_COORDINATE_SUFFIX_PATTERN = /:\d+:\d+\b/g;
 const HASHED_ASSET_FILENAME_PATTERN =
   /\/assets\/([^/?#/:]+)-[A-Za-z0-9_-]{6,}(\.[A-Za-z0-9]+)\b/g;
@@ -28,9 +79,11 @@ export function normalizeTelemetryFingerprintValue(value: string): string {
     .replace(HASHED_ASSET_FILENAME_PATTERN, '/assets/$1-[hash]$2');
 }
 
+/** Computed on sanitized values, so query strings and redacted data never split it. */
 export function buildTelemetryFingerprint(
-  telemetry: ErrorTelemetryPayload,
+  payload: ErrorTelemetryPayload,
 ): string {
+  const telemetry = sanitizeErrorTelemetry(payload);
   return JSON.stringify({
     url: normalizeTelemetryFingerprintValue(telemetry.url),
     message: telemetry.message,

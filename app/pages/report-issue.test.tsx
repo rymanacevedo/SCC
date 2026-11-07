@@ -1,6 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
+import {
+  expectNoSensitiveValues,
+  SENSITIVE_DESCRIPTION,
+  SENSITIVE_URL,
+} from '../../test/sensitive-telemetry.ts';
 import { ERROR_MODAL_MESSAGE } from '../error-reporting.ts';
 import { buttonClass } from '../ui/button.tsx';
 import { ErrorPage, NotFoundPage } from './error.tsx';
@@ -129,6 +134,35 @@ test('report modal validates, submits only explicit description, and shows failu
   );
   expect(dialog.open).toBe(false);
   expect(view.container.textContent).toContain('Builder remains available');
+});
+
+test('the report sends a path-only URL and a redacted description', async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = (async (_path: RequestInfo | URL, init?: RequestInit) => {
+    bodies.push(String(init?.body));
+    return Response.json({ ok: true });
+  }) as unknown as typeof fetch;
+  const previousUrl = window.location.href;
+  // happy-dom starts on about:blank; its setURL is the only way to navigate.
+  const { happyDOM } = window as unknown as {
+    happyDOM: { setURL(url: string): void };
+  };
+  happyDOM.setURL(SENSITIVE_URL);
+  cleanups.push(() => happyDOM.setURL(previousUrl));
+  const view = render(<Shell />);
+  cleanups.push(view.cleanup);
+  (view.$('textarea') as HTMLTextAreaElement).value = SENSITIVE_DESCRIPTION;
+  await view.act(async () => {
+    (view.$('form') as HTMLFormElement).dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+    await new Promise((done) => setTimeout(done, 0));
+  });
+  expect(bodies).toHaveLength(1);
+  expectNoSensitiveValues(bodies[0] ?? '');
+  const sent = JSON.parse(bodies[0] ?? '{}');
+  expect(sent.url).toBe('https://scc.example/summary');
+  expect(sent.description).toContain('then it broke.');
 });
 
 test('a network failure shows plain failure copy and leaves the modal usable', async () => {

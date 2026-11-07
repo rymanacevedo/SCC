@@ -33,6 +33,20 @@ The 1 MiB cap on any `/api/*` JSON body (`MAX_JSON_BODY_BYTES`). The Worker read
 ### Client cancellation
 A request whose client disconnected before the response. `request.signal` aborts, the generation route passes that signal to the provider so the call stops, and the Worker entry logs it once as `client_aborted` with a 499. It is not a route failure: the router rethrows the abort reason once the signal fires, and the route error middleware rethrows it rather than log it.
 
+## Reporting
+
+### Error telemetry
+The automatic report the app sends to `/api/errors` when a page throws: timestamp, URL, message and optional stack. The Worker turns it into an `auto-reported` GitHub issue, deduped by its fingerprint against open issues.
+_Avoid_: crash report, error log
+
+### User report
+The report a user writes in the Report an issue dialog, sent to `/api/report-issue`: description, timestamp and URL. The Worker turns it into a `user-reported` GitHub issue.
+_Avoid_: feedback, ticket
+
+### Report sanitizing
+Reducing a report's URLs to origin + path, redacting sensitive patterns to `[redacted]`, and truncating each field with a `… [truncated]` marker. Runs in the browser before sending and again on the Worker before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
+_Avoid_: scrubbing, anonymizing
+
 ## Generation architecture
 
 ### Generation seam

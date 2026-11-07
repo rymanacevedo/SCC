@@ -3,6 +3,13 @@ import { APICallError } from 'ai';
 import { withSignal } from '../test/abortable-request.ts';
 import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
+import {
+  expectNoSensitiveValues,
+  SENSITIVE_DESCRIPTION,
+  SENSITIVE_MESSAGE,
+  SENSITIVE_STACK,
+  SENSITIVE_URL,
+} from '../test/sensitive-telemetry.ts';
 import { MAX_JSON_BODY_BYTES } from './lib/body.ts';
 import { createApiRouter } from './router.ts';
 
@@ -262,6 +269,53 @@ test('GitHub config failures are 500; HTTP and network failures are 502', async 
         502,
       );
       expect(body.error).not.toContain('private detail');
+    }
+  }
+});
+
+test('report route failure logs are path-only, redacted and truncated', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  const sensitiveReport = {
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: SENSITIVE_URL,
+    message: SENSITIVE_MESSAGE,
+    stackTrace: SENSITIVE_STACK,
+    description: SENSITIVE_DESCRIPTION,
+  };
+  for (const path of ['/api/errors', '/api/report-issue']) {
+    for (const failure of ['http', 'network']) {
+      log.mockClear();
+      globalThis.fetch = mock(async () => {
+        if (failure === 'network')
+          throw new Error(`${SENSITIVE_MESSAGE} ${'x'.repeat(5_000)}`);
+        return new Response(
+          `Bad credentials for jane.doe@example.com token=abc123`,
+          { status: 401 },
+        );
+      }) as unknown as typeof fetch;
+      await assertResponse(
+        await createApiRouter(env).fetch(
+          contractRequest(path, sensitiveReport),
+        ),
+        502,
+      );
+      expect(log).toHaveBeenCalledTimes(1);
+      const entry = log.mock.calls[0]?.[0] as Record<string, unknown>;
+      const output = JSON.stringify(entry);
+      expectNoSensitiveValues(output);
+      expect(entry.url).toBe('https://scc.example/summary');
+      expect(entry.category).toBe(`github_${failure}`);
+      if (failure === 'network') {
+        expect(entry.causeMessage).toMatch(
+          /^Save failed for \[redacted\], call \[redacted\] x+… \[truncated\]$/,
+        );
+        expect(String(entry.causeMessage).length).toBeLessThan(1_100);
+      } else {
+        expect(entry.githubResponseSnippet).toBe(
+          'Bad credentials for [redacted] token=[redacted]',
+        );
+      }
+      expect(String(entry.stack)).toContain('GitHubIssueCreationError');
     }
   }
 });

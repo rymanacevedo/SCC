@@ -1,6 +1,8 @@
 import {
   type ErrorTelemetryPayload,
   reportAcknowledgementSchema,
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
   type UserIssueReportPayload,
 } from '../shared/errorReporting.ts';
 import type { FailureCode, Result } from '../shared/result.ts';
@@ -62,11 +64,25 @@ export const createExperience = (
   input: GenerationRequest,
   signal?: AbortSignal,
 ) => post('/api/experience', input, ExperienceSchema, signal);
+// Every report leaves the browser path-only, redacted and truncated. The
+// Worker sanitizes again; this keeps the data off the wire in the first place.
 export const reportError = (
   input: ErrorTelemetryPayload,
   signal?: AbortSignal,
-) => post('/api/errors', input, reportAcknowledgementSchema, signal);
+) =>
+  post(
+    '/api/errors',
+    sanitizeErrorTelemetry(input),
+    reportAcknowledgementSchema,
+    signal,
+  );
 export const reportIssue = (
   input: UserIssueReportPayload,
   signal?: AbortSignal,
-) => post('/api/report-issue', input, reportAcknowledgementSchema, signal);
+) =>
+  post(
+    '/api/report-issue',
+    sanitizeUserIssueReport(input),
+    reportAcknowledgementSchema,
+    signal,
+  );

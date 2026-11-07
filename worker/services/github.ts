@@ -2,6 +2,8 @@ import {
   buildTelemetryFingerprint,
   type ErrorTelemetryPayload as ErrorTelemetry,
   errorTelemetrySchema,
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
@@ -41,7 +43,9 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
-export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
+export function buildAutoReportedIssueBody(telemetry: ErrorTelemetry) {
+  // Never trust the client to have sanitized: reduce, redact and truncate again.
+  const payload = sanitizeErrorTelemetry(telemetry);
   return [
     '# Auto-reported application error',
     '',
@@ -57,7 +61,8 @@ export function buildAutoReportedIssueBody(payload: ErrorTelemetry) {
   ].join('\n');
 }
 
-export function buildUserReportedIssueBody(payload: UserIssueReport) {
+export function buildUserReportedIssueBody(report: UserIssueReport) {
+  const payload = sanitizeUserIssueReport(report);
   return [
     '# User-reported issue',
     '',
@@ -221,7 +226,7 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `${AUTO_REPORTED_TITLE_PREFIX}${payload.message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
+    title: `${AUTO_REPORTED_TITLE_PREFIX}${sanitizeErrorTelemetry(payload).message.slice(0, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
     body: buildAutoReportedIssueBody(payload),
     labels: ['bug', 'auto-reported'],
   });

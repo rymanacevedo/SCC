@@ -23,14 +23,17 @@ place today and what is still a gap.
   browser-controlled payloads into GitHub issues with the repo token
   (`worker/services/github.ts`). In place: labels are fixed server-side
   (`bug` plus `auto-reported` or `user-reported`); the user-reported title is
-  the constant `User-reported issue`; the auto-reported title embeds
-  `payload.message`, cut to the 256-character GitHub limit; auto-reported
-  issues are deduplicated by fingerprint before a create. Gaps: the schemas
-  in `shared/errorReporting.ts` require non-empty strings, an ISO timestamp
-  and a URL but set no maximum length on `message`, `stackTrace`, `url` or
-  `description`, and `buildAutoReportedIssueBody` and
-  `buildUserReportedIssueBody` copy those fields into the issue body
-  verbatim, so a browser can post an arbitrarily long body; and the token's
+  the constant `User-reported issue`; the auto-reported title embeds the
+  sanitized `payload.message`, cut to the 256-character GitHub limit;
+  auto-reported issues are deduplicated by fingerprint before a create;
+  `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
+  error log reduce URLs to origin + path, redact sensitive patterns and
+  truncate every field at write time (`shared/telemetryRedaction.ts`,
+  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`). Gaps: the
+  schemas in `shared/errorReporting.ts` set no maximum length on `message`,
+  `stackTrace`, `url` or `description`, so oversized requests are accepted
+  (up to the 1 MiB body limit) and cut rather than refused; redaction is
+  pattern-based and cannot catch every piece of personal text; and the token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`, so text in them is a
   prompt-injection surface for those agents.
