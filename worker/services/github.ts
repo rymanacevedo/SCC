@@ -270,8 +270,8 @@ export async function createAutoReportedIssue({
   payload: ErrorTelemetry;
   /**
    * The asset paths the client build published; any other asset file is
-   * redacted. Without a list, every one is: the Worker never falls back to
-   * the browser's shape check.
+   * redacted. Without a list, every one is: no pass falls back to the
+   * asset's shape.
    */
   knownAssets?: ReadonlySet<string>;
 }) {

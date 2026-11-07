@@ -33,8 +33,9 @@ place today and what is still a gap.
   against the app router by a test; any other path is `[unknown-route]`),
   the error class name and canonical stack frames with no function name, a
   bounded line and column, and a file the client build published
-  (`report-assets.json`, read by the Worker through its `ASSETS` binding),
-  a known Node.js built-in or `[redacted]`. Worker log paths are API route
+  (`report-assets.json`, read by the browser from its own origin before it
+  sends and by the Worker through its `ASSETS` binding; no shape rule
+  keeps an unpublished file), a known Node.js built-in or `[redacted]`. Worker log paths are API route
   patterns, from a second list checked against the Worker router.
   Error messages and GitHub error bodies are free text and are never
   stored, only their length, and a User report asks for no text at all

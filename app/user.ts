@@ -1,4 +1,5 @@
 import { sanitizeErrorTelemetry } from '../shared/errorReporting.ts';
+import { NO_ASSETS } from '../shared/reportAssets.ts';
 import type { Result } from '../shared/result.ts';
 import {
   type Drafts,
@@ -47,11 +48,15 @@ export function createUserStorage(
   telemetry: (message: string) => void = (message) => {
     queueMicrotask(() => {
       void reportError(
-        sanitizeErrorTelemetry({
-          message,
-          timestamp: new Date().toISOString(),
-          url: window.location.href,
-        }),
+        // No stack, so no asset file to keep.
+        sanitizeErrorTelemetry(
+          {
+            message,
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+          },
+          { knownAssets: NO_ASSETS },
+        ),
       );
     });
   },

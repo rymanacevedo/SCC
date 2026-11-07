@@ -100,78 +100,6 @@ export function sanitizeErrorName(name: string): string {
   return KNOWN_ERROR_NAMES.has(name) ? name : UNKNOWN_ERROR_NAME;
 }
 
-// Five digits, however separated, may be a phone number or an id:
-// `555-123-4567`, `555.123.4567`, `1a2b3c4d5e`.
-const DIGIT = /\d/g;
-const MAX_DIGITS = 4;
-
-/** True when `value` holds more digits in total than a short number may. */
-export function hasTooManyDigits(value: string): boolean {
-  return (value.match(DIGIT)?.length ?? 0) > MAX_DIGITS;
-}
-
-// The words an identifier part is made of: a written word, a short number
-// or an API version (`v1`).
-const WORD = /^[A-Za-z]{1,24}$/;
-const NUMBER = /^\d{1,4}$/;
-const VERSION = /^v\d{1,3}$/i;
-// A key shape anywhere in a value: a short lower-case prefix, an optional
-// short tag, then 16+ letters or digits (`sk_live_…`, `pk_test_…`, `ghp_…`,
-// `xoxb-…`), bounded by anything that is not a letter or digit. So wrappers,
-// a sigil, a file extension, a dotted part or an alias cannot hide it. One
-// structural rule rather than a list of prefixes.
-const KEY_SHAPE =
-  /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[a-z0-9]{16,}(?![a-z0-9])/i;
-
-/**
- * True when a value holds a key-shaped token. Part of the browser's check
- * on a bundle asset name (the Worker checks the published list instead).
- */
-export function isSensitiveToken(value: string): boolean {
-  return KEY_SHAPE.test(value);
-}
-// A word with this share of upper-case letters, past this length, looks
-// random rather than written (`AbCdEfGh…`, `XkfQpLmZrAb`); `UserProfile`,
-// `getElementById` and `XMLHttpRequest` stay. All-capitals is a word
-// (`README`, `MAX`) up to a length a constant's part plausibly has.
-const MIXED_CASE_MIN_LENGTH = 8;
-const MAX_UPPER_SHARE = 0.4;
-const ALL_CAPS_MAX_LENGTH = 12;
-const UPPER = /[A-Z]/g;
-// What splits an identifier part into words: `MAX_RETRY_COUNT`, `$foo`.
-const IDENTIFIER_WORD_SEPARATORS = /[_$-]+/;
-
-function looksRandom(word: string): boolean {
-  if (word.length < MIXED_CASE_MIN_LENGTH) return false;
-  if (word === word.toUpperCase()) return word.length > ALL_CAPS_MAX_LENGTH;
-  return (word.match(UPPER)?.length ?? 0) / word.length > MAX_UPPER_SHARE;
-}
-
-function isSafeWord(word: string): boolean {
-  return (
-    (WORD.test(word) && !looksRandom(word)) ||
-    NUMBER.test(word) ||
-    VERSION.test(word)
-  );
-}
-
-/**
- * The rule each part of a bundle asset's name passes in the browser (the
- * Worker checks the published list instead): at most 4 digits, no key
- * shape (any case), and every
- * word (split at `_`, `$`, `-`) a written word, a short number or an API
- * version. A random-looking word (`XkfQpLmZr9Ab`), a key (`sk_live_…`,
- * an access-key-style `AKIA…`) or a word mixing letters and digits (`hunter2`)
- * fails.
- */
-export function isSafeIdentifierPart(part: string): boolean {
-  return (
-    !hasTooManyDigits(part) &&
-    !isSensitiveToken(part) &&
-    part.split(IDENTIFIER_WORD_SEPARATORS).filter(Boolean).every(isSafeWord)
-  );
-}
-
 /**
  * A URL as `https://app.invalid` and the app route pattern its path
  * matched (`/summary`), or `/[unknown-route]`: no host, credentials, query,
@@ -195,14 +123,9 @@ export function cutAtLastBreak(
 }
 
 /**
- * Cuts sanitized text so it and the visible marker fit in `max` code units,
- * never splitting a surrogate pair. `force` marks text the caller already cut.
+ * Text the caller already cut, marked as cut: it and the visible marker fit
+ * in `max` code units, never splitting a surrogate pair.
  */
-export function truncateWithMarker(
-  value: string,
-  max: number,
-  force = false,
-): string {
-  if (!force && value.length <= max) return value;
+export function markTruncated(value: string, max: number): string {
   return `${truncateText(value, max - TRUNCATED.length)}${TRUNCATED}`;
 }

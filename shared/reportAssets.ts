@@ -12,8 +12,9 @@ export const ASSET_PATH =
 
 /**
  * The public file the client build publishes, listing its real asset paths.
- * The Worker reads it through its `ASSETS` binding (see ADR-0001): a
- * stack-frame file is kept only if it is on the list.
+ * The browser reads it from its own origin and the Worker through its
+ * `ASSETS` binding (see ADR-0001): a stack-frame file is kept only if it is
+ * on the list.
  */
 export const REPORT_ASSETS_FILE = 'report-assets.json';
 
@@ -45,4 +46,45 @@ export function withoutAssetHash(path: string): string {
   if (!match) return path;
   const [, name, , extension] = match;
   return `/assets/${name}-[hash].${extension}`;
+}
+
+/** Fetches the published list: the browser's `fetch`, the Worker's binding. */
+export type ReportAssetsFetch = () => Promise<Response>;
+
+/**
+ * The asset paths the client build published (`report-assets.json`), read
+ * on first use and reused after. Anything but a JSON list of asset paths (no
+ * fetcher, a failed fetch, a 404, the SPA fallback's `index.html`, invalid
+ * JSON, a list of the wrong shape) is the empty set, so every asset file is
+ * redacted. A failure is not reused: the next report tries again.
+ */
+export function createKnownAssetsLoader(
+  fetchAssets: ReportAssetsFetch | undefined,
+): () => Promise<ReadonlySet<string>> {
+  let loaded: Promise<ReadonlySet<string>> | undefined;
+  return () => {
+    loaded ??= readKnownAssets(fetchAssets).then((known) => {
+      if (known === undefined) loaded = undefined;
+      return known ?? NO_ASSETS;
+    });
+    return loaded;
+  };
+}
+
+async function readKnownAssets(
+  fetchAssets: ReportAssetsFetch | undefined,
+): Promise<ReadonlySet<string> | undefined> {
+  if (!fetchAssets) return undefined;
+  try {
+    const response = await fetchAssets();
+    const type = response.headers.get('content-type') ?? '';
+    if (!response.ok || !type.includes('application/json')) {
+      await response.body?.cancel();
+      return undefined;
+    }
+    const parsed = reportAssetsSchema.safeParse(await response.json());
+    return parsed.success ? new Set(parsed.data) : undefined;
+  } catch {
+    return undefined;
+  }
 }

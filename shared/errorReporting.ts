@@ -133,13 +133,13 @@ export function sanitizeReportUrl(url: string): string {
  * The only form of Error telemetry that may be sent, stored or fingerprinted:
  * the canonical timestamp, the route-pattern URL and the canonical stack (the
  * error name and frames). The message is free text, so only its length is
- * kept. Every field fits its schema limit. The Worker passes the asset paths
- * the build published (`options.knownAssets`), so only a file the app ships
- * is kept in a frame.
+ * kept. Every field fits its schema limit. The browser and the Worker each
+ * pass the asset paths the build published (`options.knownAssets`), so only a
+ * file the app ships is kept in a frame, before the report leaves the page.
  */
 export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
-  options: StackSanitizeOptions = {},
+  options: StackSanitizeOptions,
 ): SanitizedErrorTelemetry {
   return {
     timestamp: sanitizeReportTimestamp(telemetry.timestamp),

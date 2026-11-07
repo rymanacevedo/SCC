@@ -110,11 +110,14 @@ describe('issueFingerprint', () => {
     // The digest of {"name":"","url":"https://app.invalid/","files":[]}.
     expect(
       await issueFingerprint(
-        sanitizeErrorTelemetry({
-          timestamp: '2026-04-27T12:00:00.000Z',
-          url: 'https://example.com/',
-          message: 'Broken',
-        }),
+        sanitizeErrorTelemetry(
+          {
+            timestamp: '2026-04-27T12:00:00.000Z',
+            url: 'https://example.com/',
+            message: 'Broken',
+          },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
       ),
     ).toBe('87a060cdc309f76a8c06d5ba041d191b2e3c77e7f05a453fa2dc76c4fe467e2f');
   });
@@ -122,7 +125,10 @@ describe('issueFingerprint', () => {
   test('queries, fragments and messages do not split it', async () => {
     const fingerprint = (url: string, message: string) =>
       issueFingerprint(
-        sanitizeErrorTelemetry({ ...chunkFailure, url, message }),
+        sanitizeErrorTelemetry(
+          { ...chunkFailure, url, message },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
       );
     expect(
       await fingerprint(
@@ -178,11 +184,14 @@ describe('GitHub issue body rendering', () => {
 
   test('an ordinary auto-reported error reads as plain text in three-backtick fences', () => {
     const body = buildAutoReportedIssueBody(
-      sanitizeErrorTelemetry({
-        timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/',
-        message: 'Chunk failed',
-      }),
+      sanitizeErrorTelemetry(
+        {
+          timestamp: '2026-04-27T12:00:00.000Z',
+          url: 'https://example.com/',
+          message: 'Chunk failed',
+        },
+        { knownAssets: KNOWN_TEST_ASSETS },
+      ),
       'abc123',
     );
 
@@ -270,8 +279,12 @@ describe('issue bodies sent to GitHub', () => {
   test('through both sanitizing passes, nothing sensitive reaches title, body or fingerprint', async () => {
     const sent = captureCreatedIssues();
     // The browser sanitizes first; the Worker sanitizes what it receives.
-    const fromBrowser = sanitizeErrorTelemetry(telemetry);
-    expect(sanitizeErrorTelemetry(fromBrowser)).toEqual(fromBrowser);
+    const fromBrowser = sanitizeErrorTelemetry(telemetry, {
+      knownAssets: KNOWN_TEST_ASSETS,
+    });
+    expect(
+      sanitizeErrorTelemetry(fromBrowser, { knownAssets: KNOWN_TEST_ASSETS }),
+    ).toEqual(fromBrowser);
     await createAutoReportedIssue({ ...auth, payload: fromBrowser });
     const { title, body } = sent[0] ?? { title: '', body: '' };
     expectNoSensitiveValues(`${title}\n${body}`);
@@ -283,7 +296,7 @@ describe('issue bodies sent to GitHub', () => {
     expect(title).toBe('Auto-reported error: TypeError at /summary');
   });
 
-  test('a credential-shaped function or asset name reaches no issue; the browser keeps a well-shaped asset, the Worker only a published one', async () => {
+  test('a credential-shaped function or asset name reaches no issue: the browser and the Worker keep only a published asset', async () => {
     const sent = captureCreatedIssues();
     const stackTrace = [
       'TypeError: x',
@@ -293,10 +306,15 @@ describe('issue bodies sent to GitHub', () => {
       '    at load (https://scc.example/assets/accessToken_accesstokenvalue-abcdef12.js:7:8)',
       '    at load (https://scc.example/assets/a-abcdef12.js:123456789:123456789)',
     ].join('\n');
-    const fromBrowser = sanitizeErrorTelemetry({ ...chunkFailure, stackTrace });
-    // The browser has no list: a well-shaped asset name passes its check.
+    const fromBrowser = sanitizeErrorTelemetry(
+      { ...chunkFailure, stackTrace },
+      { knownAssets: KNOWN_TEST_ASSETS },
+    );
+    // The browser holds frames to the published list too: a well-shaped
+    // name it was never built with does not leave the page.
+    expect(fromBrowser.stackTrace).not.toContain('password_correcthorse');
     expect(fromBrowser.stackTrace).toContain(
-      '/assets/password_correcthorse-abcdef12.js:5:6',
+      '    at <anonymous> (https://app.invalid/[redacted]:5:6)',
     );
     await createAutoReportedIssue({ ...auth, payload: fromBrowser });
     await createAutoReportedIssue({
@@ -346,10 +364,13 @@ describe('issue bodies sent to GitHub', () => {
 
   test('a placeholder-shaped message with a crafted label is measured, through both passes', async () => {
     const sent = captureCreatedIssues();
-    const fromBrowser = sanitizeErrorTelemetry({
-      ...chunkFailure,
-      message: SENSITIVE_PLACEHOLDER_MESSAGE,
-    });
+    const fromBrowser = sanitizeErrorTelemetry(
+      {
+        ...chunkFailure,
+        message: SENSITIVE_PLACEHOLDER_MESSAGE,
+      },
+      { knownAssets: KNOWN_TEST_ASSETS },
+    );
     await createAutoReportedIssue({ ...auth, payload: fromBrowser });
     const { title, body } = sent[0] ?? { title: '', body: '' };
     expectNoSensitiveValues(`${title}\n${body}`);
@@ -367,7 +388,7 @@ describe('issue bodies sent to GitHub', () => {
       'Auto-reported error: Error at /[unknown-route]',
     );
     const fingerprint = buildSanitizedTelemetryFingerprint(
-      sanitizeErrorTelemetry(payload),
+      sanitizeErrorTelemetry(payload, { knownAssets: KNOWN_TEST_ASSETS }),
     );
     expectNoSensitiveValues(fingerprint);
     expect(JSON.parse(fingerprint).name).toBe('Error');
@@ -419,7 +440,10 @@ describe('issue bodies sent to GitHub', () => {
     }
     expect(
       buildSanitizedTelemetryFingerprint(
-        sanitizeErrorTelemetry({ ...chunkFailure, url }),
+        sanitizeErrorTelemetry(
+          { ...chunkFailure, url },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
       ),
     ).not.toContain('555');
   });
@@ -433,12 +457,17 @@ describe('issue bodies sent to GitHub', () => {
     ];
     for (const url of urls) {
       const stackTrace = `TypeError: x\n    at render (${url}.js:1:2)`;
-      const fromBrowser = sanitizeErrorTelemetry({
-        ...chunkFailure,
-        url,
-        stackTrace,
-      });
-      expect(sanitizeErrorTelemetry(fromBrowser)).toEqual(fromBrowser);
+      const fromBrowser = sanitizeErrorTelemetry(
+        {
+          ...chunkFailure,
+          url,
+          stackTrace,
+        },
+        { knownAssets: KNOWN_TEST_ASSETS },
+      );
+      expect(
+        sanitizeErrorTelemetry(fromBrowser, { knownAssets: KNOWN_TEST_ASSETS }),
+      ).toEqual(fromBrowser);
       expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromBrowser));
       await createAutoReportedIssue({ ...auth, payload: fromBrowser });
       await createUserReportedIssue({
@@ -564,8 +593,14 @@ describe('createAutoReportedIssue', () => {
       ...chunkFailure,
       stackTrace: `TypeError: y\n${frames}    at second (x.js:1:2)`,
     };
-    expect(await issueFingerprint(sanitizeErrorTelemetry(first))).toBe(
-      await issueFingerprint(sanitizeErrorTelemetry(second)),
+    expect(
+      await issueFingerprint(
+        sanitizeErrorTelemetry(first, { knownAssets: KNOWN_TEST_ASSETS }),
+      ),
+    ).toBe(
+      await issueFingerprint(
+        sanitizeErrorTelemetry(second, { knownAssets: KNOWN_TEST_ASSETS }),
+      ),
     );
     const fetchMock = githubWith([{ number: 9, body: await filedBody(first) }]);
     expect(await createAutoReportedIssue({ ...auth, payload: second })).toEqual(

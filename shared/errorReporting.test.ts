@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { KNOWN_TEST_ASSETS } from '../test/sensitive-reports.ts';
 import {
   buildSanitizedTelemetryFingerprint,
   type ErrorTelemetryPayload,
@@ -20,8 +21,15 @@ const telemetry = {
     'TypeError: Broken page\n    at render (https://scc.example/assets/main-abcdef12.js:12:34)',
 };
 afterEach(resetReportedTelemetryForTests);
+// Two builds of the same file, both published.
+const PUBLISHED: ReadonlySet<string> = new Set([
+  ...KNOWN_TEST_ASSETS,
+  '/assets/main-ghijkl34.js',
+]);
 const buildTelemetryFingerprint = (payload: ErrorTelemetryPayload) =>
-  buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(payload));
+  buildSanitizedTelemetryFingerprint(
+    sanitizeErrorTelemetry(payload, { knownAssets: PUBLISHED }),
+  );
 test("fingerprint is the error name, route and top frames' files, normalized across builds", () => {
   expect(buildTelemetryFingerprint(telemetry)).toBe(
     JSON.stringify({
@@ -91,7 +99,10 @@ test('normalizes an oversized timestamp to a bounded canonical value in both rep
   const oversized = `2026-10-13T00:00:00.${'1'.repeat(70_000)}Z`;
   const base = { url: 'https://scc.example/x', message: 'm' };
   expect(
-    sanitizeErrorTelemetry({ ...base, timestamp: oversized }).timestamp,
+    sanitizeErrorTelemetry(
+      { ...base, timestamp: oversized },
+      { knownAssets: KNOWN_TEST_ASSETS },
+    ).timestamp,
   ).toBe('2026-10-13T00:00:00.111Z');
   expect(
     sanitizeUserIssueReport({ ...base, timestamp: oversized }).timestamp,
@@ -106,13 +117,16 @@ test('normalizes an oversized timestamp to a bounded canonical value in both rep
 });
 test('sanitizing keeps structure only: free text is reduced to its length', () => {
   expect<unknown>(
-    sanitizeErrorTelemetry({
-      timestamp: telemetry.timestamp,
-      url: 'https://scc.example/info?token=abc123#fragment',
-      message: 'Call 555-123-4567',
-      stackTrace:
-        'Error: Call 555-123-4567\n    at save (https://scc.example/a.js:1:2) apiKey=s3cr3t',
-    }),
+    sanitizeErrorTelemetry(
+      {
+        timestamp: telemetry.timestamp,
+        url: 'https://scc.example/info?token=abc123#fragment',
+        message: 'Call 555-123-4567',
+        stackTrace:
+          'Error: Call 555-123-4567\n    at save (https://scc.example/a.js:1:2) apiKey=s3cr3t',
+      },
+      { knownAssets: KNOWN_TEST_ASSETS },
+    ),
   ).toEqual({
     timestamp: telemetry.timestamp,
     url: 'https://app.invalid/info',
@@ -138,7 +152,10 @@ test('an over-limit URL is the unknown route, well inside its limit', () => {
   expect(userIssueReportSchema.safeParse(report).success).toBe(true);
   expect(
     errorTelemetrySchema.safeParse(
-      sanitizeErrorTelemetry({ timestamp: reportTime, url, message: 'x' }),
+      sanitizeErrorTelemetry(
+        { timestamp: reportTime, url, message: 'x' },
+        { knownAssets: KNOWN_TEST_ASSETS },
+      ),
     ).success,
   ).toBe(true);
 });
@@ -154,31 +171,37 @@ test('a sanitized report always passes its schema, whatever its URL and timestam
     expect(userIssueReportSchema.safeParse(report).success).toBe(true);
     expect(
       errorTelemetrySchema.safeParse(
-        sanitizeErrorTelemetry({ ...telemetry, url, timestamp: 'not a time' }),
+        sanitizeErrorTelemetry(
+          { ...telemetry, url, timestamp: 'not a time' },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
       ).success,
     ).toBe(true);
   }
 });
 test('dedupes through one second, expires afterwards, and reset permits reporting again', () => {
   expect(
-    shouldSkipDuplicateTelemetryReport(sanitizeErrorTelemetry(telemetry), 100),
+    shouldSkipDuplicateTelemetryReport(
+      sanitizeErrorTelemetry(telemetry, { knownAssets: KNOWN_TEST_ASSETS }),
+      100,
+    ),
   ).toBe(false);
   expect(
     shouldSkipDuplicateTelemetryReport(
-      sanitizeErrorTelemetry(telemetry),
+      sanitizeErrorTelemetry(telemetry, { knownAssets: KNOWN_TEST_ASSETS }),
       1_100,
     ),
   ).toBe(true);
   expect(
     shouldSkipDuplicateTelemetryReport(
-      sanitizeErrorTelemetry(telemetry),
+      sanitizeErrorTelemetry(telemetry, { knownAssets: KNOWN_TEST_ASSETS }),
       1_101,
     ),
   ).toBe(false);
   resetReportedTelemetryForTests();
   expect(
     shouldSkipDuplicateTelemetryReport(
-      sanitizeErrorTelemetry(telemetry),
+      sanitizeErrorTelemetry(telemetry, { knownAssets: KNOWN_TEST_ASSETS }),
       1_102,
     ),
   ).toBe(false);
@@ -237,12 +260,15 @@ test("an older client's description is stripped by the schema, not refused", () 
 
 test('sanitizing bounds oversized fields so both reports stay valid', () => {
   const frame = '    at frame (https://scc.example/assets/a.js:1:2)';
-  const telemetry = sanitizeErrorTelemetry({
-    timestamp: '2026-10-14T00:00:00.000Z',
-    url: longUrl(5_000),
-    message: 'word '.repeat(1_500),
-    stackTrace: `Error: Broken\n${`${frame}\n`.repeat(1_000)}`,
-  });
+  const telemetry = sanitizeErrorTelemetry(
+    {
+      timestamp: '2026-10-14T00:00:00.000Z',
+      url: longUrl(5_000),
+      message: 'word '.repeat(1_500),
+      stackTrace: `Error: Broken\n${`${frame}\n`.repeat(1_000)}`,
+    },
+    { knownAssets: KNOWN_TEST_ASSETS },
+  );
   expect(telemetry.message).toBe('[message omitted: 7500 characters]');
   expect(telemetry.stackTrace?.length).toBeLessThanOrEqual(
     REPORT_FIELD_LIMITS.stackTrace,

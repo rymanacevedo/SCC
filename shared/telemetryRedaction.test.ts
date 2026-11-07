@@ -1,14 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import {
-  isSafeIdentifierPart,
-  isSensitiveToken,
+  markTruncated,
   omittedText,
   REPORT_ORIGIN,
   sanitizeErrorName,
   TRUNCATED,
   toRouteUrl,
-  truncateWithMarker,
 } from './telemetryRedaction.ts';
 
 // A key, assembled at runtime so none sits in source.
@@ -64,35 +62,6 @@ describe('toRouteUrl', () => {
       'https://scc.example/u/jane@example.com',
     ])
       expect(() => new URL(toRouteUrl(value))).not.toThrow();
-  });
-});
-
-describe('isSensitiveToken', () => {
-  test('finds a key shape anywhere, bounded by anything not a letter or digit', () => {
-    for (const value of [
-      KEY,
-      `(${KEY})`,
-      `@${KEY}`,
-      `${KEY}.js`,
-      `Object.${KEY}`,
-      `x [as ${KEY}]`,
-      `$${KEY}`,
-    ])
-      expect(isSensitiveToken(value)).toBe(true);
-  });
-
-  test('ordinary names and segments are not keys', () => {
-    for (const value of [
-      'saveSummary',
-      'Object.<anonymous> [as run]',
-      'node_modules',
-      'error-reporting.test.ts',
-      'index-C4kL9x.js',
-      'getElementsByClassName',
-      'user_settings',
-      'api_v1',
-    ])
-      expect(isSensitiveToken(value)).toBe(false);
   });
 });
 
@@ -195,49 +164,16 @@ describe('KNOWN_ERROR_NAMES stays in step with the code', () => {
   });
 });
 
-describe('isSafeIdentifierPart', () => {
-  test('keeps real code names', () => {
-    for (const part of [
-      'renderSummary',
-      'map',
-      'anonymous',
-      'loadUser',
-      'Foo',
-      'getElementById',
-      'XMLHttpRequest',
-      'node_modules',
-      'README',
-      'MAX_RETRY_COUNT',
-      'v1',
-      '1234',
-    ])
-      expect(isSafeIdentifierPart(part)).toBe(true);
-  });
-
-  test('random, key-shaped, digit-heavy or mixed letter-digit parts fail', () => {
-    for (const part of [
-      'XkfQpLmZr9Ab',
-      'XkfQpLmZrAbW',
-      ['AKIA', 'IOSFODNN7EXAMPLE'].join(''),
-      'ABCDEFGHIJKLMNOPQR',
-      KEY,
-      KEY.toUpperCase(),
-      'hunter2',
-      'user5551234567',
-    ])
-      expect(isSafeIdentifierPart(part)).toBe(false);
-  });
-});
-
-describe('truncateWithMarker', () => {
+describe('markTruncated', () => {
   test('cuts to the limit, visible marker included, without splitting a surrogate pair', () => {
-    expect(truncateWithMarker('word '.repeat(50), 23)).toBe(
+    expect(markTruncated('word '.repeat(50), 23)).toBe(
       `word word ${TRUNCATED}`,
     );
     // Ten code units fit before the marker; the emoji at 9-10 straddles it.
-    const cut = truncateWithMarker(`${'a'.repeat(9)}${'😀'.repeat(10)}`, 23);
+    const cut = markTruncated(`${'a'.repeat(9)}${'😀'.repeat(10)}`, 23);
     expect(cut).toBe(`${'a'.repeat(9)}${TRUNCATED}`);
     expect(cut.isWellFormed()).toBe(true);
-    expect(truncateWithMarker('short', 23)).toBe('short');
+    // Text the caller already cut is marked even when it fits.
+    expect(markTruncated('short', 23)).toBe(`short${TRUNCATED}`);
   });
 });

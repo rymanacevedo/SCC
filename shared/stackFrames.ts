@@ -1,15 +1,12 @@
 import { ASSET_PATH, withoutAssetHash } from './reportAssets.ts';
 import {
   cutAtLastBreak,
-  hasTooManyDigits,
-  isSafeIdentifierPart,
-  isSensitiveToken,
+  markTruncated,
   REDACTED,
   REPORT_ORIGIN,
   SANITIZE_INPUT_FACTOR,
   sanitizeErrorName,
   TRUNCATED,
-  truncateWithMarker,
 } from './telemetryRedaction.ts';
 
 /**
@@ -23,14 +20,15 @@ import {
  * to the error name: its message is free text, never kept.
  */
 
-/** What the Worker knows that the browser does not. */
 export type StackSanitizeOptions = {
   /**
-   * The asset paths the client build published (`report-assets.json`).
-   * When given, an asset file is kept only if it is in the set; the browser
-   * pass has no set and checks the asset's shape instead.
+   * The asset paths the client build published (`report-assets.json`), as
+   * the browser and the Worker each read it. An asset file is kept only if
+   * it is in the set; with the empty set (`NO_ASSETS`: the list could not be
+   * read, or Workers Logs, whose stacks hold no client asset) every asset
+   * file is redacted.
    */
-  knownAssets?: ReadonlySet<string>;
+  knownAssets: ReadonlySet<string>;
 };
 
 const FRAME_OMITTED = '    [frame omitted]';
@@ -44,7 +42,6 @@ const COLUMN_DIGITS_MAX = 6;
 // Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
 const HTTP_SCHEME = /^https?:\/\//i;
-const ASSET_NAME_SEPARATORS = /[.-]+/;
 // A Node.js location (`node:fs`, `node:internal/vm`): its first segment.
 const NODE_MODULE = /^node:([a-z_]{1,24})(?![^/])/;
 // The Node.js built-in modules a frame may name, plus `internal`. A fixed
@@ -111,38 +108,24 @@ function filePath(file: string): string | undefined {
 /**
  * A frame's file, reduced to what the app ships: a Vite bundle asset
  * (`/assets/<name>-<hash>.js`, under the synthetic origin) or a known Node.js
- * built-in module (`node:fs`). With `knownAssets` (the Worker), an asset is
- * kept only if the build published it; without (the browser), only if its
- * name passes the identifier rule. Any other file (a dev module path, an
+ * built-in module (`node:fs`). An asset is kept only if the build published
+ * it (`knownAssets`), never for its shape alone. Any other file (a dev module path, an
  * extension, `blob:`, `file:`, `webpack:`, a path of words) becomes
  * `https://app.invalid/[redacted]`, and the frame is kept.
  */
-function sanitizeFile(file: string, knownAssets?: ReadonlySet<string>): string {
+function sanitizeFile(file: string, knownAssets: ReadonlySet<string>): string {
   const node = NODE_MODULE.exec(file)?.[1];
   if (node !== undefined)
     return NODE_BUILTIN_MODULES.has(node) ? `node:${node}` : FILE_REDACTED;
   const path = filePath(file);
-  const name = path === undefined ? undefined : ASSET_PATH.exec(path)?.[1];
-  if (path === undefined || name === undefined) return FILE_REDACTED;
-  const kept = knownAssets ? knownAssets.has(path) : isSafeAssetName(name);
+  const kept =
+    path !== undefined && ASSET_PATH.test(path) && knownAssets.has(path);
   return kept ? `${REPORT_ORIGIN}${path}` : FILE_REDACTED;
-}
-
-/** The browser's check: no key, at most 4 digits, every part a word. */
-function isSafeAssetName(name: string): boolean {
-  return (
-    !isSensitiveToken(name) &&
-    !hasTooManyDigits(name) &&
-    name
-      .split(ASSET_NAME_SEPARATORS)
-      .filter(Boolean)
-      .every(isSafeIdentifierPart)
-  );
 }
 
 function sanitizeLocation(
   location: string,
-  knownAssets?: ReadonlySet<string>,
+  knownAssets: ReadonlySet<string>,
 ): string | undefined {
   if (BARE_LOCATION.test(location)) return location;
   const match = LOCATION.exec(location);
@@ -159,7 +142,7 @@ const FRAME_START = '    at <anonymous> (';
 
 function frame(
   location: string,
-  knownAssets?: ReadonlySet<string>,
+  knownAssets: ReadonlySet<string>,
 ): string | undefined {
   const sanitized = sanitizeLocation(location, knownAssets);
   return sanitized === undefined ? undefined : `${FRAME_START}${sanitized})`;
@@ -171,7 +154,7 @@ function frame(
  */
 function parseFrame(
   line: string,
-  knownAssets?: ReadonlySet<string>,
+  knownAssets: ReadonlySet<string>,
 ): string | undefined {
   const trimmed = line.trim();
   if (trimmed.length > FRAME_LINE_MAX) return undefined;
@@ -207,7 +190,7 @@ const HEADER = /^\s*([A-Za-z_$][\w$.]*)(?::|\s*$)/;
 export function sanitizeStackTrace(
   stack: string,
   max: number,
-  { knownAssets }: StackSanitizeOptions = {},
+  { knownAssets }: StackSanitizeOptions,
 ): string {
   const bound = max * SANITIZE_INPUT_FACTOR;
   const cut = stack.length > bound;
@@ -231,10 +214,9 @@ export function sanitizeStackTrace(
   const sanitized = output.join('\n');
   if (!cut && !marked && sanitized.length <= max) return sanitized;
   const room = max - TRUNCATED.length;
-  return truncateWithMarker(
+  return markTruncated(
     cutAtLastBreak(`${sanitized}\n`.slice(0, room + 1), isLineBreak),
     max,
-    true,
   );
 }
 

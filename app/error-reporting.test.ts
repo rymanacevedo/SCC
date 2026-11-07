@@ -4,9 +4,11 @@ import {
   REPORT_FIELD_LIMITS,
   resetReportedTelemetryForTests,
 } from '../shared/errorReporting.ts';
+import { NO_ASSETS } from '../shared/reportAssets.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
-  expectNoSensitiveValuesOnTheWire,
+  expectNoSensitiveValues,
+  SANITIZED_SENSITIVE_STACK,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
@@ -46,15 +48,25 @@ test('auto-report sends a route-pattern URL and a redacted message and stack', a
   });
   await reportErrorTelemetry(error, SENSITIVE_URL);
   expect(bodies).toHaveLength(1);
-  expectNoSensitiveValuesOnTheWire(bodies[0] ?? '');
+  // The whole body, unmasked: no file name the build did not publish
+  // (`/assets/password_correcthorse-abcdef12.js`) leaves the page.
+  expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
   expect(sent.url).toBe('https://app.invalid/summary');
   expect(sent.message).toBe(
     `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   );
-  expect(sent.stackTrace).toContain(
-    'TypeError\n    at <anonymous> (https://app.invalid/assets/main-abcdef12.js:12:34)',
-  );
+  // The browser holds the stack to the published list, as the Worker does.
+  expect(sent.stackTrace).toBe(SANITIZED_SENSITIVE_STACK);
+});
+test('with no published list, every asset file is redacted before sending', async () => {
+  const bodies = captureFetchBodies();
+  const error = Object.assign(new Error('Broken'), { stack: SENSITIVE_STACK });
+  await reportErrorTelemetry(error, SENSITIVE_URL, async () => NO_ASSETS);
+  const sent = JSON.parse(bodies[0] ?? '{}');
+  expect(sent.stackTrace).toStartWith('TypeError\n');
+  expect(sent.stackTrace).not.toContain('/assets/');
+  expectNoSensitiveValues(bodies[0] ?? '');
 });
 test('errors that differ only by query string or redacted data are sent once', async () => {
   const bodies = captureFetchBodies();

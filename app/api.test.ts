@@ -5,7 +5,8 @@ import {
 } from '../shared/errorReporting.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
-  expectNoSensitiveValuesOnTheWire,
+  expectNoSensitiveValues,
+  KNOWN_TEST_ASSETS,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_URL,
@@ -30,18 +31,21 @@ function mockFetch(
 test('both report senders post an already-sanitized report unchanged', async () => {
   const bodies = captureFetchBodies();
   const timestamp = new Date().toISOString();
-  const telemetry = sanitizeErrorTelemetry({
-    timestamp,
-    url: SENSITIVE_URL,
-    message: SENSITIVE_MESSAGE,
-    stackTrace: SENSITIVE_STACK,
-  });
+  const telemetry = sanitizeErrorTelemetry(
+    {
+      timestamp,
+      url: SENSITIVE_URL,
+      message: SENSITIVE_MESSAGE,
+      stackTrace: SENSITIVE_STACK,
+    },
+    { knownAssets: KNOWN_TEST_ASSETS },
+  );
   const report = sanitizeUserIssueReport({ timestamp, url: SENSITIVE_URL });
   await reportError(telemetry);
   await reportIssue(report);
   expect(bodies).toEqual([JSON.stringify(telemetry), JSON.stringify(report)]);
   for (const body of bodies) {
-    expectNoSensitiveValuesOnTheWire(body);
+    expectNoSensitiveValues(body);
     expect(JSON.parse(body).url).toBe('https://app.invalid/summary');
   }
 });
@@ -67,11 +71,14 @@ test('API client sends JSON with signal and parses shared output schemas for all
   expect(
     (
       await reportError(
-        sanitizeErrorTelemetry({
-          timestamp: new Date().toISOString(),
-          message: 'error',
-          url: '/info',
-        }),
+        sanitizeErrorTelemetry(
+          {
+            timestamp: new Date().toISOString(),
+            message: 'error',
+            url: '/info',
+          },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
         signal,
       )
     ).ok,
@@ -154,11 +161,14 @@ for (const [name, send] of [
     'reportError',
     (signal?: AbortSignal) =>
       reportError(
-        sanitizeErrorTelemetry({
-          url: 'https://scc.example/info',
-          message: 'Failed',
-          timestamp: new Date().toISOString(),
-        }),
+        sanitizeErrorTelemetry(
+          {
+            url: 'https://scc.example/info',
+            message: 'Failed',
+            timestamp: new Date().toISOString(),
+          },
+          { knownAssets: KNOWN_TEST_ASSETS },
+        ),
         signal,
       ),
   ],

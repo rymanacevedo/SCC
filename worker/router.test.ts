@@ -12,6 +12,7 @@ import { contractRequest } from '../test/contract-request.ts';
 import { createMockJsonModel } from '../test/mock-model.ts';
 import {
   expectNoSensitiveValues,
+  KNOWN_TEST_ASSETS,
   SENSITIVE_DESCRIPTION,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
@@ -419,9 +420,8 @@ test('/api/errors keeps only the asset files the ASSETS binding publishes, read 
       return Response.json({ number: 1 }, { status: 201 });
     },
   ) as unknown as typeof fetch;
-  const assets = mock(async (_input: string) =>
-    Response.json(['/assets/index-BOZHR0Lk.js']),
-  );
+  const published = ['/assets/index-BOZHR0Lk.js'];
+  const assets = mock(async (_input: string) => Response.json(published));
   const router = createApiRouter({ ...env, ASSETS: { fetch: assets } });
   const stackTrace = [
     'TypeError: x',
@@ -433,7 +433,11 @@ test('/api/errors keeps only the asset files the ASSETS binding publishes, read 
       await router.fetch(
         contractRequest(
           '/api/errors',
-          sanitizeErrorTelemetry({ ...report, stackTrace }),
+          // The browser's pass, with the same published list.
+          sanitizeErrorTelemetry(
+            { ...report, stackTrace },
+            { knownAssets: new Set(published) },
+          ),
         ),
       ),
       200,
@@ -461,7 +465,10 @@ test('a browser-sanitized report from a dev URL with an IP host is accepted by b
     timestamp: '2026-10-13T00:00:00.000Z',
     url: 'http://127.0.0.1:5173/info?step=2',
   };
-  const telemetry = sanitizeErrorTelemetry({ ...fields, message: 'Broken' });
+  const telemetry = sanitizeErrorTelemetry(
+    { ...fields, message: 'Broken' },
+    { knownAssets: KNOWN_TEST_ASSETS },
+  );
   const report = sanitizeUserIssueReport(fields);
   expect(report.url).toBe('https://app.invalid/info');
   for (const [path, body] of [
