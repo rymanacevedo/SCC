@@ -1,6 +1,7 @@
 import {
   cutAtLastBreak,
   hasTooManyDigits,
+  QUERY_START,
   REDACTED,
   redactTelemetryText,
   SANITIZE_INPUT_FACTOR,
@@ -34,7 +35,6 @@ const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
 const URL_PREFIX = /^https?:\/\//i;
 // `node:`, `file://`, `webpack-internal:///` or a drive letter, then a path.
 const SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:(?:\/\/\/?)?/i;
-const QUERY_START = /[?#]/;
 
 /** A frame's file: path-only for http(s), plain path segments otherwise. */
 function sanitizeFile(file: string): string {
@@ -91,15 +91,6 @@ function parseFrame(line: string): string | undefined {
 }
 
 /**
- * The first line, `Name: message`, goes whole through free-text sanitizing:
- * a known error name (`TypeError`) is a safe word anyway, and a credential
- * name (`apiKey: x`, `TokenError: x`) keeps its context for the value.
- */
-function sanitizeHeader(line: string): string {
-  return redactTelemetryText(line);
-}
-
-/**
  * Sanitizes a stack trace into canonical frames, then truncates it at a
  * frame boundary to at most `max` characters, visible marker included. Input past four
  * times `max` is never read, and a frame the bound cut in half is dropped.
@@ -117,7 +108,10 @@ export function sanitizeStackTrace(stack: string, max: number): string {
     if (!line.trim()) continue;
     const parsed = parseFrame(line);
     if (parsed) output.push(parsed);
-    else if (index === 0) output.push(sanitizeHeader(line));
+    // The first line, `Name: message`, goes whole through free text: a known
+    // error name (`TypeError`) is a safe word anyway, and a credential name
+    // (`apiKey: x`, `TokenError: x`) keeps its context for the value.
+    else if (index === 0) output.push(redactTelemetryText(line));
     else if (output.at(-1) !== FRAME_OMITTED) output.push(FRAME_OMITTED);
   }
   const sanitized = output.join('\n');

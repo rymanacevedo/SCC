@@ -469,9 +469,7 @@ test('report route failure logs are path-only, redacted and truncated', async ()
         );
         expect(String(entry.causeMessage).length).toBeLessThan(1_100);
       } else {
-        expect(entry.githubResponseSnippet).toBe(
-          'Bad credentials for [redacted]',
-        );
+        expect(entry.githubResponseSnippet).toBe('Bad credentials [redacted]');
       }
       expect(String(entry.stack)).toContain('GitHubIssueCreationError');
     }

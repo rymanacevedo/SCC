@@ -151,6 +151,12 @@ describe('redactTelemetryText keeps safe shapes', () => {
       expect(redactTelemetryText(input)).toBe(expected);
   });
 
+  test('words that only contain a credential word by accident stay readable', () => {
+    const text =
+      'author: John, authority granted, keyboard: 3, monkey business, footprint pinned, a passenger, 401 Unauthorized request, the secretary, tokenize input';
+    expect(redactTelemetryText(text)).toBe(text);
+  });
+
   test('an http(s) URL in text is emitted path-only', () => {
     expect(
       redactTelemetryText(
@@ -164,6 +170,23 @@ describe('redactTelemetryText keeps safe shapes', () => {
 });
 
 describe('redactTelemetryText punctuation', () => {
+  test('a number run split by separator tokens is redacted once it holds 5+ digits', () => {
+    for (const [input, expected] of [
+      ['call 555 - 123 - 4567 now', 'call [redacted] now'],
+      ['call 555 . 123 . 4567 now', 'call [redacted] now'],
+      ['call ( 555 ) 123 - 4567 now', 'call [redacted] now'],
+      ['call + 1 555 / 1234 now', 'call [redacted] now'],
+    ])
+      expect(redactTelemetryText(input)).toBe(expected);
+    for (const text of [
+      'page 3 - 4',
+      'step 1 / 2',
+      'line 12, col 34',
+      'pages 10 - 20',
+    ])
+      expect(redactTelemetryText(text)).toBe(text);
+  });
+
   test('only short ordinary punctuation, or a run of one mark, is a safe shape', () => {
     const kept = '- [ ] task, ## Heading ``` "…" (x)! — e.g.? … ✓✓✓✓';
     expect(redactTelemetryText(kept)).toBe(kept);
@@ -258,14 +281,40 @@ describe('redactTelemetryText replaces everything else', () => {
         'Authorization: [redacted]\nCookie: [redacted]',
       ],
       ['with apiKey=s3cr3t-api-key.\nMy page', 'with [redacted].\nMy page'],
-      ['token short-secret then more', 'token [redacted] then more'],
+      // A value that is itself a credential name keeps the context.
+      ['token short-secret then more', 'token [redacted] more'],
+      ['password.correcthorse, credentials: pluralvalue', '[redacted]'],
       ['password : hunter', 'password : [redacted]'],
       ['password= correcthorse', '[redacted]'],
       ['accessToken correcthorse', 'accessToken [redacted]'],
+      ['accesstoken: hunter', 'accesstoken: [redacted]'],
+      ['authtoken hunter', 'authtoken [redacted]'],
+      ['secretkey hunter', 'secretkey [redacted]'],
+      ['clientsecret hunter', 'clientsecret [redacted]'],
+      ['sessiontoken hunter', 'sessiontoken [redacted]'],
+      ['ACCESSTOKEN hunter', 'ACCESSTOKEN [redacted]'],
+      ['apikey hunter', 'apikey [redacted]'],
+      ['x_apikey hunter', 'x_apikey [redacted]'],
+      ['oauth hunter', 'oauth [redacted]'],
+      ['totp 774411', 'totp [redacted]'],
+      ['Authorization=Bearer correcthorse next', '[redacted] next'],
+      ['authorization=basic dXNlcjpwYXNz next', '[redacted] next'],
+      ['auth:Token correcthorse next', '[redacted] next'],
+      // A credential word with more after it is redacted whole, and keeps
+      // the context: what follows may be the value (`password_hint x`).
+      ['password-correcthorse next', '[redacted]'],
+      ['password_correcthorse next', '[redacted]'],
+      ['password.correcthorse next', '[redacted]'],
+      ['passwordcorrecthorse next', '[redacted]'],
+      ['credentials: correcthorse', 'credentials: [redacted]'],
+      ['tokens= correcthorse', '[redacted]'],
+      ['secrets: correcthorse', 'secrets: [redacted]'],
+      ['Bad credentials for hunter', 'Bad credentials [redacted] hunter'],
       ['clientSecret correcthorse', 'clientSecret [redacted]'],
       ['config.password correcthorse', 'config.password [redacted]'],
       ['AUTH_TOKEN correcthorse', 'AUTH_TOKEN [redacted]'],
       ['session_id: correcthorse', 'session_id: [redacted]'],
+      ['token_type: correcthorse', 'token_type: [redacted]'],
       ['user.apiKey= correcthorse', '[redacted]'],
       ['token:= abcdef', '[redacted]'],
       ['Password: = hunter', 'Password: = [redacted]'],
@@ -335,9 +384,9 @@ describe('sanitizeTelemetryText', () => {
 
   test('drops the trailing partial token when the input was already cut', () => {
     expect(
-      sanitizeTelemetryText('Bad credentials for hunter', 300, {
+      sanitizeTelemetryText('Bad request for hunter', 300, {
         inputWasCut: true,
       }),
-    ).toBe(`Bad credentials for ${TRUNCATED}`);
+    ).toBe(`Bad request for ${TRUNCATED}`);
   });
 });

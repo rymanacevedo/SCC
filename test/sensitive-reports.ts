@@ -43,6 +43,14 @@ export const SENSITIVE_VALUES = [
   'configpasswordvalue',
   '?!?!!',
   'headersecretvalue',
+  'lowercompoundvalue',
+  'uppercompoundvalue',
+  'joinedschemevalue',
+  'dashjoinedvalue',
+  'underscorejoinedvalue',
+  'dotjoinedvalue',
+  'pluralvalue',
+  '765 - 4321',
 ] as const;
 
 /** A page URL with userinfo, a query and a fragment. */
@@ -95,6 +103,8 @@ export const SENSITIVE_DESCRIPTION = [
   'Then password: !@#$%^&*() and https://scc.example/call/555-987-6543 failed too.',
   'Later password= correcthorsebattery and token:= tokenvalueabc and https://scc.example/reset/XkfQpLmZr9Ab broke.',
   'Also accessToken accesstokenvalue, clientSecret clientsecretvalue, config.password configpasswordvalue and GET https://scc.example/x?token=?!?!! next.',
+  'Run-together accesstoken: lowercompoundvalue and ACCESSTOKEN uppercompoundvalue, Authorization=Bearer joinedschemevalue,',
+  'joined password-dashjoinedvalue password_underscorejoinedvalue password.dotjoinedvalue, credentials: pluralvalue, call 555 - 765 - 4321.',
 ].join('\n');
 
 export function expectNoSensitiveValues(output: string) {

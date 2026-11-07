@@ -156,7 +156,7 @@ const REPEATED_MARK = /^([\p{P}\p{S}])\1{0,15}$/u;
 const IDENTIFIER = /^[A-Za-z_$]+(?:\.[A-Za-z_$]+)*(?:\(\)?)?$/;
 const IDENTIFIER_MAX = 40;
 const HTTP_URL = /^https?:\/\//i;
-const QUERY_START = /[?#]/;
+export const QUERY_START = /[?#]/;
 
 function isSafePunctuation(raw: string): boolean {
   return ORDINARY_PUNCTUATION.test(raw) || REPEATED_MARK.test(raw);
@@ -206,126 +206,259 @@ function renderSafe(token: Token): string | undefined {
   return undefined;
 }
 
-// --- Credential context ---------------------------------------------------
+// --- Credential names -----------------------------------------------------
 
-// A name is a credential name if any of its words is one of these.
-const CREDENTIAL_WORDS = new Set([
+// A word holds a credential word if it contains one of these anywhere
+// (`accesstoken`, `clientsecret`, `xapikey`, `sessionid`)...
+const CREDENTIAL_SUBSTRINGS = [
   'apikey',
-  'auth',
-  'authorization',
-  'basic',
   'bearer',
   'cookie',
-  'key',
-  'otp',
-  'pass',
+  'credential',
   'passcode',
   'passphrase',
-  'passwd',
-  'password',
-  'pin',
+  'passw',
   'pwd',
   'secret',
   'session',
   'token',
+];
+// ...or is one of these whole...
+const CREDENTIAL_WHOLE_WORDS = new Set(['basic', 'pass', 'pin', 'sid']);
+// ...or ends in `key` (`secretkey`), starts or ends in `otp` (`totp`), or
+// contains `auth` (`oauth`, `authorization`). Ordinary words that only
+// happen to contain one are not credential words.
+const ORDINARY_WORDS = new Set([
+  'donkey',
+  'hockey',
+  'jockey',
+  'lackey',
+  'monkey',
+  'secretary',
+  'tokenize',
+  'tokenized',
+  'tokenizer',
+  'turkey',
+  'unauthenticated',
+  'unauthorised',
+  'unauthorized',
+  'whiskey',
+]);
+const OTP = /^otp|otp$/;
+const AUTHOR = /^author(?!i[sz])/;
+// Words that may follow a credential word inside its name (`session_id`).
+const NAME_QUALIFIERS = new Set([
+  'error',
+  'exception',
+  'header',
+  'id',
+  'key',
+  'name',
+  'type',
+  'value',
 ]);
 // A name: letters, `_`, `$`, `.` and `-`, no digits (`s3cr3t-api-key` is a
 // value, not a name).
 const NAME = /^[A-Za-z_$][A-Za-z_$.-]{0,63}$/;
 const NAME_SEPARATORS = /[._$-]+/;
 const NAME_WORDS = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+/g;
+// The credential words a name may end in (`accesstoken`, `password`).
+const CREDENTIAL_SUFFIXES = [
+  ...CREDENTIAL_SUBSTRINGS,
+  'auth',
+  'authorization',
+  'key',
+  'otp',
+  'password',
+  'passwd',
+];
+
+/** `tokens` is `token`: a plural matches as its singular (`pass` stays). */
+function singular(word: string): string {
+  return word.length > 3 && word.endsWith('s') && !word.endsWith('ss')
+    ? word.slice(0, -1)
+    : word;
+}
+
+function holdsCredentialWord(rawWord: string): boolean {
+  const word = singular(rawWord);
+  if (ORDINARY_WORDS.has(rawWord) || ORDINARY_WORDS.has(word)) return false;
+  if (CREDENTIAL_WHOLE_WORDS.has(word)) return true;
+  if (CREDENTIAL_SUBSTRINGS.some((part) => word.includes(part))) return true;
+  if (word.endsWith('key')) return true;
+  if (OTP.test(word)) return true;
+  return word.includes('auth') && !AUTHOR.test(word);
+}
+
+/**
+ * True when the word ends in its credential word, or in one plus a
+ * qualifier: `accesstoken`, `sessionid`, but not `tokenabc`.
+ */
+function endsInCredentialWord(rawWord: string): boolean {
+  const word = singular(rawWord);
+  if (CREDENTIAL_WHOLE_WORDS.has(word)) return true;
+  if (CREDENTIAL_SUFFIXES.some((part) => word.endsWith(part))) return true;
+  return [...NAME_QUALIFIERS].some(
+    (qualifier) =>
+      word.length > qualifier.length &&
+      word.endsWith(qualifier) &&
+      CREDENTIAL_SUFFIXES.some((part) =>
+        word.slice(0, -qualifier.length).endsWith(part),
+      ),
+  );
+}
+
+/** The lower-case words of a camelCase, snake_case, kebab or dotted name. */
+function nameWords(name: string): string[] {
+  return name
+    .split(NAME_SEPARATORS)
+    .flatMap((part) => part.match(NAME_WORDS) ?? [])
+    .map((word) => word.toLowerCase());
+}
+
+/**
+ * How a token relates to credentials. `name`: it is a credential name
+ * (`password`, `Password:`, `accessToken`, `x_apikey`, `session_id`), so
+ * the value after it is redacted. `joined`: a credential word with more
+ * after it in the same token (`password-correcthorse`, `passwordhunter`),
+ * which may itself hold the value, so the token is redacted too.
+ */
+function credentialRole(core: string): 'name' | 'joined' | undefined {
+  const name = core.replace(/[:=]+$/, '');
+  if (!NAME.test(name)) return undefined;
+  const words = nameWords(name);
+  const paired = words.map((word, index) => `${word}${words[index + 1] ?? ''}`);
+  let last = -1;
+  for (const [index, word] of words.entries())
+    if (holdsCredentialWord(word) || holdsCredentialWord(paired[index] ?? ''))
+      last = index;
+  if (last === -1) return undefined;
+  const lastWord = words[last] ?? '';
+  const ends =
+    endsInCredentialWord(lastWord) || endsInCredentialWord(paired[last] ?? '');
+  const qualified = words
+    .slice(last + 1)
+    .every((word) => NAME_QUALIFIERS.has(singular(word)));
+  return ends && qualified ? 'name' : 'joined';
+}
+
+// --- Credential context ---------------------------------------------------
+
 // Auth schemes: after `Authorization: bearer` the credential is next.
 const AUTH_SCHEMES = new Set(['basic', 'bearer', 'digest', 'token']);
 // A separator written as its own token keeps the credential context.
 const SEPARATOR_TOKENS = new Set([':', '=', ':=', '->', '=>', '-', '–', '—']);
-// An opening quote alone after a credential word opens its quoted value.
 const QUOTES = new Set(['"', "'"]);
 // `password="…`, `token:=`: a credential name joined to its value.
 const JOINED_CREDENTIAL = /^([\w.$-]{1,64}?)[:=]+(.*)$/s;
 // What may follow a joined name without being a value (`password=`, `pin:,`).
 const NO_VALUE = /^[)\]}>.,;:!?…]*$/;
+const VALUE_WRAPPERS = /^["'`([{<]+|[)\]}>"'`.,;:!?…]+$/g;
 
 /**
- * True when any word of the name is a credential word, however the name is
- * written: `password`, `Password:`, `x-api-key`, `api_key=`, `accessToken`,
- * `clientSecret`, `config.password`, `set-cookie`.
+ * Where the credential context stands between tokens: `none`, `awaitValue`
+ * (the next token is a credential's value; `sameLine` when it only follows
+ * a value that was itself a credential name) or `inQuote` (inside a quoted
+ * value, until its closing quote). `inQuote` and a `sameLine` wait end at a
+ * line break.
  */
-function isCredentialName(value: string): boolean {
-  const name = value.replace(/[:=]+$/, '');
-  if (!NAME.test(name)) return false;
-  const words = name
-    .split(NAME_SEPARATORS)
-    .flatMap((part) => part.match(NAME_WORDS) ?? [])
-    .map((word) => word.toLowerCase());
-  return (
-    words.some((word) => CREDENTIAL_WORDS.has(word)) ||
-    words.some((word, index) =>
-      CREDENTIAL_WORDS.has(`${word}${words[index + 1] ?? ''}`),
-    )
-  );
+type CredentialState =
+  | { kind: 'none' }
+  | { kind: 'awaitValue'; sameLine?: boolean }
+  | { kind: 'inQuote'; quote: string };
+
+const NONE: CredentialState = { kind: 'none' };
+const AWAIT_VALUE: CredentialState = { kind: 'awaitValue' };
+
+type Step = { text: string | undefined; next: CredentialState };
+
+/**
+ * The state after a credential's value, shared by the joined form
+ * (`password=x`) and the separated one (`password: x`) so they cannot
+ * drift: an empty value or an auth scheme (`Bearer`, any case) leaves the
+ * credential for the next token, and an opening quote runs to its close.
+ */
+function afterValue(value: string): CredentialState {
+  if (NO_VALUE.test(value)) return AWAIT_VALUE;
+  const quote = value[0] ?? '';
+  if (QUOTES.has(quote) && !value.slice(1).includes(quote))
+    return { kind: 'inQuote', quote };
+  const bare = value.replace(VALUE_WRAPPERS, '').toLowerCase();
+  return AUTH_SCHEMES.has(bare) ? AWAIT_VALUE : NONE;
+}
+
+/** Outside any credential: render safely, unless the token is one. */
+function stepNone(token: Token): Step {
+  const joined = JOINED_CREDENTIAL.exec(token.core);
+  if (joined && credentialRole(joined[1] ?? '')) {
+    return {
+      text: undefined,
+      next: afterValue(`${joined[2] ?? ''}${token.trailing}`),
+    };
+  }
+  const role = credentialRole(token.core);
+  if (role === 'joined') return { text: undefined, next: AWAIT_VALUE };
+  return {
+    text: renderSafe(token),
+    next: role === 'name' ? AWAIT_VALUE : NONE,
+  };
 }
 
 /**
- * The quote a credential value opens and does not close in this token, so
- * the redaction runs on to the closing quote: `password="two words"`.
+ * After a credential name: the value goes, whatever its shape. A value that
+ * is itself a credential name keeps the context for the next token.
  */
-function openedQuote(value: string): string | undefined {
-  const quote = value[0] ?? '';
-  return QUOTES.has(quote) && !value.slice(1).includes(quote)
-    ? quote
-    : undefined;
+function stepAwaitValue(token: Token): Step {
+  const { raw } = token;
+  if (SEPARATOR_TOKENS.has(raw)) return { text: raw, next: AWAIT_VALUE };
+  if (QUOTES.has(raw))
+    return { text: raw, next: { kind: 'inQuote', quote: raw } };
+  const next = afterValue(raw);
+  return {
+    text: undefined,
+    next:
+      next === NONE && credentialRole(token.core)
+        ? { kind: 'awaitValue', sameLine: true }
+        : next,
+  };
+}
+
+/** Inside a quoted value: everything goes, through the closing quote. */
+function stepInQuote(token: Token, quote: string): Step {
+  return {
+    text: undefined,
+    next: token.raw.includes(quote) ? NONE : { kind: 'inQuote', quote },
+  };
 }
 
 /**
  * Renders each token, or marks it undefined to redact, applying the one
  * context rule: the value after a credential name is always redacted.
- * Only a separator token or a lone opening quote keeps the context alive;
- * the first token after that goes whatever its shape, punctuation included,
- * and a quoted value goes through its closing quote or the end of the line.
  */
 function renderWithCredentialContext(
   tokens: (Token | undefined)[],
   separators: string[],
 ): (string | undefined)[] {
   const rendered: (string | undefined)[] = [];
-  let quote: string | undefined;
-  let credentialNext = false;
+  let state: CredentialState = NONE;
   for (const [index, token] of tokens.entries()) {
-    const afterCredential = credentialNext;
-    credentialNext = false;
-    if (quote && (separators[index] ?? '').includes('\n')) quote = undefined;
+    const lineBreak = (separators[index] ?? '').includes('\n');
+    if (
+      lineBreak &&
+      (state.kind === 'inQuote' ||
+        (state.kind === 'awaitValue' && state.sameLine))
+    )
+      state = NONE;
     if (!token) {
       rendered.push('');
       continue;
     }
-    const { raw, core } = token;
-    if (quote) {
-      rendered.push(undefined);
-      if (raw.includes(quote)) quote = undefined;
-      continue;
-    }
-    const joined = JOINED_CREDENTIAL.exec(core);
-    if (joined && isCredentialName(joined[1] ?? '')) {
-      // `password=x` goes whole; `password=` and `token:=` leave the value
-      // for the next token, and `password="` opens a quoted one.
-      rendered.push(undefined);
-      const value = `${joined[2] ?? ''}${token.trailing}`;
-      quote = openedQuote(value);
-      credentialNext = !quote && NO_VALUE.test(value);
-    } else if (afterCredential && SEPARATOR_TOKENS.has(raw)) {
-      rendered.push(raw);
-      credentialNext = true;
-    } else if (afterCredential && QUOTES.has(raw)) {
-      rendered.push(raw);
-      quote = raw;
-    } else if (afterCredential) {
-      rendered.push(undefined);
-      quote = openedQuote(raw);
-      credentialNext = AUTH_SCHEMES.has(core.toLowerCase());
-    } else {
-      rendered.push(renderSafe(token));
-      credentialNext = isCredentialName(core);
-    }
+    let step: Step;
+    if (state.kind === 'awaitValue') step = stepAwaitValue(token);
+    else if (state.kind === 'inQuote') step = stepInQuote(token, state.quote);
+    else step = stepNone(token);
+    rendered.push(step.text);
+    state = step.next;
   }
   return rendered;
 }
@@ -333,17 +466,59 @@ function renderWithCredentialContext(
 // --- Numbers and rendering ------------------------------------------------
 
 const HAS_DIGIT = /\d/;
+const DIGITS = /\d/g;
+// Separators a number may be written with as their own tokens: `555 - 1234`.
+const NUMBER_RUN_SEPARATORS = new Set(['-', '.', '/', '(', ')', '+']);
 
-/** A short number beside anything else with a digit is part of a longer one. */
+function isNumberToken(token: Token | undefined): token is Token {
+  return Boolean(token && NUMBER.test(token.core));
+}
+
+function isRunSeparator(token: Token | undefined): boolean {
+  return Boolean(token && NUMBER_RUN_SEPARATORS.has(token.raw));
+}
+
+/**
+ * Short numbers that together make a longer one are redacted: a number
+ * beside any other token with a digit (`555 123-4567`), and a run of
+ * numbers and separator tokens with 5+ digits in total (`555 - 123 - 4567`).
+ * `page 3 - 4` and `1 / 2` stay.
+ */
 function suppressDigitNeighbours(
   tokens: (Token | undefined)[],
   rendered: (string | undefined)[],
 ): void {
   for (const [index, token] of tokens.entries()) {
-    if (!token || !NUMBER.test(token.core)) continue;
+    if (!isNumberToken(token)) continue;
     const neighbours = [tokens[index - 1], tokens[index + 1]];
-    if (neighbours.some((other) => other && HAS_DIGIT.test(other.core)))
+    if (
+      neighbours.some(
+        (other) =>
+          other && !isRunSeparator(other) && HAS_DIGIT.test(other.core),
+      )
+    )
       rendered[index] = undefined;
+  }
+  let start = 0;
+  while (start < tokens.length) {
+    if (!isNumberToken(tokens[start]) && !isRunSeparator(tokens[start])) {
+      start += 1;
+      continue;
+    }
+    let end = start;
+    let digits = 0;
+    while (
+      end < tokens.length &&
+      (isNumberToken(tokens[end]) || isRunSeparator(tokens[end]))
+    ) {
+      const token = tokens[end];
+      if (isNumberToken(token)) digits += token.core.match(DIGITS)?.length ?? 0;
+      end += 1;
+    }
+    if (digits > 4)
+      for (let index = start; index < end; index += 1)
+        rendered[index] = undefined;
+    start = end;
   }
 }
 
