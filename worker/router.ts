@@ -6,6 +6,8 @@ import {
 } from 'remix/router';
 import type { z } from 'zod';
 import { generationRequestSchema } from '../shared/schemas/generation.ts';
+import { FLAGS_ROUTE, handleFlagsRequest } from './flags-route.ts';
+import type { FlagsEnv } from './flags.ts';
 import {
   validateGeoEnvironment,
   validateGithubEnvironment,
@@ -34,6 +36,22 @@ import {
   userIssueReportSchema,
 } from './services/github.ts';
 import { resolveModel as defaultResolveModel } from './services/model.ts';
+
+// The FLAGS binding when env carries one. A test env, or a local run before
+// the Flagship app exists, has none; every flag then reads as its default.
+function flagsBinding(env: object): FlagsEnv['FLAGS'] {
+  if (
+    'FLAGS' in env &&
+    typeof env.FLAGS === 'object' &&
+    env.FLAGS !== null &&
+    'getBooleanValue' in env.FLAGS
+  ) {
+    return env.FLAGS as FlagsEnv['FLAGS'];
+  }
+  return {
+    getBooleanValue: (_key, defaultValue) => Promise.resolve(defaultValue),
+  };
+}
 
 export function createApiRouter(
   env: object,
@@ -100,6 +118,14 @@ export function createApiRouter(
       (key) => [createProfanityFilter(key)],
     );
   }
+  // Public, read-only, no body: the route answers 405 for anything but GET.
+  // A test env, or a local run before the Flagship app exists, has no FLAGS
+  // binding; every flag then reads as its default, so no environment
+  // validation here.
+  router.route('ANY', FLAGS_ROUTE, {
+    handler: ({ request }) =>
+      handleFlagsRequest(request, { FLAGS: flagsBinding(env) }),
+  });
   generationRoute('/api/summaries', createSummaries);
   generationRoute('/api/skills', createSkills);
   generationRoute('/api/experience', createExperience);

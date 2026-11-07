@@ -1,4 +1,7 @@
 {
+  "flagship": [
+    { "binding": "FLAGS", "app_id": "60edd5e7-cc0b-4bb1-a9cd-db6decd34208" },
+  ],
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "scc",
   "main": "worker/index.ts",
