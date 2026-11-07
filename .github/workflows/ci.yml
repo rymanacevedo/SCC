@@ -1,0 +1,31 @@
+name: ci
+on:
+  pull_request:
+# The job runs PR-controlled code (bun install lifecycle scripts, package
+# scripts), so the token is read-only whatever the repository default is.
+permissions:
+  contents: read
+# A new push to the same PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned to full commit SHAs: this is a required check and a
+      # mutable tag could change its code without a diff here. The comment
+      # names the tag each SHA was taken from.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build
