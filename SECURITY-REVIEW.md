@@ -33,7 +33,9 @@ place today and what is still a gap.
   verbatim, so a browser can post an arbitrarily long body; and the token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
   bodies are later read by triage agents through `gh`, so text in them is a
-  prompt-injection surface for those agents.
+  prompt-injection surface for those agents. Both body builders fence
+  reported text as code (`worker/lib/markdown.ts`), so it cannot fake issue
+  structure, though agents must still treat it as untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.
