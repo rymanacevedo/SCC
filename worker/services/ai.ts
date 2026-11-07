@@ -9,9 +9,14 @@ import {
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
 
-export const createSummaries = async (prompt: string, model: LanguageModel) => {
+export const createSummaries = async (
+  prompt: string,
+  model: LanguageModel,
+  abortSignal?: AbortSignal,
+) => {
   const { output } = await generateText({
     model,
+    abortSignal,
     output: Output.object({
       schema: z.object({
         summaries: SummarySchema,
@@ -62,9 +67,14 @@ export const createSummaries = async (prompt: string, model: LanguageModel) => {
   return output.summaries;
 };
 
-export const createSkills = async (prompt: string, model: LanguageModel) => {
+export const createSkills = async (
+  prompt: string,
+  model: LanguageModel,
+  abortSignal?: AbortSignal,
+) => {
   const { output } = await generateText({
     model,
+    abortSignal,
     output: Output.object({
       schema: SkillsSchema,
     }),
@@ -90,9 +100,11 @@ export const createSkills = async (prompt: string, model: LanguageModel) => {
 export const createExperience = async (
   prompt: string,
   model: LanguageModel,
+  abortSignal?: AbortSignal,
 ) => {
   const { output } = await generateText({
     model,
+    abortSignal,
     output: Output.object({
       schema: ExperienceSchema,
     }),

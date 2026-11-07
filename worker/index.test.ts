@@ -1,4 +1,7 @@
 import { expect, spyOn, test } from 'bun:test';
+import { withSignal } from '../test/abortable-request.ts';
+import { contractRequest } from '../test/contract-request.ts';
+import { createMockJsonModel } from '../test/mock-model.ts';
 import { createApiRouter } from './router.ts';
 import { createWorker } from './worker.ts';
 
@@ -29,5 +32,39 @@ test('the Worker converts thrown errors to a 500 without leaking details', async
     expect(log).toHaveBeenCalled();
   } finally {
     log.mockRestore();
+  }
+});
+
+test('the Worker logs a client disconnect during generation as a cancellation, not a failure', async () => {
+  const controller = new AbortController();
+  const model = createMockJsonModel({});
+  model.doGenerate = async ({ abortSignal }) => {
+    controller.abort();
+    abortSignal?.throwIfAborted();
+    throw new Error('provider ignored the abort');
+  };
+  const request = withSignal(
+    contractRequest('/api/summaries'),
+    controller.signal,
+  );
+  const log = spyOn(console, 'log').mockImplementation(() => {});
+  const error = spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const worker = createWorker(
+      createApiRouter(
+        { ALLOWED_COUNTRIES: 'US', OPENAI_API_KEY: 'test' },
+        { resolveModel: () => model },
+      ),
+    );
+    const response = await worker.fetch(request);
+    expect(response.status).toBe(499);
+    expect(log).toHaveBeenCalledWith({
+      category: 'client_aborted',
+      path: '/api/summaries',
+    });
+    expect(error).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
   }
 });

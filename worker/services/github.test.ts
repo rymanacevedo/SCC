@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { createAutoReportedIssue } from './github.ts';
+import {
+  createAutoReportedIssue,
+  createUserReportedIssue,
+  GitHubIssueCreationError,
+} from './github.ts';
 
 const originalFetch = globalThis.fetch;
 
@@ -100,5 +104,30 @@ describe('createAutoReportedIssue', () => {
 
     expect(result).toEqual({ deduped: true, issueNumber: 151 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('GitHub error snippet', () => {
+  test('keeps the first 300 characters of a large multi-byte error body', async () => {
+    const body = '✓'.repeat(5000);
+    globalThis.fetch = mock(
+      async () => new Response(body, { status: 422 }),
+    ) as unknown as typeof fetch;
+
+    const error = await createUserReportedIssue({
+      repo: 'acme/scc',
+      token: 'token-123',
+      payload: {
+        description: 'Broken',
+        timestamp: '2026-04-27T12:00:00.000Z',
+        url: 'https://example.com/',
+      },
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(GitHubIssueCreationError);
+    expect((error as GitHubIssueCreationError).status).toBe(422);
+    expect((error as GitHubIssueCreationError).details).toBe(
+      body.slice(0, 300),
+    );
   });
 });

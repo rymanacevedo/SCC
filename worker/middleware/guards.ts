@@ -2,6 +2,7 @@ import { Filter } from 'bad-words';
 import { createContextKey, type Middleware } from 'remix/router';
 import { z } from 'zod';
 import type { GenerationRequest } from '../../shared/schemas/generation.ts';
+import { type BoundedJson, readBoundedJson } from '../lib/body.ts';
 import { apiError } from '../lib/response.ts';
 
 export const sameOriginGuard: Middleware = ({ request }, next) => {
@@ -52,16 +53,17 @@ export function createGeoRestrictionMiddleware({
 export function bodyValidation<T>(schema: z.core.$ZodType<T>) {
   const key = createContextKey<T>();
   const middleware: Middleware = async (context, next) => {
-    let body: unknown;
+    let body: BoundedJson;
     try {
-      body = await context.request.json();
+      body = await readBoundedJson(context.request);
     } catch {
       return apiError(400, 'Invalid JSON body', {
         formErrors: ['Invalid JSON body'],
         fieldErrors: {},
       });
     }
-    const parsed = z.safeParse(schema, body);
+    if (!body.ok) return apiError(413, 'Request body too large');
+    const parsed = z.safeParse(schema, body.value);
     if (!parsed.success)
       return apiError(
         400,
@@ -103,12 +105,20 @@ filter.addWords(
 );
 // Compile the existing bad-words list once. Matching the full prompt also covers
 // multi-word roles and terms inside the serialized XML, unlike splitting on spaces.
+const escapeTerm = (term: string) => term.replace(/\W/g, '\\$&');
 const terms = [...new Set(filter.list)]
   .sort((a, b) => b.length - a.length)
   .map((term) => ({
     term,
-    pattern: new RegExp(`\\b${term.replace(/\W/g, '\\$&')}\\b`, 'i'),
+    pattern: new RegExp(`\\b${escapeTerm(term)}\\b`, 'i'),
   }));
+// One alternation matches iff some per-term pattern matches, in a single scan of
+// the prompt instead of one per term. Clean prompts, the common case, stop here;
+// a hit falls back to the per-term scan so the named term stays the longest match.
+const anyTerm = new RegExp(
+  `\\b(?:${terms.map(({ term }) => escapeTerm(term)).join('|')})\\b`,
+  'i',
+);
 export function createProfanityFilter(
   key: ReturnType<typeof bodyValidation<GenerationRequest>>['key'],
 ): Middleware {
@@ -118,7 +128,9 @@ export function createProfanityFilter(
       throw new Error(
         'Profanity filter requires a validated Generation request',
       );
-    const match = terms.find(({ pattern }) => pattern.test(prompt));
+    const match = anyTerm.test(prompt)
+      ? terms.find(({ pattern }) => pattern.test(prompt))
+      : undefined;
     if (match) {
       // oxlint-disable-next-line no-console -- Guard refusals belong in Workers Logs.
       console.log({

@@ -27,13 +27,19 @@ The one shape every non-2xx `/api/*` response carries: `{ error }`, plus `issues
 ### Same-origin guard
 The middleware that replaces CORS now that UI and API share one origin: rejects requests marked `Sec-Fetch-Site: cross-site` with 403 and bodies without the `application/json` content type with 415. Absent fetch-site metadata is accepted, including command-line callers. No configuration, no allowed-origin variable.
 
+### Body limit
+The 1 MiB cap on any `/api/*` JSON body (`MAX_JSON_BODY_BYTES`). The Worker reads at most that many bytes and cancels the rest, so a body never has to fit in memory whole. A larger body gets a 413 Error envelope before validation or any model call.
+
+### Client cancellation
+A request whose client disconnected before the response. `request.signal` aborts, the generation route passes that signal to the provider so the call stops, and the Worker entry logs it once as `client_aborted` with a 499. It is not a route failure: the router rethrows the abort reason once the signal fires, and the route error middleware rethrows it rather than log it.
+
 ## Generation architecture
 
 ### Generation seam
-The boundary where a serialized section input becomes AI content: the three section generators. It is the surface evals and unit tests drive — a generator called in isolation, with no HTTP and no environment, fully exercises generation. Each generator takes `(prompt, model)` — the injected `LanguageModel` is the seam's second half (see [ADR-0001](docs/adr/0001-env-driven-model-selection.md), implemented).
+The boundary where a serialized section input becomes AI content: the three section generators. It is the surface evals and unit tests drive — a generator called in isolation, with no HTTP and no environment, fully exercises generation. Each generator takes `(prompt, model, abortSignal?)` — the injected `LanguageModel` is the seam's second half; the API routes pass the request's signal so a client disconnect cancels the provider call (see [ADR-0001](docs/adr/0001-env-driven-model-selection.md), implemented).
 
 ### Model adapter (`resolveModel`)
-The single place that turns validated environment config into a concrete `LanguageModel` — the only module that may name a concrete provider or model id. The section generators never do. It reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` (omit → OpenAI cloud; set → a self-hosted or local OpenAI-compatible endpoint such as Ollama/LM Studio), and optional `OPENAI_MODEL` (omit → `DEFAULT_MODEL`). The API routes compose it per-request from validated environment; evals compose it (or any `LanguageModel`) themselves and wrap it for tracing/caching.
+The single place that turns validated environment config into a concrete `LanguageModel` — the only module that may name a concrete provider or model id. The section generators never do. It reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` (omit → OpenAI cloud; set → a self-hosted or local OpenAI-compatible endpoint such as Ollama/LM Studio), and optional `OPENAI_MODEL` (omit → `DEFAULT_MODEL`). The API router composes it once, on the first generation request, from validated environment and reuses it for that env; evals compose it (or any `LanguageModel`) themselves and wrap it for tracing/caching.
 
 Introduced by [ADR-0001](docs/adr/0001-env-driven-model-selection.md) — **accepted and implemented.**
 
