@@ -33,7 +33,17 @@ describe('inlineCode', () => {
     expect(inlineCode(' x ')).toBe('`  x  `');
   });
 
+  test('renders empty text as a code span holding one space, since two backticks are not a code span', () => {
+    expect(inlineCode('')).toBe('` `');
+  });
+
   test('turns every line break into a space', () => {
     expect(inlineCode('one\ntwo\r\nthree\rfour')).toBe('`one two three four`');
+  });
+
+  test('turns Unicode line and paragraph separators and NEL into spaces', () => {
+    expect(inlineCode('one\u2028two\u2029three\u0085four')).toBe(
+      '`one two three four`',
+    );
   });
 });

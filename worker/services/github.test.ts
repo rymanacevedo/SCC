@@ -3,6 +3,7 @@ import {
   buildTelemetryFingerprint,
   type ErrorTelemetryPayload,
   REPORT_FIELD_LIMITS,
+  userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
 import {
   buildAutoReportedIssueBody,
@@ -326,6 +327,40 @@ describe('GitHub issue body size', () => {
     ).toBe(true);
     for (const body of sent)
       expect(body.length).toBeLessThanOrEqual(GITHUB_ISSUE_BODY_MAX);
+  });
+
+  test('a user report with a backtick URL and description at their limits reaches GitHub whole', async () => {
+    const backticks = (count: number) => '`'.repeat(count);
+    // The URL schema needs a scheme, so `a:` is the shortest valid prefix.
+    const url = `a:${backticks(REPORT_FIELD_LIMITS.url - 2)}`;
+    const report = userIssueReportSchema.parse({
+      description: backticks(REPORT_FIELD_LIMITS.description),
+      timestamp: worstCase.timestamp,
+      url,
+    });
+    expect(report.url).toBe(url);
+    expect(report.url).toHaveLength(REPORT_FIELD_LIMITS.url);
+    const sent: string[] = [];
+    globalThis.fetch = mock(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        sent.push(JSON.parse(String(init?.body)).body);
+        return Response.json({ id: 2 }, { status: 201 });
+      },
+    ) as unknown as typeof fetch;
+
+    await createUserReportedIssue({ ...auth, payload: report });
+
+    expect(sent).toEqual([buildUserReportedIssueBody(report)]);
+    const body = sent[0] ?? '';
+    expect(body.length).toBeLessThanOrEqual(GITHUB_ISSUE_BODY_MAX);
+    const urlDelimiter = backticks(REPORT_FIELD_LIMITS.url - 1);
+    expect(body).toContain(
+      `\n- URL: ${urlDelimiter} ${report.url} ${urlDelimiter}\n`,
+    );
+    const descriptionFence = backticks(REPORT_FIELD_LIMITS.description + 1);
+    expect(body.endsWith(`\n${report.description}\n${descriptionFence}`)).toBe(
+      true,
+    );
   });
 });
 
