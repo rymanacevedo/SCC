@@ -9,7 +9,8 @@
 #
 # built from [A-Za-z0-9 ._/-] only: no chaining, subshells, quotes,
 # variables, env prefixes, git global options, refspec colons or `+`. The
-# remote must be configured, the pushed ref must be a local branch (not a
+# remote must be configured and resolve to this repo on GitHub
+# (TRUSTED_PUSH_URLS), the pushed ref must be a local branch (not a
 # tag) and must not be main/master
 # (compared by last path component), and config must not redirect the push.
 #
@@ -37,6 +38,10 @@ CWD=${CWD:-$PWD}
 NORMALIZED=$(printf '%s\n' "$COMMAND" | tr -d "'\"\\\\")
 
 PROTECTED_BRANCHES="main|master"
+# The only push destination agents may use: this repo on GitHub, in any of
+# its URL spellings. Pinned here because remote URLs in the worktree's
+# config can be changed by any earlier command.
+TRUSTED_PUSH_URLS="(https://github\.com/|git@github\.com:|ssh://git@github\.com/)rymanacevedo/SCC(\.git)?/?"
 PUSH_FLAGS="-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run"
 SIMPLE_PUSH="run 'git push [-u] <remote> <branch>' as its own command"
 PUSH_PLUMBING="send-pack|http-push"
@@ -210,7 +215,7 @@ check_push_config() {
   return 0
 }
 
-# check_push_target: a configured remote (also when implied by config), and
+# check_push_target (also pins the resolved push URL): a configured remote (also when implied by config), and
 # a local branch (not a tag or other ref) that is not protected or a
 # detached HEAD.
 check_push_target() {
@@ -227,6 +232,10 @@ check_push_target() {
       repo_git config --get "branch.$BRANCH.remote" || echo origin)
   fi
   repo_git remote | grep -qxF -- "$REMOTE" || block "pushes to '$REMOTE', which is not a configured remote"
+  # get-url --push applies pushurl and insteadOf rewrites: the real target.
+  local url
+  url=$(repo_git remote get-url --push "$REMOTE")
+  [[ "$url" =~ ^($TRUSTED_PUSH_URLS)$ ]] || block "pushes to '$url', which is not this repo's GitHub remote"
   return 0
 }
 

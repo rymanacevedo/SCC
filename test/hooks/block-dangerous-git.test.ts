@@ -8,7 +8,8 @@ const hook = join(
   '../../.claude/hooks/block-dangerous-git.sh',
 );
 
-// Throwaway repos, each with an `origin` remote. Keys are where a case runs.
+// Throwaway repos, each with an `origin` remote pointing at this repo's
+// GitHub URL (the hook never contacts it). Keys are where a case runs.
 const repoConfig = {
   main: [],
   feature: [],
@@ -22,7 +23,12 @@ const repoConfig = {
   tags: [['push.followTags', 'true']],
   pushdefault: [['remote.pushDefault', 'https://example.com/repo.git']],
   pushurl: [['remote.origin.pushurl', 'https://example.com/repo.git']],
-  pushinsteadof: [['url.https://example.com/.pushInsteadOf', '/']],
+  pushinsteadof: [
+    ['url.https://example.com/.pushInsteadOf', 'https://github.com/'],
+  ],
+  redirected: [['remote.origin.url', 'https://example.com/repo.git']],
+  insteadof: [['url.https://example.com/.insteadOf', 'https://github.com/']],
+  ssh: [['remote.origin.url', 'git@github.com:rymanacevedo/SCC.git']],
   aliased: [
     ['alias.p', 'push'],
     ['alias.ship', '!git push origin main'],
@@ -77,7 +83,13 @@ beforeAll(() => {
       '-m',
       'init',
     );
-    git(repo, 'remote', 'add', 'origin', join(root, 'remote.git'));
+    git(
+      repo,
+      'remote',
+      'add',
+      'origin',
+      'https://github.com/rymanacevedo/SCC.git',
+    );
     if (where === 'main') {
       git(repo, 'branch', 'feat');
       git(repo, 'branch', 'ryan/feat-1.2');
@@ -98,6 +110,7 @@ const allowed: [string, Where][] = [
   ['git push --set-upstream origin feat', 'main'],
   ['git push -v -n origin feat', 'main'],
   ['git push origin ryan/feat-1.2', 'main'],
+  ['git push origin feat', 'ssh'],
   ['git push', 'feature'],
   ['git push origin', 'feature'],
   ['git push origin HEAD', 'feature'],
@@ -201,6 +214,8 @@ const blocked: [string, Where][] = [
   ['git push', 'pushdefault'],
   ['git push origin feat', 'pushurl'],
   ['git push origin feat', 'pushinsteadof'],
+  ['git push origin feat', 'redirected'],
+  ['git push origin feat', 'insteadof'],
   // Aliases (any, since a push alias may be defined in another repo) and
   // typos git may autocorrect.
   ['git st', 'aliased'],
