@@ -4,8 +4,11 @@ import type { RequestContext } from 'remix/router';
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
+  SENSITIVE_DYNAMIC_URL,
+  SENSITIVE_INJECTION_URL,
   SENSITIVE_MESSAGE,
   SENSITIVE_STACK,
+  SENSITIVE_UNKNOWN_URL,
   SENSITIVE_URL,
 } from '../../test/sensitive-reports.ts';
 import { errorTelemetrySchema } from '../services/github.ts';
@@ -31,7 +34,7 @@ async function logFor(error: unknown, payload?: unknown) {
   return log.mock.calls[0]?.[0] as Record<string, unknown>;
 }
 
-test('logged report metadata, error text and provider URLs are path-only and redacted', async () => {
+test('logged report metadata and error text are route patterns and placeholders; no provider URL is logged', async () => {
   const error = new APICallError({
     message: SENSITIVE_MESSAGE,
     url: SENSITIVE_URL,
@@ -48,7 +51,6 @@ test('logged report metadata, error text and provider URLs are path-only and red
   expect(entry).toMatchObject({
     category: 'provider',
     url: 'https://app.invalid/summary',
-    providerUrl: 'https://app.invalid/summary',
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   });
   expect(String(entry.stack)).toContain(
@@ -56,8 +58,29 @@ test('logged report metadata, error text and provider URLs are path-only and red
   );
   expect(String(entry.stack)).toContain('    [frame omitted]\n    at retry (');
   expect(String(entry.stack)).toContain(
-    'at loadPage (https://app.invalid/assets/page.js:3:4)',
+    'at loadPage (https://app.invalid/[redacted]:3:4)',
   );
+  expect(entry).not.toHaveProperty('providerUrl');
+});
+
+test('a report path the browser chose reaches no log line', async () => {
+  for (const url of [
+    SENSITIVE_INJECTION_URL,
+    SENSITIVE_UNKNOWN_URL,
+    SENSITIVE_DYNAMIC_URL,
+  ]) {
+    const error = new Error('Broken');
+    error.stack = `Error: Broken\n    at render (${url}.js:1:2)`;
+    const entry = await logFor(error, {
+      timestamp: '2026-10-13T00:00:00.000Z',
+      url,
+    });
+    expectNoSensitiveValues(JSON.stringify(entry));
+    expect(entry.url).toBe('https://app.invalid/[unknown-route]');
+    expect(entry.stack).toBe(
+      'Error\n    at render (https://app.invalid/[redacted]:1:2)',
+    );
+  }
 });
 
 test('an oversized report timestamp is logged as a bounded canonical value', async () => {

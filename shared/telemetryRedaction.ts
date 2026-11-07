@@ -2,19 +2,22 @@
  * Report sanitizing primitives. Reports never store free text: a message or
  * an upstream response body is replaced by a placeholder that shows only its
  * length. What remains is structural and fail-closed: an error
- * class name, a path-only URL, a canonical timestamp and canonical stack
- * frames (`stackFrames.ts`). Runs in the browser before a report is sent and
- * again on the Worker before a report reaches a GitHub issue or Workers Logs.
+ * class name, the page's route pattern (`routes.ts`), a canonical timestamp
+ * and canonical stack frames (`stackFrames.ts`). Runs in the browser before
+ * a report is sent and again on the Worker before a report reaches a GitHub
+ * issue or Workers Logs.
  */
 
+import { APP_ROUTE_PATTERNS, routeOf } from './routes.ts';
 import { truncateText } from './text.ts';
 
 export const REDACTED = '[redacted]';
 export const TRUNCATED = '… [truncated]';
 /**
  * The one origin every sanitized report URL carries. A real host is never
- * kept (it can name a person or a private network); only the path is. The
- * synthetic origin keeps the result a valid URL for the report schemas.
+ * kept (it can name a person or a private network), nor a real path: only
+ * the route pattern it matched. The synthetic origin keeps the result a
+ * valid URL for the report schemas.
  */
 export const REPORT_ORIGIN = 'https://app.invalid';
 
@@ -100,17 +103,11 @@ export function hasTooManyDigits(value: string): boolean {
   return (value.match(DIGIT)?.length ?? 0) > MAX_DIGITS;
 }
 
-// A URL path segment: its characters, then its parts split at `-_.~+`. Each
-// part is a word, a short number or an API version; a file name with an
-// extension may also hold a content hash (`index-C4kL9x.js`).
-const SEGMENT_CHARACTERS = /^@?[\w.~+()[\]-]{1,64}$/;
-const SEGMENT_PART_SEPARATORS = /[-_.~+]+/;
-const SEGMENT_WRAPPERS = /[()[\]]/g;
-const SEGMENT_WORD = /^[A-Za-z]{1,24}$/;
-const SEGMENT_NUMBER = /^\d{1,4}$/;
+// The words an identifier part is made of: a written word, a short number
+// or an API version (`v1`).
+const WORD = /^[A-Za-z]{1,24}$/;
+const NUMBER = /^\d{1,4}$/;
 const VERSION = /^v\d{1,3}$/i;
-const FILE_EXTENSION = /\.[A-Za-z]{1,5}$/;
-const CONTENT_HASH = /^[A-Za-z0-9]{4,16}$/;
 // A key shape anywhere in a value: a short lower-case prefix, an optional
 // short tag, then 16+ letters or digits (`sk_live_…`, `pk_test_…`, `ghp_…`,
 // `xoxb-…`), bounded by anything that is not a letter or digit. So wrappers,
@@ -120,8 +117,8 @@ const KEY_SHAPE =
   /(?:^|[^A-Za-z0-9])[a-z]{2,4}[-_](?:[a-z]{2,8}[-_])?[a-z0-9]{16,}(?![a-z0-9])/i;
 
 /**
- * True when a value holds a key-shaped token. The one check shared by URL
- * path segments and stack-frame function names, so they cannot drift.
+ * True when a value holds a key-shaped token. The one check shared by
+ * stack-frame function names and bundle asset names, so they cannot drift.
  */
 export function isSensitiveToken(value: string): boolean {
   return KEY_SHAPE.test(value);
@@ -145,15 +142,15 @@ function looksRandom(word: string): boolean {
 
 function isSafeWord(word: string): boolean {
   return (
-    (SEGMENT_WORD.test(word) && !looksRandom(word)) ||
-    SEGMENT_NUMBER.test(word) ||
+    (WORD.test(word) && !looksRandom(word)) ||
+    NUMBER.test(word) ||
     VERSION.test(word)
   );
 }
 
 /**
- * The one rule a URL path segment's parts and a stack frame's function-name
- * parts both pass: at most 4 digits, no key shape (any case), and every
+ * The one rule a stack frame's function-name parts and a bundle asset's
+ * name parts both pass: at most 4 digits, no key shape (any case), and every
  * word (split at `_`, `$`, `-`) a written word, a short number or an API
  * version. A random-looking word (`XkfQpLmZr9Ab`), a key (`sk_live_…`,
  * an access-key-style `AKIA…`) or a word mixing letters and digits (`hunter2`)
@@ -168,53 +165,12 @@ export function isSafeIdentifierPart(part: string): boolean {
 }
 
 /**
- * A plain path segment (`api`, `v1`, `users`, `1234`, `index-C4kL9x.js`,
- * `@scope`, `(group)`, `[slug]`) with at most 4 digits in total. It is
- * judged whole as well as by its parts: a random-looking token such as
- * `XkfQpLmZr9Ab`, or one holding a key (`sk_live_…`, `(sk_live_…)`,
- * `sk_live_….js`), is not.
+ * A URL as `https://app.invalid` and the app route pattern its path
+ * matched (`/summary`), or `/[unknown-route]`: no host, credentials, query,
+ * fragment or path segment the browser chose. Always a valid URL.
  */
-function isSafeSegment(segment: string): boolean {
-  if (
-    !SEGMENT_CHARACTERS.test(segment) ||
-    hasTooManyDigits(segment) ||
-    isSensitiveToken(segment)
-  )
-    return false;
-  const bare = segment.replace(/^@/, '').replace(SEGMENT_WRAPPERS, '');
-  const parts = bare.split(SEGMENT_PART_SEPARATORS).filter(Boolean);
-  const isFileName = FILE_EXTENSION.test(bare);
-  return parts.every(
-    (part) =>
-      isSafeIdentifierPart(part) || (isFileName && CONTENT_HASH.test(part)),
-  );
-}
-
-/** Keeps a path's plain segments; any other segment becomes `[redacted]`. */
-export function sanitizePathSegments(path: string, separator: RegExp): string {
-  return path
-    .split(separator)
-    .map((segment) =>
-      segment === '' || isSafeSegment(segment) ? segment : REDACTED,
-    )
-    .join('/');
-}
-
-/**
- * An http(s) URL's path, under the synthetic `https://app.invalid` origin:
- * no host, credentials, query string or fragment, and only plain path
- * segments. Anything else is the origin alone. Always a valid URL.
- */
-export function toPathOnlyUrl(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return `${REPORT_ORIGIN}/`;
-  }
-  const http = url.protocol === 'http:' || url.protocol === 'https:';
-  if (!http) return `${REPORT_ORIGIN}/`;
-  return `${REPORT_ORIGIN}${sanitizePathSegments(url.pathname, /\//)}`;
+export function toRouteUrl(value: string): string {
+  return `${REPORT_ORIGIN}${routeOf(value, APP_ROUTE_PATTERNS)}`;
 }
 
 /**

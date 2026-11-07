@@ -30,15 +30,16 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   expect(JSON.parse(bodies[0] ?? '{}')).toEqual({
     url: 'https://app.invalid/info',
     message: `[message omitted: ${error.message.length} characters]`,
-    // A real stack, as canonical frames; the checkout path may be redacted.
+    // A real stack, as canonical frames; a source path is not a bundle
+    // asset, so it is redacted.
     stackTrace: expect.stringMatching(
-      /^Error\n    at <anonymous> \(\S+error-reporting\.test\.ts:\d+:\d+\)/,
+      /^Error\n    at <anonymous> \(https:\/\/app\.invalid\/\[redacted\]:\d+:\d+\)/,
     ),
     timestamp: expect.any(String),
   });
   expect(JSON.stringify(bodies)).not.toContain('Private');
 });
-test('auto-report sends a path-only URL and a redacted message and stack', async () => {
+test('auto-report sends a route-pattern URL and a redacted message and stack', async () => {
   const bodies = captureFetchBodies();
   const error = Object.assign(new Error(SENSITIVE_MESSAGE), {
     stack: SENSITIVE_STACK,

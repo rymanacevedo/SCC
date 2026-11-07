@@ -1,9 +1,8 @@
 import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
 import {
-  cutAtLastBreak,
   omittedText,
   SANITIZE_INPUT_FACTOR,
-  toPathOnlyUrl,
+  toRouteUrl,
 } from './telemetryRedaction.ts';
 import { z } from './zod.ts';
 
@@ -114,25 +113,21 @@ export function sanitizeReportTimestamp(timestamp: string): string {
 }
 
 /**
- * A report URL as a plain path under the synthetic `https://app.invalid`
- * origin (no host is kept). An over-limit URL is cut back to its last whole
- * segment with no marker, which a URL cannot carry, so a sanitized report
- * always passes its schema.
+ * A report URL as the app route pattern it matched, under the synthetic
+ * `https://app.invalid` origin (`https://app.invalid/summary`), or
+ * `https://app.invalid/[unknown-route]`. No real host or path segment is
+ * kept, and the result is far shorter than its limit, so a sanitized report
+ * always passes its schema. Input past four times the limit is never read.
  */
 export function sanitizeReportUrl(url: string): string {
-  const sanitized = toPathOnlyUrl(
+  return toRouteUrl(
     url.slice(0, REPORT_FIELD_LIMITS.url * SANITIZE_INPUT_FACTOR),
-  );
-  if (sanitized.length <= REPORT_FIELD_LIMITS.url) return sanitized;
-  return cutAtLastBreak(
-    sanitized.slice(0, REPORT_FIELD_LIMITS.url),
-    (char) => char === '/',
   );
 }
 
 /**
  * The only form of Error telemetry that may be sent, stored or fingerprinted:
- * the canonical timestamp, the path-only URL and the canonical stack (the
+ * the canonical timestamp, the route-pattern URL and the canonical stack (the
  * error name and frames). The message is free text, so only its length is
  * kept. Every field fits its schema limit.
  */
@@ -156,7 +151,7 @@ export function sanitizeErrorTelemetry(
 
 /**
  * The only form of a User report that may be sent or stored: the canonical
- * timestamp and the path-only URL.
+ * timestamp and the route-pattern URL.
  */
 export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,

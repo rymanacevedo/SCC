@@ -85,7 +85,7 @@ type RouteErrorClassification = {
 /**
  * Maps a route failure to its log category, response status and the fields
  * logged with it. No free text is logged: strings are machine tokens
- * (`logToken`) or path-only URLs (`redactUrlForLog`). Upstream
+ * (`logToken`) or route patterns (`redactUrlForLog`). Upstream
  * failures are 502, a deadline is 504, a missing variable is 500; an
  * unrecognized error is 500 on a generation route and 502 on a reporting
  * route, whose only work is the GitHub call.
@@ -124,7 +124,6 @@ function classifyRouteError(
       status: 502,
       details: {
         providerStatus: providerError.statusCode,
-        providerUrl: redactUrlForLog(providerError.url),
         isRetryable: providerError.isRetryable,
         ...(RetryError.isInstance(error)
           ? {

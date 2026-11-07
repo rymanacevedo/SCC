@@ -13,13 +13,17 @@ import {
   expectNoSensitiveValues,
   SENSITIVE_AT_HEADER_STACK,
   SENSITIVE_DESCRIPTION,
+  SENSITIVE_DYNAMIC_URL,
+  SENSITIVE_INJECTION_URL,
   SENSITIVE_KEY_URL,
   SENSITIVE_MESSAGE,
   SENSITIVE_NAMED_STACK,
   SENSITIVE_PLACEHOLDER_MESSAGE,
   SENSITIVE_STACK,
   SENSITIVE_TIMESTAMP,
+  SENSITIVE_UNKNOWN_URL,
   SENSITIVE_URL,
+  SANITIZED_SENSITIVE_STACK,
 } from '../../test/sensitive-reports.ts';
 import {
   buildAutoReportedIssueBody,
@@ -40,6 +44,8 @@ afterEach(() => {
 });
 
 const auth = { repo: 'acme/scc', token: 'token-123' };
+// What a stack file that is not a bundle asset becomes.
+const REDACTED_FILE = 'https://app.invalid/[redacted]';
 /** The body GitHub holds for an issue auto-reported from `payload`. */
 const filedBody = async (payload: ErrorTelemetryPayload) => {
   const telemetry = sanitizeErrorTelemetry(payload);
@@ -130,14 +136,14 @@ describe('GitHub issue body rendering', () => {
     expect(
       filedUserBody({
         timestamp: '2026-04-27T12:00:00.000Z',
-        url: 'https://example.com/builder?x=1',
+        url: 'https://example.com/summary?x=1',
       }),
     ).toBe(
       [
         '# User-reported issue',
         '',
         '- Timestamp: 2026-04-27T12:00:00.000Z',
-        '- URL: `https://app.invalid/builder`',
+        '- URL: `https://app.invalid/summary`',
       ].join('\n'),
     );
   });
@@ -212,31 +218,7 @@ describe('issue bodies sent to GitHub', () => {
       `- Message: \`[message omitted: ${SENSITIVE_MESSAGE.length} characters]\`\n`,
     );
     expect(body).toContain(
-      [
-        '```',
-        'TypeError',
-        '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
-        '    [frame omitted]',
-        '    at retry (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
-        '    at loadPage (https://app.invalid/assets/page.js:3:4)',
-        '    [frame omitted]',
-        '    at fn (https://app.invalid/a(b).js:7:8)',
-        '    at dial (https://app.invalid/call/[redacted]/a.js:9:9)',
-        '    at <anonymous> (https://app.invalid/reset/[redacted]/a.js:1:2)',
-        '    at keyed (https://app.invalid/k/[redacted]/a.js:1:2)',
-        '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
-        '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
-        '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
-        '    at <anonymous> (https://app.invalid/a.js:2:2)',
-        '    at <anonymous> (https://app.invalid/a.js:2:3)',
-        '    [frame omitted]',
-        '    at load (blob:https://app.invalid/token.js:2:5)',
-        '    at <anonymous> (https://app.invalid/a.js:3:1)',
-        '    at <anonymous> (https://app.invalid/a.js:3:2)',
-        '    at eval (https://app.invalid/script.js:3:3)',
-        '    [frame omitted]',
-        '```',
-      ].join('\n'),
+      ['```', SANITIZED_SENSITIVE_STACK, '```'].join('\n'),
     );
   });
 
@@ -273,7 +255,7 @@ describe('issue bodies sent to GitHub', () => {
     });
     expectNoSensitiveValues(`${sent[0]?.title}\n${sent[0]?.body}`);
     expect(sent[0]?.title).toBe(
-      'Auto-reported error: Error at /assets/app-a1b2c3d4.js',
+      'Auto-reported error: Error at /[unknown-route]',
     );
     expect(sent[0]?.body).toContain('\nError\n    at f (');
   });
@@ -310,7 +292,7 @@ describe('issue bodies sent to GitHub', () => {
     await createAutoReportedIssue({ ...auth, payload });
     expectNoSensitiveValues(`${sent[0]?.title}\n${sent[0]?.body}`);
     expect(sent[0]?.title).toBe(
-      'Auto-reported error: Error at /assets/app-a1b2c3d4.js',
+      'Auto-reported error: Error at /[unknown-route]',
     );
     const fingerprint = buildSanitizedTelemetryFingerprint(
       sanitizeErrorTelemetry(payload),
@@ -335,15 +317,13 @@ describe('issue bodies sent to GitHub', () => {
     });
     for (const { title, body } of sent) {
       expectNoSensitiveValues(`${title}\n${body}`);
-      expect(body).toContain(
-        '- URL: `https://app.invalid/k/[redacted]/[redacted]/[redacted]`',
-      );
+      expect(body).toContain('- URL: `https://app.invalid/[unknown-route]`');
     }
     expect(sent[0]?.title).toBe(
-      'Auto-reported error: Error at /k/[redacted]/[redacted]/[redacted]',
+      'Auto-reported error: Error at /[unknown-route]',
     );
     expect(sent[0]?.body).toContain(
-      '\nError\n    at save (https://app.invalid/a.js:1:2)\n',
+      '\nError\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)\n',
     );
   });
 
@@ -363,13 +343,50 @@ describe('issue bodies sent to GitHub', () => {
     });
     for (const { title, body } of sent) {
       expectNoSensitiveValues(`${title}\n${body}`);
-      expect(body).toContain('- URL: `https://app.invalid/call/[redacted]`');
+      expect(body).toContain('- URL: `https://app.invalid/[unknown-route]`');
     }
     expect(
       buildSanitizedTelemetryFingerprint(
         sanitizeErrorTelemetry({ ...chunkFailure, url }),
       ),
     ).not.toContain('555');
+  });
+
+  test('a path the browser chose reaches no title, body or fingerprint, through both passes', async () => {
+    const sent = captureCreatedIssues();
+    const urls = [
+      SENSITIVE_INJECTION_URL,
+      SENSITIVE_UNKNOWN_URL,
+      SENSITIVE_DYNAMIC_URL,
+    ];
+    for (const url of urls) {
+      const stackTrace = `TypeError: x\n    at render (${url}.js:1:2)`;
+      const fromBrowser = sanitizeErrorTelemetry({
+        ...chunkFailure,
+        url,
+        stackTrace,
+      });
+      expect(sanitizeErrorTelemetry(fromBrowser)).toEqual(fromBrowser);
+      expectNoSensitiveValues(buildSanitizedTelemetryFingerprint(fromBrowser));
+      await createAutoReportedIssue({ ...auth, payload: fromBrowser });
+      await createUserReportedIssue({
+        ...auth,
+        payload: sanitizeUserIssueReport({
+          timestamp: chunkFailure.timestamp,
+          url,
+        }),
+      });
+    }
+    expect(sent).toHaveLength(urls.length * 2);
+    for (const { title, body } of sent) {
+      expectNoSensitiveValues(`${title}\n${body}`);
+      expect(body).not.toContain('github');
+      expect(body).toContain('- URL: `https://app.invalid/[unknown-route]`');
+    }
+    expect(sent[0]?.title).toBe(
+      'Auto-reported error: TypeError at /[unknown-route]',
+    );
+    expect(sent[0]?.body).toContain(`    at render (${REDACTED_FILE}:1:2)`);
   });
 
   test('a dev URL with an IP host reaches GitHub with the placeholder origin', async () => {
@@ -386,7 +403,7 @@ describe('issue bodies sent to GitHub', () => {
 
   test('an over-long stack is cut at a frame boundary with a marker', async () => {
     const sent = captureCreatedIssues();
-    const frame = '    at frame (https://scc.example/a.js:1:2)';
+    const frame = '    at frame (https://scc.example/assets/a-abcdef12.js:1:2)';
     await createAutoReportedIssue({
       ...auth,
       payload: {
@@ -564,7 +581,9 @@ describe('GitHub issue body size', () => {
         url: `a:${'`'.repeat(REPORT_FIELD_LIMITS.url - 2)}`,
       },
     });
-    expect(sent[0]?.body).toEndWith('\n- URL: `https://app.invalid/`');
+    expect(sent[0]?.body).toEndWith(
+      '\n- URL: `https://app.invalid/[unknown-route]`',
+    );
   });
 });
 

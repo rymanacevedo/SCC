@@ -87,7 +87,8 @@ test('geo restriction normalizes countries, fails closed even when XX is configu
     expect.objectContaining({
       event: 'geo_blocked',
       country: 'GB',
-      path: '/stub',
+      // A test route: on no API route list, so logged as unknown.
+      path: '/[unknown-route]',
       method: 'POST',
       timestamp: expect.any(String),
     }),

@@ -146,12 +146,14 @@ test('router errors return 500 and auto-report once without waiting for reportin
     expect((await router.fetch(builderRequest('/throw'))).status).toBe(500);
     expect(reports).toEqual([
       {
-        url: 'https://app.invalid/throw',
+        // A test-only route: on no route list, so reported as unknown.
+        url: 'https://app.invalid/[unknown-route]',
         message: `[message omitted: ${error.message.length} characters]`,
         timestamp: expect.any(String),
-        // A real stack, as canonical frames; the checkout path may be redacted.
+        // A real stack, as canonical frames; a source path is not a bundle
+        // asset, so it is redacted.
         stackTrace: expect.stringMatching(
-          /^Error\n    at <anonymous> \(\S+router\.test\.ts:\d+:\d+\)/,
+          /^Error\n    at <anonymous> \(https:\/\/app\.invalid\/\[redacted\]:\d+:\d+\)/,
         ),
       },
     ]);

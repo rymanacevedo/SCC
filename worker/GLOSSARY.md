@@ -53,7 +53,7 @@ The signal a user sends from the Report an issue dialog to `/api/report-issue`: 
 _Avoid_: feedback, ticket
 
 ### Report sanitizing
-Reducing a report to its structure: a canonical timestamp, the URL as a plain path under the synthetic `https://app.invalid` origin, the error class name and canonical stack frames. Free text (an error message, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[message omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0001](../docs/adr/0001-reports-are-redacted-before-storage.md), system-wide).
+Reducing a report to its structure: a canonical timestamp, the URL as the app route pattern it matched under the synthetic `https://app.invalid` origin (`/[unknown-route]` for any other path; the patterns are one list, `shared/routes.ts`), the error class name and canonical stack frames whose files are the bundle's own asset paths or `[redacted]`. Free text (an error message, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[message omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0001](../docs/adr/0001-reports-are-redacted-before-storage.md), system-wide).
 _Avoid_: scrubbing, anonymizing
 
 ## Generation architecture

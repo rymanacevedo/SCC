@@ -73,9 +73,9 @@ export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
 
 /**
  * The issue body for auto-reported telemetry. It takes sanitized telemetry:
- * the path-only URL, the message's length placeholder and the canonical
+ * the route-pattern URL, the message's length placeholder and the canonical
  * stack, so no browser text reaches it. Those fields still render as code,
- * so a path segment or identifier cannot fake issue structure; the
+ * so an identifier cannot fake issue structure; the
  * fingerprint line stays outside, where deduplication finds it.
  */
 export function buildAutoReportedIssueBody(

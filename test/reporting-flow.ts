@@ -73,8 +73,9 @@ try {
   );
   const issue = reports.find((report) => report.path === '/api/report-issue');
   assert.ok(issue);
-  // The report carries the path alone, under the synthetic origin.
-  assert.equal(issue.body.url, 'https://app.invalid/throw-component');
+  // The report carries a route pattern, never the path: a demo-only route is
+  // on no route list, so it is the unknown route.
+  assert.equal(issue.body.url, 'https://app.invalid/[unknown-route]');
   assert.deepEqual(Object.keys(issue.body).sort(), ['timestamp', 'url']);
   await page.click(`${dialog} button[type="button"]`);
   assert.equal(await page.$eval(dialog, (node) => node.open), false);

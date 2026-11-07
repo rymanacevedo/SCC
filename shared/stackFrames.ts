@@ -3,11 +3,10 @@ import {
   hasTooManyDigits,
   isSafeIdentifierPart,
   isSensitiveToken,
+  REDACTED,
   REPORT_ORIGIN,
   SANITIZE_INPUT_FACTOR,
   sanitizeErrorName,
-  sanitizePathSegments,
-  toPathOnlyUrl,
   TRUNCATED,
   truncateWithMarker,
 } from './telemetryRedaction.ts';
@@ -35,69 +34,51 @@ const KNOWN_FUNCTION_NAMES = new Set(['global code']);
 const LOCATION = /^(.+):(\d{1,9}):(\d{1,9})$/;
 // Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
-const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
-const HTTP_SCHEME = /^https?:/i;
-// `//host/…` (V8 prints eval'd code this way) or a `\\host\…` share: the
-// first segment is an authority, never a path segment.
-const NETWORK_PATH = /^(?:\/\/|\\\\)/;
-const QUERY_START = /[?#]/;
-// Schemes whose URL has a host: it is replaced by the synthetic one.
-const HOSTED_SCHEMES = new Set([
-  'chrome-extension',
-  'file',
-  'moz-extension',
-  'safari-extension',
-  'webpack',
-  'webpack-internal',
-]);
-const SYNTHETIC_HOST = new URL(REPORT_ORIGIN).host;
+const HTTP_SCHEME = /^https?:\/\//i;
+// The app's own bundle files, as Vite names them: `/assets/<name>-<hash>.js`
+// with an 8-character base64url content hash (`/assets/entry.client-BUZPaea6.js`,
+// `/assets/education-BL-Djl3_.js`). The name's parts pass the identifier rule.
+const ASSET_PATH =
+  /^\/assets\/([A-Za-z][\w.-]{0,47})-[\w-]{8}\.(?:js|mjs|css)$/;
+const ASSET_NAME_SEPARATORS = /[.-]+/;
+// A Node.js built-in (`node:fs`, `node:internal/vm`): the module name only.
+const NODE_MODULE = /^node:([a-z_]{1,24})(?![^/])/;
+// What any other file becomes: the frame keeps its function and position.
+const FILE_REDACTED = `${REPORT_ORIGIN}/${REDACTED}`;
 
-/** A path, query and fragment dropped, with only its plain segments. */
-function sanitizePath(path: string, separator: RegExp): string {
-  const query = path.search(QUERY_START);
-  return sanitizePathSegments(
-    query === -1 ? path : path.slice(0, query),
-    separator,
-  );
-}
-
-/**
- * A frame's file under a fixed scheme allowlist: a plain path; `http(s)`
- * under the synthetic origin; `blob:` around such a URL; `node:` and a
- * path; or a hosted scheme (`webpack:`, `file:`, `chrome-extension:`, …)
- * written with `//`, its host replaced by the synthetic one. An authority
- * is never read as a path segment: a `//host/…` reference goes under the
- * synthetic origin, and a nested URL in any scheme but `blob:` (or a hosted
- * scheme without `//`) is undefined. So is any other scheme. Undefined
- * omits the frame, since dropping only the scheme would leave what followed
- * it to be read as a path.
- */
-function sanitizeFile(file: string): string | undefined {
-  if (NETWORK_PATH.test(file))
-    return toPathOnlyUrl(`https:${file.replace(/\\/g, '/')}`);
-  const scheme = SCHEME.exec(file)?.[1]?.toLowerCase();
-  if (scheme === undefined) return sanitizePath(file, /[/\\]/);
-  const rest = file.slice(scheme.length + 1);
-  if (scheme === 'http' || scheme === 'https') return toPathOnlyUrl(file);
-  if (scheme === 'blob')
-    return HTTP_SCHEME.test(rest) ? `blob:${toPathOnlyUrl(rest)}` : undefined;
-  // `node:https://host/…`, `webpack:https://host/…`: a nested URL.
-  if (SCHEME.test(rest.replace(/^\/+/, ''))) return undefined;
-  // `node:fs`, `node:internal/vm`; `node://host/…` would read its host as a
-  // path, so an authority omits the frame.
-  if (scheme === 'node')
-    return rest.startsWith('//')
-      ? undefined
-      : `node:${sanitizePath(rest, /\//)}`;
-  if (!HOSTED_SCHEMES.has(scheme) || !rest.startsWith('//')) return undefined;
-  let url: URL;
+/** The path of a root-relative or http(s) file reference, if it has one. */
+function filePath(file: string): string | undefined {
+  if (file.startsWith('/') && !file.startsWith('//'))
+    return file.split(/[?#]/, 1)[0];
+  if (!HTTP_SCHEME.test(file)) return undefined;
   try {
-    url = new URL(file);
+    return new URL(file).pathname;
   } catch {
     return undefined;
   }
-  const host = url.host ? SYNTHETIC_HOST : '';
-  return `${scheme}://${host}${sanitizePathSegments(url.pathname, /\//)}`;
+}
+
+/**
+ * A frame's file, reduced to the shapes the app's own code runs from: a
+ * Vite bundle asset (`/assets/<name>-<hash>.js`, under the synthetic origin)
+ * or a Node.js built-in module (`node:fs`). Any other file (a dev module
+ * path, an extension, `blob:`, `file:`, `webpack:`, a path of words) becomes
+ * `https://app.invalid/[redacted]`, and the frame is kept: the browser does
+ * not choose the words a file path carries into an issue.
+ */
+function sanitizeFile(file: string): string {
+  const node = NODE_MODULE.exec(file)?.[1];
+  if (node !== undefined) return `node:${node}`;
+  const path = filePath(file);
+  const name = path === undefined ? undefined : ASSET_PATH.exec(path)?.[1];
+  return name !== undefined &&
+    !isSensitiveToken(name) &&
+    name
+      .split(ASSET_NAME_SEPARATORS)
+      .filter(Boolean)
+      .every(isSafeIdentifierPart)
+    ? `${REPORT_ORIGIN}${path}`
+    : FILE_REDACTED;
 }
 
 function sanitizeLocation(location: string): string | undefined {
@@ -105,8 +86,7 @@ function sanitizeLocation(location: string): string | undefined {
   const match = LOCATION.exec(location);
   if (!match) return undefined;
   const [, file = '', line, column] = match;
-  const sanitized = sanitizeFile(file);
-  return sanitized === undefined ? undefined : `${sanitized}:${line}:${column}`;
+  return `${sanitizeFile(file)}:${line}:${column}`;
 }
 
 function frame(name: string, location: string): string | undefined {
@@ -117,9 +97,9 @@ function frame(name: string, location: string): string | undefined {
 
 /**
  * A frame's function name if it is an identifier shape whose every dotted
- * part and `[as alias]` passes the rule path segments use
+ * part and `[as alias]` passes the identifier rule
  * (`isSafeIdentifierPart`), and the whole name, alias included, stays under
- * the same digit cap a segment has, else `<anonymous>`. `renderSummary`,
+ * its digit cap, else `<anonymous>`. `renderSummary`,
  * `Array.map`, `Object.<anonymous>`, `async loadUser` and `new Foo` stay;
  * `Object.555.123.4567` does not.
  */

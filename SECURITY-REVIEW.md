@@ -28,24 +28,26 @@ place today and what is still a gap.
   to the 256-character GitHub limit;
   auto-reported issues are deduplicated by fingerprint before a create;
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
-  error log store structure only: a canonical timestamp, the URL as
-  plain path under a synthetic origin, the error class name and canonical
-  stack frames.
+  error log store structure only: a canonical timestamp, the page's app
+  route pattern under a synthetic origin (`shared/routes.ts`, checked
+  against the app router by a test; any other path is `[unknown-route]`),
+  the error class name and canonical stack frames whose files are the
+  bundle's own asset paths or `[redacted]`. Worker log paths are API route
+  patterns, from a second list checked against the Worker router.
   Error messages and GitHub error bodies are free text and are never
   stored, only their length, and a User report asks for no text at all
   (`shared/telemetryRedaction.ts`,
   `shared/stackFrames.ts`,
   `docs/adr/0001-reports-are-redacted-before-storage.md`); every
   field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
-  that cap, and the route body limit is derived from them. Gaps: a plain-word
-  path segment can still be personal (`/u/janedoe`); no real host is kept;
-  and the
-  token's
-  scope is set in the Cloudflare dashboard, not checked in code. Issue
-  bodies are later read by triage agents through `gh`; with free text gone,
-  the browser controls only identifiers and plain path segments in them,
-  which both body builders still fence as code (`worker/lib/markdown.ts`),
-  and agents must still treat them as untrusted.
+  that cap, and the route body limit is derived from them. No real host or
+  path the browser chose is kept. Gaps: the token's scope is set in the
+  Cloudflare dashboard, not checked in code. Issue bodies are later read by
+  triage agents through `gh`; with free text and paths gone, the browser
+  controls only identifier-shaped words in them (function names and bundle
+  asset names, such as `ignorePreviousInstructions`), which both body
+  builders still fence as code (`worker/lib/markdown.ts`), and agents must
+  still treat them as untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.

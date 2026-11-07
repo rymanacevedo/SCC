@@ -105,7 +105,7 @@ test('the Worker redacts an unhandled error before logging it', async () => {
   }
 });
 
-test('a client disconnect logs its path sanitized, like every other log sink', async () => {
+test('a client disconnect logs only its route pattern, like every other log sink', async () => {
   const controller = new AbortController();
   controller.abort();
   const request = withSignal(
@@ -124,7 +124,7 @@ test('a client disconnect logs its path sanitized, like every other log sink', a
     expect((await worker.fetch(request)).status).toBe(499);
     expect(log).toHaveBeenCalledWith({
       category: 'client_aborted',
-      path: '/api/x/[redacted]/[redacted]',
+      path: '/[unknown-route]',
     });
   } finally {
     log.mockRestore();

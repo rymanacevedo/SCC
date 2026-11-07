@@ -4,6 +4,9 @@ import {
   expectNoSensitiveValues,
   SENSITIVE_AKIA_NAME,
   SENSITIVE_AT_HEADER_STACK,
+  SENSITIVE_DYNAMIC_URL,
+  SENSITIVE_INJECTION_PATH,
+  SENSITIVE_INJECTION_URL,
   SENSITIVE_KEY_ERROR_NAME,
   SENSITIVE_KEY_URL,
   SENSITIVE_NAMED_STACK,
@@ -11,11 +14,14 @@ import {
   SENSITIVE_MESSAGE,
   SENSITIVE_PAREN_URL,
   SENSITIVE_STACK,
+  SENSITIVE_UNKNOWN_URL,
   SENSITIVE_URL,
+  SANITIZED_SENSITIVE_STACK,
 } from '../../test/sensitive-reports.ts';
 import {
   describeErrorForLog,
   logToken,
+  pathForLog,
   redactUrlForLog,
   timestampForLog,
 } from './log.ts';
@@ -62,29 +68,7 @@ test('an Error is logged as its class name, frames, cause class and message leng
     name: 'Error',
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
     causeName: 'TypeError',
-    stack: [
-      'TypeError',
-      '    at saveSummary (https://app.invalid/assets/main-abcdef12.js:12:34)',
-      '    [frame omitted]',
-      '    at retry (https://app.invalid/assets/api-1a2b3c4d.js:9:9)',
-      '    at loadPage (https://app.invalid/assets/page.js:3:4)',
-      '    [frame omitted]',
-      '    at fn (https://app.invalid/a(b).js:7:8)',
-      '    at dial (https://app.invalid/call/[redacted]/a.js:9:9)',
-      '    at <anonymous> (https://app.invalid/reset/[redacted]/a.js:1:2)',
-      '    at keyed (https://app.invalid/k/[redacted]/a.js:1:2)',
-      '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:1:2)',
-      '    at <anonymous> (https://app.invalid/k/[redacted]/a.js:3:4)',
-      '    at <anonymous> (https://app.invalid/k/[redacted]:5:6)',
-      '    at <anonymous> (https://app.invalid/a.js:2:2)',
-      '    at <anonymous> (https://app.invalid/a.js:2:3)',
-      '    [frame omitted]',
-      '    at load (blob:https://app.invalid/token.js:2:5)',
-      '    at <anonymous> (https://app.invalid/a.js:3:1)',
-      '    at <anonymous> (https://app.invalid/a.js:3:2)',
-      '    at eval (https://app.invalid/script.js:3:3)',
-      '    [frame omitted]',
-    ].join('\n'),
+    stack: SANITIZED_SENSITIVE_STACK,
   });
 });
 
@@ -92,12 +76,12 @@ test('an error name or stack header that is not a known error class is Error', (
   const error = new Error('Broken');
   error.name = 'hunter2';
   error.stack =
-    'apiKey: headersecretvalue\n    at f (https://scc.example/a.js:1:2)';
+    'apiKey: headersecretvalue\n    at f (https://scc.example/assets/a-abcdef12.js:1:2)';
   const described = describeErrorForLog(error);
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described).toMatchObject({
     name: 'Error',
-    stack: 'Error\n    at f (https://app.invalid/a.js:1:2)',
+    stack: 'Error\n    at f (https://app.invalid/assets/a-abcdef12.js:1:2)',
   });
 });
 
@@ -112,7 +96,7 @@ test('a key-bearing Error.name, cause.name or header is logged as Error', () => 
   expect(described).toMatchObject({
     name: 'Error',
     causeName: 'Error',
-    stack: 'Error\n    at save (https://app.invalid/a.js:1:2)',
+    stack: 'Error\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)',
   });
 });
 
@@ -132,24 +116,52 @@ test('a header ending like a frame location is logged as the error name', () => 
   const described = describeErrorForLog(error);
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described.stack).toBe(
-    'Error\n    at save (https://app.invalid/a.js:1:2)',
+    'Error\n    at save (https://app.invalid/assets/a-abcdef12.js:1:2)',
   );
 });
 
-test('a key in a logged URL is redacted however it is wrapped', () => {
-  expect(redactUrlForLog(SENSITIVE_KEY_URL)).toBe(
-    'https://app.invalid/k/[redacted]/[redacted]/[redacted]',
+test('a logged report URL is its app route pattern, never the path it was', () => {
+  expect(redactUrlForLog(SENSITIVE_URL)).toBe('https://app.invalid/summary');
+  for (const url of [
+    SENSITIVE_KEY_URL,
+    SENSITIVE_INJECTION_URL,
+    SENSITIVE_UNKNOWN_URL,
+    SENSITIVE_DYNAMIC_URL,
+  ]) {
+    const logged = String(redactUrlForLog(url));
+    expectNoSensitiveValues(logged);
+    expect(logged).toBe('https://app.invalid/[unknown-route]');
+  }
+});
+
+test('a logged request path is its API route pattern, never the path it was', () => {
+  expect(pathForLog('https://scc.example/api/errors?token=abc123')).toBe(
+    '/api/errors',
   );
+  expect(pathForLog('https://scc.example/api/flags/')).toBe('/api/flags');
+  for (const url of [
+    SENSITIVE_INJECTION_URL,
+    SENSITIVE_UNKNOWN_URL,
+    SENSITIVE_DYNAMIC_URL,
+    `https://scc.example/api${SENSITIVE_INJECTION_PATH}`,
+    'https://scc.example/summary',
+  ]) {
+    const logged = pathForLog(url);
+    expectNoSensitiveValues(logged);
+    expect(logged).toBe('/[unknown-route]');
+  }
 });
 
 test('a logged stack is capped at 4,000 characters with a marker', () => {
   const error = new Error('Broken');
-  error.stack = `Error: Broken\n${'    at frame (https://scc.example/a.js:1:2)\n'.repeat(500)}`;
+  error.stack = `Error: Broken\n${'    at frame (https://scc.example/assets/a-abcdef12.js:1:2)\n'.repeat(500)}`;
   const { stack } = describeErrorForLog(error) as { stack: string };
   // Cut at the last whole frame inside 4,000 characters.
-  expect(stack.endsWith(`(https://app.invalid/a.js:1:2)\n${TRUNCATED}`)).toBe(
-    true,
-  );
+  expect(
+    stack.endsWith(
+      `(https://app.invalid/assets/a-abcdef12.js:1:2)\n${TRUNCATED}`,
+    ),
+  ).toBe(true);
   expect(stack.length).toBeLessThanOrEqual(4_000);
   expect(stack.length).toBeGreaterThan(3_900);
 });

@@ -2,6 +2,7 @@ import {
   sanitizeReportTimestamp,
   sanitizeReportUrl,
 } from '../../shared/errorReporting.ts';
+import { API_ROUTE_PATTERNS, routeOf } from '../../shared/routes.ts';
 import {
   sanitizeStackTrace,
   stackWithHeader,
@@ -10,7 +11,6 @@ import {
   type OmittedField,
   omittedText,
   sanitizeErrorName,
-  toPathOnlyUrl,
 } from '../../shared/telemetryRedaction.ts';
 
 // A logged stack is shorter than a stored one: Workers Logs lines stay small.
@@ -28,14 +28,18 @@ export function logToken(value: unknown) {
   return LOG_TOKEN.test(value) ? value : omittedText('text', value);
 }
 
-/** Reduces a URL bound for Workers Logs to origin + plain path. */
+/** Reduces a report URL bound for Workers Logs to its app route pattern. */
 export function redactUrlForLog(value: unknown) {
   return typeof value === 'string' ? sanitizeReportUrl(value) : value;
 }
 
-/** A request's path bound for Workers Logs, with only plain segments. */
+/**
+ * A request's path bound for Workers Logs: the API route pattern it matched
+ * (`/api/errors`), or `/[unknown-route]`. The path the client sent is never
+ * logged.
+ */
 export function pathForLog(url: string): string {
-  return new URL(toPathOnlyUrl(url)).pathname;
+  return routeOf(url, API_ROUTE_PATTERNS);
 }
 
 /** A report timestamp bound for Workers Logs, as a bounded canonical value. */

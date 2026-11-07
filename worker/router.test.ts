@@ -497,7 +497,7 @@ test('GitHub config failures are 500; HTTP and network failures are 502', async 
   }
 });
 
-test('report route failure logs are path-only, redacted and truncated', async () => {
+test('report route failure logs carry route patterns, redacted and truncated', async () => {
   const log = spyOn(console, 'error').mockImplementation(() => {});
   const sensitiveReport = {
     timestamp: '2026-10-13T00:00:00.000Z',

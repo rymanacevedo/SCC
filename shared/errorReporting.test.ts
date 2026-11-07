@@ -122,12 +122,11 @@ test('sanitizing keeps structure only: free text is reduced to its length', () =
   });
 });
 
-test('an over-limit URL of many safe segments is cut at a segment, with no marker', () => {
+test('an over-limit URL is the unknown route, well inside its limit', () => {
   const url = `https://scc.example/${'segment/'.repeat(400)}end`;
   const report = sanitizeUserIssueReport({ timestamp: reportTime, url });
   expect(report.url.length).toBeLessThanOrEqual(REPORT_FIELD_LIMITS.url);
-  expect(report.url).not.toContain('truncated');
-  expect(report.url.endsWith('/segment/')).toBe(true);
+  expect(report.url).toBe('https://app.invalid/[unknown-route]');
   expect(userIssueReportSchema.safeParse(report).success).toBe(true);
   expect(
     errorTelemetrySchema.safeParse(

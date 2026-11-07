@@ -137,7 +137,7 @@ test('unparseable envelope is backed up, replaced by a fresh User, and reported 
   expect(events).toHaveLength(1);
   expect(events[0]).not.toContain(raw);
 });
-test('the default storage telemetry sends a path-only, sanitized URL', async () => {
+test('the default storage telemetry sends a route-pattern URL', async () => {
   const originalFetch = globalThis.fetch;
   const previousUrl = window.location.href;
   // happy-dom starts on about:blank; its setURL is the only way to navigate.
