@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test';
 import { TRUNCATED } from '../../shared/telemetryRedaction.ts';
 import {
   expectNoSensitiveValues,
-  SENSITIVE_EMBEDDED_URL,
+  SENSITIVE_PAREN_URL,
+  SENSITIVE_STACK,
   SENSITIVE_MESSAGE,
   SENSITIVE_URL,
 } from '../../test/sensitive-reports.ts';
@@ -28,15 +29,19 @@ test('non-string values pass through the text and URL redactors unchanged', () =
 
 test('an Error is logged with redacted name, message, cause and stack', () => {
   const error = new Error(SENSITIVE_MESSAGE, {
-    cause: new Error(`GET ${SENSITIVE_EMBEDDED_URL}`),
+    cause: new Error(`GET ${SENSITIVE_PAREN_URL} phone:5557654321`),
   });
+  error.stack = SENSITIVE_STACK;
   const described = describeErrorForLog(error);
   expectNoSensitiveValues(JSON.stringify(described));
   expect(described).toMatchObject({
     name: 'Error',
     message: 'Save failed for [redacted], call [redacted]',
-    causeMessage: 'GET https://localhost/api',
+    causeMessage: 'GET https://scc.example/a(b) phone:[redacted]',
   });
+  expect(described.stack).toContain(
+    'GET https://scc.example/a(b) for phone:[redacted] and tel:[redacted]',
+  );
 });
 
 test('a logged stack is capped at 4,000 characters with a marker', () => {

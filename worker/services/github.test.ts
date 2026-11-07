@@ -139,6 +139,9 @@ describe('issue bodies', () => {
     expect(body).toContain(
       'at loadPage (https://scc.example/assets/page.js:3:4)\n',
     );
+    expect(body).toContain(
+      'GET https://scc.example/a(b) for phone:[redacted] and tel:[redacted]',
+    );
   });
 
   test('the user-reported body is path-only and redacted', () => {
@@ -150,6 +153,9 @@ describe('issue bodies', () => {
     expectNoSensitiveValues(body);
     expect(body).toContain('- URL: https://scc.example/summary\n');
     expect(body).toContain('then it broke.');
+    expect(body).toContain(
+      'See https://scc.example/a(b) or call phone:[redacted].',
+    );
   });
 
   test('over-long fields are truncated with a marker', () => {

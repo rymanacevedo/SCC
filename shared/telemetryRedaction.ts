@@ -57,9 +57,12 @@ export function toPathOnlyUrl(value: string): string {
   return end === -1 ? withoutUserinfo : withoutUserinfo.slice(0, end);
 }
 
-// A run of URL-ish characters: where a URL's path ends. Its query may go on
-// past these delimiters, so queryEnd finds the real end.
-const URL_TOKEN_PATTERN = /[^\s()[\]{}'"<>`]+/g;
+// A whitespace-free run of text, and where a URL starts inside it: at a
+// scheme (`https://`, anchored so a scan starts only at a run boundary), else
+// after any leading wrapper openers (root-relative and schemeless paths).
+const NON_WHITESPACE_RUN = /\S+/g;
+const SCHEME_START = /(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\//i;
+const LEADING_OPENERS = /^[([{<"'`]*/;
 const STACK_COORDINATE_SUFFIX = /:\d+:\d+$/;
 // A path part with a `/` or a `.` looks like a URL, a path or a file name.
 const URL_LIKE_PATH = /[/.]/;
@@ -75,18 +78,18 @@ const CLOSERS: Record<string, string> = {
 };
 
 /**
- * Where a query that starts at `start` ends: the next whitespace, or the
- * delimiter matching `opener` (the character before the URL), counting
- * nested brackets, so `(https://x/a.js?v=(1):10:5)` ends at the frame's `)`.
+ * Where a query starting at `start` ends inside `run`: the end of the run,
+ * or the delimiter matching `opener` (the character before the URL),
+ * counting nested brackets, so `(https://x/a.js?v=(1):10:5)` ends at the
+ * frame's `)`.
  */
-function queryEnd(text: string, start: number, opener: string): number {
+function queryEnd(run: string, start: number, opener: string): number {
   const closer = CLOSERS[opener];
   const nests = closer !== undefined && closer !== opener;
   let depth = 1;
   let end = start;
-  for (; end < text.length; end += 1) {
-    const char = text[end] ?? '';
-    if (WHITESPACE.test(char)) break;
+  for (; end < run.length; end += 1) {
+    const char = run[end];
     if (nests && char === opener) depth += 1;
     else if (char === closer && (depth -= 1) === 0) break;
   }
@@ -94,39 +97,33 @@ function queryEnd(text: string, start: number, opener: string): number {
 }
 
 /**
- * Drops the userinfo, query and fragment of anything URL-like (absolute,
- * relative or schemeless), keeping a trailing `:line:column` so stack frames
- * stay readable. Prose such as `What?` or `issue #12` has no path part. Each
- * character is scanned once.
+ * Drops the userinfo, query and fragment of one whitespace-free run if it
+ * holds anything URL-like (absolute, relative or schemeless). The path keeps
+ * every legal character, parens and brackets included; only the query is
+ * trimmed back to a closer matching an opener before the URL. A trailing
+ * `:line:column` is kept so stack frames stay readable. Prose such as
+ * `What?` or `issue #12` has no path part.
  */
+function reduceUrlRun(run: string): string {
+  const scheme = run.search(SCHEME_START);
+  const urlStart =
+    scheme === -1 ? (LEADING_OPENERS.exec(run)?.[0].length ?? 0) : scheme;
+  const prefix = run.slice(0, urlStart);
+  const url = run.slice(urlStart);
+  const queryOffset = url.search(QUERY_START);
+  const path = url.slice(0, Math.max(queryOffset, 0));
+  if (queryOffset === -1 || !path || !URL_LIKE_PATH.test(path))
+    return `${prefix}${stripUserinfo(url)}`;
+  const end = queryEnd(url, queryOffset, prefix.at(-1) ?? '');
+  const query = url.slice(queryOffset, end);
+  if (query.length < 2) return `${prefix}${stripUserinfo(url)}`;
+  const coordinate = STACK_COORDINATE_SUFFIX.exec(query)?.[0] ?? '';
+  return `${prefix}${stripUserinfo(path)}${coordinate}${url.slice(end)}`;
+}
+
+/** Applies reduceUrlRun to every whitespace-free run; linear in the input. */
 function stripUrlQueries(text: string): string {
-  let output = '';
-  let cursor = 0;
-  URL_TOKEN_PATTERN.lastIndex = 0;
-  for (
-    let match = URL_TOKEN_PATTERN.exec(text);
-    match;
-    match = URL_TOKEN_PATTERN.exec(text)
-  ) {
-    const token = match[0];
-    const tokenStart = match.index;
-    const queryOffset = token.search(QUERY_START);
-    const path = token.slice(0, Math.max(queryOffset, 0));
-    let end = tokenStart + token.length;
-    let reduced = stripUserinfo(token);
-    if (queryOffset !== -1 && path && URL_LIKE_PATH.test(path)) {
-      const queryStart = tokenStart + queryOffset;
-      end = queryEnd(text, queryStart, text[tokenStart - 1] ?? '');
-      const query = text.slice(queryStart, end);
-      if (query.length >= 2)
-        reduced = `${stripUserinfo(path)}${STACK_COORDINATE_SUFFIX.exec(query)?.[0] ?? ''}`;
-      else end = tokenStart + token.length;
-    }
-    output += `${text.slice(cursor, tokenStart)}${reduced}`;
-    cursor = end;
-    URL_TOKEN_PATTERN.lastIndex = end;
-  }
-  return `${output}${text.slice(cursor)}`;
+  return text.replace(NON_WHITESPACE_RUN, reduceUrlRun);
 }
 
 // `name=value`, `name: value`, or `name value` (a header written with a
@@ -395,11 +392,36 @@ const PREFIXED_KEY_PATTERN =
   /(?<![\w-])(?:(?:sk|pk|rk)-[\w-]{16,}|(?:gh[pousr]_|github_pat_)\w{20,}|xox[abprs]-[\w-]{10,}|(?:AKIA|ASIA)[A-Z0-9]{16}(?![\w-]))/g;
 const EMAIL_PATTERN =
   /(?<![\w.%+-])[\w.%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+// A labelled number (`tel:`, `phone:`, `mobile:`, `cell:`, `fax:`, also
+// `phoneNumber=` or `Phone 555 …`): any 7+ digit-and-separator run after it.
+const PHONE_LABEL_PATTERN =
+  /\b(tel|phone|mobile|cell|fax)((?:[_-]?(?:number|num|no))?(?:\s*[:=]\s*|\s+))\+?[\d(][\d\s().-]{5,}\d/gi;
 // International (+…), North American, trunk-prefixed (0…) and 7-digit local
-// numbers. Never starts after `:`, `.`, `/` or `-`, so stack coordinates,
-// dates and paths are left alone.
+// numbers. Never starts after `.`, `/` or `-`, so dates and paths are left
+// alone. After `:` it may start, unless it is a stack coordinate.
 const PHONE_PATTERN =
-  /(?<![\w+:./-])(?:\+\d[\d\s().-]{6,}\d|(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}|0\d{2,4}[\s-]?\d{3,4}(?:[\s-]?\d{3,4})?|\d{3}-\d{4})(?![\w-])/g;
+  /(?<![\w+./-])(?:\+\d[\d\s().-]{6,}\d|(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}|0\d{2,4}[\s-]?\d{3,4}(?:[\s-]?\d{3,4})?|\d{3}-\d{4})(?![\w-])/g;
+const ALL_DIGITS = /^\d+$/;
+// A file or path (`main.js:`, `src/x:`, `<anonymous>:`) before a line
+// number, and the same plus `line:` before a column.
+const BEFORE_LINE = /(?:[./][^\s:]*|<anonymous>):$/;
+const BEFORE_COLUMN = /(?:[./][^\s:]*|<anonymous>):\d+:$/;
+const AFTER_LINE = /^:\d+/;
+
+/**
+ * A digits-only match is a stack coordinate, not a phone number, when it is
+ * the line of `name:line:col` or the column after `name:line:`.
+ */
+function redactPhone(match: string, offset: number, text: string): string {
+  if (text[offset - 1] === ':' && ALL_DIGITS.test(match)) {
+    // Bounded look-behind: a file name, a line number and two colons.
+    const before = text.slice(Math.max(0, offset - 32), offset);
+    const after = text.slice(offset + match.length, offset + match.length + 16);
+    if (BEFORE_COLUMN.test(before)) return match;
+    if (BEFORE_LINE.test(before) && AFTER_LINE.test(after)) return match;
+  }
+  return REDACTED;
+}
 // Long runs of letters and digits: hex digests, API keys, base64 secrets.
 const LONG_TOKEN_PATTERN = /(?<![\w+/=-])[\w+/-]{32,}={0,2}(?![\w+/=-])/g;
 
@@ -424,7 +446,8 @@ export function redactTelemetryText(value: string): string {
     .replace(JWT_PATTERN, REDACTED)
     .replace(PREFIXED_KEY_PATTERN, REDACTED)
     .replace(EMAIL_PATTERN, REDACTED)
-    .replace(PHONE_PATTERN, REDACTED)
+    .replace(PHONE_LABEL_PATTERN, `$1$2${REDACTED}`)
+    .replace(PHONE_PATTERN, redactPhone)
     .replace(LONG_TOKEN_PATTERN, redactLongToken);
 }
 

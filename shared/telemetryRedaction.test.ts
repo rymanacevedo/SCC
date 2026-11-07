@@ -244,6 +244,102 @@ describe('redactTelemetryText: URLs, quoted values and credential names', () => 
       expect(redactTelemetryText(input)).not.toContain('private-value');
     }
   });
+
+  test('keeps a path with parens, brackets, quotes or @ and still drops its query', () => {
+    const cases: [string, string][] = [
+      [
+        'GET https://scc.example/a(b)?q=private-value#private-value done',
+        'GET https://scc.example/a(b) done',
+      ],
+      [
+        'GET https://scc.example/a(b?q=private-value done',
+        'GET https://scc.example/a(b done',
+      ],
+      [
+        'GET https://scc.example/a)b?q=private-value done',
+        'GET https://scc.example/a)b done',
+      ],
+      [
+        'GET https://scc.example/w/Foo_(bar)#private-value done',
+        'GET https://scc.example/w/Foo_(bar) done',
+      ],
+      [
+        "GET https://scc.example/a[1]/it's/@user?q=private-value done",
+        "GET https://scc.example/a[1]/it's/@user done",
+      ],
+      ['GET /api/a(b)/c?q=private-value done', 'GET /api/a(b)/c done'],
+      [
+        'GET https://alice:hunter2@scc.example/a(b)?q=private-value done',
+        'GET https://scc.example/a(b) done',
+      ],
+      [
+        '    at load (https://scc.example/a(b).js?v=private-value:10:5)',
+        '    at load (https://scc.example/a(b).js:10:5)',
+      ],
+      [
+        '    at load (https://scc.example/a(b.js?v=(private-value):10:5)',
+        '    at load (https://scc.example/a(b.js:10:5)',
+      ],
+      [
+        'see (https://scc.example/a(b)?q=private-value) next',
+        'see (https://scc.example/a(b)) next',
+      ],
+      [
+        'see "https://scc.example/a(b)?q=private-value", next',
+        'see "https://scc.example/a(b)", next',
+      ],
+      [
+        '[link](https://scc.example/a(b)?q=(private-value)) next',
+        '[link](https://scc.example/a(b)) next',
+      ],
+      [
+        '{"url":"https://scc.example/a(b)?q=private-value"}',
+        '{"url":"https://scc.example/a(b)"}',
+      ],
+      [
+        'redirect=https://scc.example/a?next=https://x.example/b(c)?q=private-value',
+        'redirect=https://scc.example/a',
+      ],
+    ];
+    for (const [input, expected] of cases) {
+      expect(redactTelemetryText(input)).toBe(expected);
+      expect(redactTelemetryText(input)).not.toContain('private-value');
+    }
+  });
+});
+
+describe('redactTelemetryText: phone numbers after a colon', () => {
+  test('masks a phone number after a label or a bare colon', () => {
+    for (const input of [
+      'phone:555-123-4567',
+      'phone:5551234567',
+      'tel:+15551234567',
+      'mobile: (555) 123-4567',
+      'cell=555.123.4567',
+      'fax: 555 1234',
+      'Phone 555 123 4567',
+      'phoneNumber: 555-1234',
+      'id:5551234567 failed',
+      'id:5551234567:3 failed',
+      'user:+44 20 7946 0958',
+    ])
+      expect(redactTelemetryText(input)).not.toMatch(/555|1234|7946|0958|4567/);
+  });
+
+  test('keeps stack coordinates, times, ports and dates readable', () => {
+    const readable = [
+      '    at a (https://scc.example/assets/main.js:5551234567:12)',
+      '    at a (https://scc.example/assets/main.js:1:5551234567)',
+      '    at main.js:12:34',
+      '    at /home/app/src/main.ts:120:5',
+      '    at <anonymous>:5551234567:1',
+      '    at a (https://scc.example/a(b).js:1:5551234567)',
+      'at 2026-10-13T12:00:00.000Z on localhost:8080',
+      'cell count: 12, phone: n/a',
+      'retry at 12:30:45',
+    ];
+    for (const line of readable) expect(redactTelemetryText(line)).toBe(line);
+  });
 });
 
 describe('redactTelemetryText', () => {
