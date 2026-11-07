@@ -1,10 +1,130 @@
-import { generateText, type LanguageModel, Output } from 'ai';
+import {
+  generateText,
+  type LanguageModelUsage,
+  type LanguageModel,
+  NoObjectGeneratedError,
+  Output,
+  type OutputInterface,
+} from 'ai';
 import { z } from 'zod';
 import {
   ExperienceSchema,
   SkillsSchema,
   SummarySchema,
 } from '../../shared/schemas/generation.ts';
+import { withDeadline } from '../lib/deadline.ts';
+
+/**
+ * Longest a section generator may run, retries and backoff included. A
+ * reasoning model answers a section in well under this; past it the user is
+ * better served by a 504 they can retry than by an open request.
+ */
+export const SECTION_GENERATION_DEADLINE_MS = 45_000;
+
+/**
+ * One retry absorbs a transient 429 or 5xx. More would spend the deadline on
+ * backoff and multiply the cost of a struggling provider.
+ */
+export const SECTION_GENERATION_MAX_RETRIES = 1;
+
+/**
+ * Output-token limits per section. The default model reasons, and reasoning
+ * tokens count against the limit, so each sits well above its visible JSON:
+ * summaries are 3-5 sentences per job, possibly several jobs; skills and
+ * experience are two short string lists, experience bullets being longer.
+ */
+export const SECTION_MAX_OUTPUT_TOKENS = {
+  summaries: 6000,
+  skills: 3000,
+  experience: 4000,
+} as const;
+
+/**
+ * A section generator's model stopped at its output-token limit, so it gave
+ * no usable output: JSON cut short, or no text at all when a reasoning model
+ * spent the whole budget thinking.
+ */
+export class SectionTokenLimitError extends Error {
+  readonly maxOutputTokens: number;
+  readonly outputTokens: number | undefined;
+
+  constructor(
+    maxOutputTokens: number,
+    outputTokens: number | undefined,
+    cause: unknown,
+  ) {
+    super(
+      `Section generation stopped at its ${maxOutputTokens}-token output limit.`,
+      { cause },
+    );
+    this.name = 'SectionTokenLimitError';
+    this.maxOutputTokens = maxOutputTokens;
+    this.outputTokens = outputTokens;
+  }
+}
+
+/** The one bounded model call every section generator makes. */
+async function generateSection<OUTPUT>({
+  prompt,
+  model,
+  abortSignal,
+  output,
+  instructions,
+  maxOutputTokens,
+}: {
+  prompt: string;
+  model: LanguageModel;
+  abortSignal?: AbortSignal;
+  output: OutputInterface<OUTPUT>;
+  instructions: string;
+  maxOutputTokens: number;
+}): Promise<OUTPUT> {
+  return withDeadline(
+    {
+      upstream: 'provider',
+      timeoutMs: SECTION_GENERATION_DEADLINE_MS,
+      signal: abortSignal,
+    },
+    async (signal) => {
+      const tokenLimit = (
+        usage: LanguageModelUsage | undefined,
+        cause: unknown,
+      ) =>
+        new SectionTokenLimitError(maxOutputTokens, usage?.outputTokens, cause);
+      let result;
+      try {
+        result = await generateText({
+          model,
+          abortSignal: signal,
+          maxRetries: SECTION_GENERATION_MAX_RETRIES,
+          maxOutputTokens,
+          output,
+          prompt,
+          instructions,
+        });
+      } catch (error) {
+        // Text cut short at the limit fails to parse inside generateText.
+        if (
+          NoObjectGeneratedError.isInstance(error) &&
+          error.finishReason === 'length'
+        ) {
+          throw tokenLimit(error.usage, error);
+        }
+        throw error;
+      }
+      // Stopping at the limit with no text at all skips parsing, and reading
+      // `output` throws. Output that parsed and validated is complete: use it.
+      if (result.finishReason === 'length') {
+        try {
+          return result.output;
+        } catch (error) {
+          throw tokenLimit(result.usage, error);
+        }
+      }
+      return result.output;
+    },
+  );
+}
 
 /** A section generator's result has an array or string over its limit. */
 export class GeneratedOutputLimitError extends Error {
@@ -29,22 +149,15 @@ export function boundGeneratedOutput<T>(
 const Blacklist =
   'Blacklist these role and give general experience advice: Sex Worker, Porn Star, Adult Film Actor/Actress, Escort, Cam Model, Stripper, Exotic Dancer, Erotic Dancer, Pornographic Content Creator, Explicit Performer, Performer of Explicit Content, Shit Talker, OnlyFans Model, Fansly Model, Porn Addict, Terrorist, Extremist, Jihadist, Bomber, Assassin, Violent Extremist, Hate Crime Inciter, Radicalizer, or Domestic Terrorist.' as const;
 
-/**
- * Bounds each provider response and its cost. Reasoning models spend part of
- * this on reasoning tokens, so it sits far above the few hundred tokens a
- * section's JSON takes.
- */
-const MAX_OUTPUT_TOKENS = 16_000;
-
 export const createSummaries = async (
   prompt: string,
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.summaries,
     output: Output.object({
       schema: z.object({
         summaries: SummarySchema,
@@ -100,10 +213,10 @@ export const createSkills = async (
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.skills,
     output: Output.object({
       schema: SkillsSchema,
     }),
@@ -131,10 +244,10 @@ export const createExperience = async (
   model: LanguageModel,
   abortSignal?: AbortSignal,
 ) => {
-  const { output } = await generateText({
+  const output = await generateSection({
     model,
     abortSignal,
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    maxOutputTokens: SECTION_MAX_OUTPUT_TOKENS.experience,
     output: Output.object({
       schema: ExperienceSchema,
     }),

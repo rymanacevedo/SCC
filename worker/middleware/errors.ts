@@ -1,10 +1,17 @@
-import { APICallError } from 'ai';
+import { APICallError, RetryError } from 'ai';
 import type { Middleware } from 'remix/router';
 import { isClientAbort } from '../lib/abort.ts';
+import { UpstreamTimeoutError } from '../lib/deadline.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { apiError } from '../lib/response.ts';
-import { GeneratedOutputLimitError } from '../services/ai.ts';
-import { GitHubIssueCreationError } from '../services/github.ts';
+import {
+  GeneratedOutputLimitError,
+  SectionTokenLimitError,
+} from '../services/ai.ts';
+import {
+  GitHubIssueCreationError,
+  type GitHubIssueCreationErrorKind,
+} from '../services/github.ts';
 import type { bodyValidation } from './guards.ts';
 
 export type RouteErrorPolicy = {
@@ -32,29 +39,10 @@ export function createRouteErrorMiddleware<T>(
         'url' in payload
           ? { timestamp: payload.timestamp, url: payload.url }
           : {};
-      const isConfigurationError = error instanceof EnvironmentValidationError;
-      const isGitHubError = error instanceof GitHubIssueCreationError;
-      const isProviderError = APICallError.isInstance(error);
-      // The model answered, but with more than a section can hold: a bad upstream result.
-      const isOutputLimitError = error instanceof GeneratedOutputLimitError;
-      let category = 'unknown';
-      if (isConfigurationError) {
-        category = 'config';
-      } else if (isGitHubError) {
-        category = `github_${error.kind}`;
-      } else if (isProviderError) {
-        category = 'provider';
-      } else if (isOutputLimitError) {
-        category = 'generated_output_limit';
-      }
-
-      let status = 500;
-      if (
-        !isConfigurationError &&
-        (isGitHubError || isProviderError || isOutputLimitError || !generation)
-      ) {
-        status = 502;
-      }
+      const { category, status, details } = classifyRouteError(
+        error,
+        generation,
+      );
       // oxlint-disable-next-line no-console -- Categorized failures belong in Workers Logs.
       console.error({
         route: path,
@@ -67,21 +55,90 @@ export function createRouteErrorMiddleware<T>(
             ? error.cause.message
             : undefined,
         message: error instanceof Error ? error.message : String(error),
-        ...(isGitHubError
-          ? {
-              githubStatus: error.status,
-              githubResponseSnippet: error.details,
-            }
-          : {}),
-        ...(isProviderError
-          ? {
-              providerStatus: error.statusCode,
-              providerUrl: error.url,
-              isRetryable: error.isRetryable,
-            }
-          : {}),
+        ...details,
       });
       return apiError(status, errorMessage);
     }
   };
+}
+
+/** The `category` a route failure is logged under, for counting. */
+type RouteErrorCategory =
+  | 'config'
+  | 'timeout'
+  | `github_${GitHubIssueCreationErrorKind}`
+  | 'provider'
+  | 'token_limit'
+  | 'generated_output_limit'
+  | 'unknown';
+
+type RouteErrorClassification = {
+  category: RouteErrorCategory;
+  status: number;
+  details: Record<string, unknown>;
+};
+
+/**
+ * Maps a route failure to its log category, response status and the fields
+ * logged with it. Upstream failures are 502, a deadline is 504, a missing
+ * variable is 500; an unrecognized error is 500 on a generation route and 502
+ * on a reporting route, whose only work is the GitHub call.
+ */
+function classifyRouteError(
+  error: unknown,
+  generation: boolean,
+): RouteErrorClassification {
+  if (error instanceof EnvironmentValidationError) {
+    return { category: 'config', status: 500, details: {} };
+  }
+  if (error instanceof UpstreamTimeoutError) {
+    return {
+      category: 'timeout',
+      status: 504,
+      details: { upstream: error.upstream, timeoutMs: error.timeoutMs },
+    };
+  }
+  if (error instanceof GitHubIssueCreationError) {
+    return {
+      category: `github_${error.kind}`,
+      status: 502,
+      details: {
+        githubStatus: error.status,
+        githubResponseSnippet: error.details,
+      },
+    };
+  }
+  // Once the retry budget is spent the SDK wraps the provider's failures in a
+  // RetryError; classify the last one, so a 429 that outlasts the retry still
+  // counts as a provider failure with its status.
+  const providerError = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(providerError)) {
+    return {
+      category: 'provider',
+      status: 502,
+      details: {
+        providerStatus: providerError.statusCode,
+        providerUrl: providerError.url,
+        isRetryable: providerError.isRetryable,
+        ...(RetryError.isInstance(error)
+          ? { attempts: error.errors.length, retryReason: error.reason }
+          : {}),
+      },
+    };
+  }
+  if (error instanceof SectionTokenLimitError) {
+    return {
+      category: 'token_limit',
+      status: 502,
+      details: {
+        maxOutputTokens: error.maxOutputTokens,
+        outputTokens: error.outputTokens,
+      },
+    };
+  }
+  // The model answered, but with more than a section can hold: a bad upstream result.
+  if (error instanceof GeneratedOutputLimitError) {
+    return { category: 'generated_output_limit', status: 502, details: {} };
+  }
+  return { category: 'unknown', status: generation ? 500 : 502, details: {} };
 }
