@@ -1,8 +1,7 @@
-import { sanitizeStackTrace } from './stackFrames.ts';
+import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
 import {
-  REDACTED,
+  omittedText,
   SANITIZE_INPUT_FACTOR,
-  sanitizeTelemetryText,
   toPathOnlyUrl,
   truncateWithMarker,
 } from './telemetryRedaction.ts';
@@ -102,16 +101,24 @@ export type SanitizedUserIssueReport = UserIssueReportPayload & {
   readonly [sanitized]: true;
 };
 
+// The time a report carries when its own cannot be parsed, so the result is
+// still a valid ISO datetime for the report schemas.
+const UNKNOWN_TIME = new Date(0).toISOString();
+
 /**
  * A report timestamp as a canonical ISO string, so its length is bounded
- * (the schema accepts long fractional seconds); otherwise `[redacted]`.
+ * (the schema accepts long fractional seconds); otherwise the epoch.
  */
 export function sanitizeReportTimestamp(timestamp: string): string {
   const time = Date.parse(timestamp);
-  return Number.isNaN(time) ? REDACTED : new Date(time).toISOString();
+  return Number.isNaN(time) ? UNKNOWN_TIME : new Date(time).toISOString();
 }
 
-/** A report URL as http(s) origin + path, cut to its limit; else `[redacted]`. */
+/**
+ * A report URL as origin + plain path, cut to its limit. Always a valid URL
+ * (an origin that cannot be kept becomes `https://redacted.invalid`), so a
+ * sanitized report always passes its schema.
+ */
 export function sanitizeReportUrl(url: string): string {
   return truncateWithMarker(
     toPathOnlyUrl(
@@ -122,9 +129,10 @@ export function sanitizeReportUrl(url: string): string {
 }
 
 /**
- * The only form of Error telemetry that may be sent, stored or fingerprinted.
- * Every field fits its schema limit, so an unusually long error is still
- * reported instead of refused by the Worker.
+ * The only form of Error telemetry that may be sent, stored or fingerprinted:
+ * the canonical timestamp, the path-only URL and the canonical stack (the
+ * error name and frames). The message is free text, so only its length is
+ * kept. Every field fits its schema limit.
  */
 export function sanitizeErrorTelemetry(
   telemetry: ErrorTelemetryPayload,
@@ -132,10 +140,7 @@ export function sanitizeErrorTelemetry(
   return {
     timestamp: sanitizeReportTimestamp(telemetry.timestamp),
     url: sanitizeReportUrl(telemetry.url),
-    message: sanitizeTelemetryText(
-      telemetry.message,
-      REPORT_FIELD_LIMITS.message,
-    ),
+    message: omittedText('message', telemetry.message),
     ...(telemetry.stackTrace === undefined
       ? {}
       : {
@@ -147,17 +152,17 @@ export function sanitizeErrorTelemetry(
   } as SanitizedErrorTelemetry;
 }
 
-/** The only form of a User report that may be sent or stored. */
+/**
+ * The only form of a User report that may be sent or stored: the canonical
+ * timestamp, the path-only URL, and the description reduced to its length.
+ */
 export function sanitizeUserIssueReport(
   report: UserIssueReportPayload,
 ): SanitizedUserIssueReport {
   return {
     timestamp: sanitizeReportTimestamp(report.timestamp),
     url: sanitizeReportUrl(report.url),
-    description: sanitizeTelemetryText(
-      report.description,
-      REPORT_FIELD_LIMITS.description,
-    ),
+    description: omittedText('description', report.description),
   } as SanitizedUserIssueReport;
 }
 
@@ -165,24 +170,34 @@ const STACK_COORDINATE_SUFFIX_PATTERN = /:\d+:\d+\b/g;
 const HASHED_ASSET_FILENAME_PATTERN =
   /\/assets\/([^/?#/:]+)-[A-Za-z0-9_-]{6,}(\.[A-Za-z0-9]+)\b/g;
 
-export function normalizeTelemetryFingerprintValue(value: string): string {
+function normalizeTelemetryFingerprintValue(value: string): string {
   return value
     .replace(STACK_COORDINATE_SUFFIX_PATTERN, '')
     .replace(HASHED_ASSET_FILENAME_PATTERN, '/assets/$1-[hash]$2');
 }
 
+// How many top frames identify an error: enough to tell call sites apart,
+// few enough that a deep recursion difference does not split one error.
+const FINGERPRINT_FRAME_COUNT = 5;
+
 /**
- * Computed on sanitized values, so query strings and redacted data never split
- * it. Takes already-sanitized telemetry so a caller sanitizes once and every
- * use (the dedup lookup, the issue body) sees the same fingerprint.
+ * The error name, path and top frames of sanitized telemetry: what makes two
+ * reports the same error. Asset hashes and stack coordinates are normalized,
+ * so a new build does not split it. Takes already-sanitized telemetry, so a
+ * caller sanitizes once and every use (the dedup lookup, the issue body)
+ * sees the same fingerprint.
  */
 export function buildSanitizedTelemetryFingerprint(
   telemetry: SanitizedErrorTelemetry,
 ): string {
+  const { name, frames } = stackSummary(
+    telemetry.stackTrace ?? '',
+    FINGERPRINT_FRAME_COUNT,
+  );
   return JSON.stringify({
+    name,
     url: normalizeTelemetryFingerprintValue(telemetry.url),
-    message: telemetry.message,
-    stackTrace: normalizeTelemetryFingerprintValue(telemetry.stackTrace ?? ''),
+    frames: frames.map(normalizeTelemetryFingerprintValue),
   });
 }
 

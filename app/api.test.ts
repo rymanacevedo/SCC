@@ -3,7 +3,6 @@ import {
   sanitizeErrorTelemetry,
   sanitizeUserIssueReport,
 } from '../shared/errorReporting.ts';
-import { TRUNCATED } from '../shared/telemetryRedaction.ts';
 import { captureFetchBodies } from '../test/capture-fetch.ts';
 import {
   expectNoSensitiveValues,
@@ -50,7 +49,9 @@ test('both report senders post an already-sanitized report unchanged', async () 
     expectNoSensitiveValues(body);
     expect(JSON.parse(body).url).toBe('https://scc.example/summary');
   }
-  expect(report.description).toEndWith(TRUNCATED);
+  expect(report.description).toMatch(
+    /^\[description omitted: \d+ characters\]$/,
+  );
 });
 test('API client sends JSON with signal and parses shared output schemas for all five routes', async () => {
   const signal = new AbortController().signal;

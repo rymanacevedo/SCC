@@ -16,22 +16,47 @@ const telemetry = {
   timestamp: '2026-10-14T00:00:00.000Z',
   url: 'https://scc.example/info',
   message: 'Broken page',
-  stackTrace: 'at https://scc.example/assets/main-abcdef12.js:12:34',
+  stackTrace:
+    'TypeError: Broken page\n    at render (https://scc.example/assets/main-abcdef12.js:12:34)',
 };
 afterEach(resetReportedTelemetryForTests);
 const buildTelemetryFingerprint = (payload: ErrorTelemetryPayload) =>
   buildSanitizedTelemetryFingerprint(sanitizeErrorTelemetry(payload));
-test('fingerprint ignores timestamps, asset hashes and stack coordinates', () => {
+test('fingerprint is the error name, path and top frames, normalized across builds', () => {
   expect(buildTelemetryFingerprint(telemetry)).toBe(
+    JSON.stringify({
+      name: 'TypeError',
+      url: 'https://scc.example/info',
+      frames: ['    at render (https://scc.example/assets/main-[hash].js)'],
+    }),
+  );
+  // Another build, another time, another message: the same error.
+  expect(
     buildTelemetryFingerprint({
       ...telemetry,
       timestamp: '2026-10-14T00:00:01.000Z',
-      stackTrace: 'at https://scc.example/assets/main-ghijkl34.js:56:78',
+      message: 'Broken page for jane@example.com',
+      stackTrace:
+        'TypeError: other text\n    at render (https://scc.example/assets/main-ghijkl34.js:56:78)',
     }),
-  );
+  ).toBe(buildTelemetryFingerprint(telemetry));
+  // Another name, path or call site: another error.
+  for (const other of [
+    { stackTrace: telemetry.stackTrace.replace('TypeError', 'RangeError') },
+    { url: 'https://scc.example/summary' },
+    { stackTrace: telemetry.stackTrace.replace('render', 'save') },
+  ])
+    expect(buildTelemetryFingerprint({ ...telemetry, ...other })).not.toBe(
+      buildTelemetryFingerprint(telemetry),
+    );
+});
+
+test('fingerprint keeps only the top five frames', () => {
+  const frames = (last: string) =>
+    `TypeError: x\n${'    at f (https://scc.example/a.js:1:2)\n'.repeat(5)}    at ${last} (https://scc.example/b.js:1:2)`;
   expect(
-    buildTelemetryFingerprint({ ...telemetry, message: 'Different' }),
-  ).not.toBe(buildTelemetryFingerprint(telemetry));
+    buildTelemetryFingerprint({ ...telemetry, stackTrace: frames('g') }),
+  ).toBe(buildTelemetryFingerprint({ ...telemetry, stackTrace: frames('h') }));
 });
 test('fingerprint is not split by query strings, fragments or redacted values', () => {
   expect(
@@ -66,23 +91,24 @@ test('normalizes an oversized timestamp to a bounded canonical value in both rep
   expect(sanitizeReportTimestamp('2026-10-13T05:00:00+05:00')).toBe(
     '2026-10-13T00:00:00.000Z',
   );
-  expect(sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`)).toBe('[redacted]');
+  // An unparseable timestamp becomes the epoch, still a valid ISO datetime.
+  expect(sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`)).toBe(
+    '1970-01-01T00:00:00.000Z',
+  );
 });
-test('sanitizes every Error telemetry and User report field', () => {
+test('sanitizing keeps structure only: free text is reduced to its length', () => {
   expect<unknown>(
     sanitizeErrorTelemetry({
       timestamp: telemetry.timestamp,
       url: 'https://scc.example/info?token=abc123#fragment',
-      message: `Call 555-123-4567 ${'word '.repeat(400)}`,
+      message: 'Call 555-123-4567',
       stackTrace:
-        'Error\n    at save (https://scc.example/a.js:1:2) apiKey=s3cr3t',
+        'Error: Call 555-123-4567\n    at save (https://scc.example/a.js:1:2) apiKey=s3cr3t',
     }),
   ).toEqual({
     timestamp: telemetry.timestamp,
     url: 'https://scc.example/info',
-    message: expect.stringMatching(
-      /^Call \[redacted\] [word ]+… \[truncated\]$/,
-    ),
+    message: '[message omitted: 17 characters]',
     stackTrace: 'Error\n    [frame omitted]',
   });
   expect<unknown>(
@@ -94,8 +120,28 @@ test('sanitizes every Error telemetry and User report field', () => {
   ).toEqual({
     timestamp: telemetry.timestamp,
     url: 'https://scc.example/info',
-    description: 'Email me at [redacted]',
+    description: '[description omitted: 28 characters]',
   });
+});
+
+test('a sanitized report always passes its schema, whatever its URL and timestamp', () => {
+  for (const url of [
+    'http://127.0.0.1:5173/info',
+    'about:blank',
+    'https://555-123-4567.example/x',
+  ]) {
+    const report = sanitizeUserIssueReport({
+      timestamp: 'not a time',
+      url,
+      description: 'Broken',
+    });
+    expect(userIssueReportSchema.safeParse(report).success).toBe(true);
+    expect(
+      errorTelemetrySchema.safeParse(
+        sanitizeErrorTelemetry({ ...telemetry, url, timestamp: 'not a time' }),
+      ).success,
+    ).toBe(true);
+  }
 });
 test('dedupes through one second, expires afterwards, and reset permits reporting again', () => {
   expect(
@@ -172,7 +218,7 @@ test('user issue report fields are accepted at their caps and refused one charac
   ).toBe(false);
 });
 
-test('sanitizing cuts oversized fields so both reports stay valid, marker included', () => {
+test('sanitizing bounds oversized fields so both reports stay valid', () => {
   const frame = '    at frame (https://scc.example/assets/a.js:1:2)';
   const telemetry = sanitizeErrorTelemetry({
     timestamp: '2026-10-14T00:00:00.000Z',
@@ -180,10 +226,7 @@ test('sanitizing cuts oversized fields so both reports stay valid, marker includ
     message: 'word '.repeat(1_500),
     stackTrace: `Error: Broken\n${`${frame}\n`.repeat(1_000)}`,
   });
-  expect(telemetry.message.length).toBeLessThanOrEqual(
-    REPORT_FIELD_LIMITS.message,
-  );
-  expect(telemetry.message.endsWith('… [truncated]')).toBe(true);
+  expect(telemetry.message).toBe('[message omitted: 7500 characters]');
   expect(telemetry.stackTrace?.length).toBeLessThanOrEqual(
     REPORT_FIELD_LIMITS.stackTrace,
   );
@@ -194,8 +237,6 @@ test('sanitizing cuts oversized fields so both reports stay valid, marker includ
     url: 'https://scc.example/info',
     description: 'word '.repeat(3_000),
   });
-  expect(report.description.length).toBeLessThanOrEqual(
-    REPORT_FIELD_LIMITS.description,
-  );
+  expect(report.description).toBe('[description omitted: 15000 characters]');
   expect(userIssueReportSchema.safeParse(report).success).toBe(true);
 });

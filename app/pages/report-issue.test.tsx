@@ -117,9 +117,10 @@ test('report modal validates, submits only explicit description, and shows failu
   expect(requests[0]).toEqual({
     path: '/api/report-issue',
     body: {
-      description: 'The page failed',
-      // happy-dom's about:blank is not an http(s) URL, so it fails closed.
-      url: '[redacted]',
+      // Only the length of the trimmed description is sent.
+      description: '[description omitted: 15 characters]',
+      // happy-dom's about:blank is not an http(s) URL: the placeholder origin.
+      url: 'https://redacted.invalid/',
       timestamp: expect.any(String),
     },
   });
@@ -169,7 +170,9 @@ test('the report sends a path-only URL and a redacted description', async () => 
   expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
   expect(sent.url).toBe('https://scc.example/summary');
-  expect(sent.description).toContain('then it broke.');
+  expect(sent.description).toBe(
+    `[description omitted: ${SENSITIVE_DESCRIPTION.length} characters]`,
+  );
 });
 
 test('a network failure shows plain failure copy and leaves the modal usable', async () => {

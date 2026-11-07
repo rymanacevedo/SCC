@@ -51,11 +51,11 @@ test('the Worker redacts an unhandled error before logging it', async () => {
     await worker.fetch(new Request('https://scc.example/api/anything'));
     const entry = log.mock.calls[0]?.[0] as { error: Record<string, unknown> };
     expectNoSensitiveValues(JSON.stringify(entry));
-    expect(entry.error.message).toBe(
-      'Save failed for [redacted], call [redacted]',
-    );
-    expect(entry.error.causeMessage).toBe('https://scc.example/summary');
-    expect(entry.error.name).toBe('Error');
+    expect(entry.error).toMatchObject({
+      name: 'Error',
+      message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
+      causeName: 'Error',
+    });
   } finally {
     log.mockRestore();
   }

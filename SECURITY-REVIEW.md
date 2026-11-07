@@ -23,24 +23,25 @@ place today and what is still a gap.
   browser-controlled payloads into GitHub issues with the repo token
   (`worker/services/github.ts`). In place: labels are fixed server-side
   (`bug` plus `auto-reported` or `user-reported`); the user-reported title is
-  the constant `User-reported issue`; the auto-reported title embeds the
-  sanitized `payload.message`, cut to the 256-character GitHub limit;
+  the constant `User-reported issue`; the auto-reported title is the error
+  class name and path (`Auto-reported error: TypeError at /summary`), cut
+  to the 256-character GitHub limit;
   auto-reported issues are deduplicated by fingerprint before a create;
   `buildAutoReportedIssueBody`, `buildUserReportedIssueBody` and the route
-  error log sanitize fail-closed at write time: URLs as http(s) origin +
-  path, stacks as canonical frames, free text as allowlisted tokens, every
-  other value `[redacted]`, and every field cut to its
-  `REPORT_FIELD_LIMITS` cap (`shared/telemetryRedaction.ts`,
+  error log store structure only: a canonical timestamp, the URL as
+  origin + plain path, the error class name and canonical stack frames.
+  Messages, descriptions and GitHub error bodies are free text and are never
+  stored, only their length (`shared/telemetryRedaction.ts`,
   `shared/stackFrames.ts`,
-  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); the
-  schemas refuse a field over that cap, and the route body limit is derived
-  from them. Gaps: letters-only personal text, such as a name typed into a
-  description, passes the allowlist; and the token's
+  `worker/docs/adr/0002-reports-are-redacted-before-storage.md`); every
+  field fits its `REPORT_FIELD_LIMITS` cap, the schemas refuse a field over
+  that cap, and the route body limit is derived from them. Gaps: a plain-word
+  path segment can still be personal (`/u/janedoe`); and the token's
   scope is set in the Cloudflare dashboard, not checked in code. Issue
-  bodies are later read by triage agents through `gh`, so text in them is a
-  prompt-injection surface for those agents. Both body builders fence
-  reported text as code (`worker/lib/markdown.ts`), so it cannot fake issue
-  structure, though agents must still treat it as untrusted.
+  bodies are later read by triage agents through `gh`; with free text gone,
+  the browser controls only identifiers and plain path segments in them,
+  which both body builders still fence as code (`worker/lib/markdown.ts`),
+  and agents must still treat them as untrusted.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.

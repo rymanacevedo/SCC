@@ -1,8 +1,10 @@
 import { expect } from 'bun:test';
 
 /**
- * Every leak shape council found across review rounds 1-5. None of these
- * values may reach a GitHub issue body, an issue title or a Workers Logs line.
+ * Every leak shape council review found in the report pipeline, as values
+ * planted in the fixtures below. None of these strings may appear in any sink
+ * output: a GitHub issue body, an issue title, a fingerprint or a Workers
+ * Logs line.
  */
 export const SENSITIVE_VALUES = [
   'jane.doe@example.com',

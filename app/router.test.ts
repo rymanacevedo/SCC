@@ -147,11 +147,11 @@ test('router errors return 500 and auto-report once without waiting for reportin
     expect(reports).toEqual([
       {
         url: 'https://scc.example/throw',
-        message: error.message,
+        message: `[message omitted: ${error.message.length} characters]`,
         timestamp: expect.any(String),
         // A real stack, as canonical frames; the checkout path may be redacted.
         stackTrace: expect.stringMatching(
-          /^Error: [^\n]+\n    at <anonymous> \(\S+router\.test\.ts:\d+:\d+\)/,
+          /^Error\n    at <anonymous> \(\S+router\.test\.ts:\d+:\d+\)/,
         ),
       },
     ]);

@@ -9,9 +9,8 @@ import {
   type UserIssueReportPayload as UserIssueReport,
   userIssueReportSchema,
 } from '../../shared/errorReporting.ts';
-import { sanitizeTelemetryText } from '../../shared/telemetryRedaction.ts';
+import { stackSummary } from '../../shared/stackFrames.ts';
 import { truncateText } from '../../shared/text.ts';
-import { readBoundedText } from '../lib/body.ts';
 import { UpstreamTimeoutError, withDeadline } from '../lib/deadline.ts';
 import { fencedBlock, inlineCode } from '../lib/markdown.ts';
 
@@ -22,7 +21,6 @@ const GITHUB_ISSUE_TITLE_MAX = 256;
 /** GitHub refuses an issue body longer than this many characters. */
 export const GITHUB_ISSUE_BODY_MAX = 65_536;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
-const GITHUB_ERROR_BODY_SNIPPET_MAX = 300;
 const GITHUB_USER_AGENT = 'scc-backend-worker';
 const FINGERPRINT_LABEL = '- Fingerprint: ';
 const GITHUB_ISSUES_PAGE_SIZE = 100;
@@ -38,14 +36,12 @@ export type GitHubIssueCreationErrorKind = 'http' | 'network' | 'timeout';
 export class GitHubIssueCreationError extends Error {
   kind: GitHubIssueCreationErrorKind;
   status?: number;
-  details?: string;
 
   constructor(
     message: string,
     options: {
       kind: GitHubIssueCreationErrorKind;
       status?: number;
-      details?: string;
       cause?: unknown;
     },
   ) {
@@ -53,7 +49,6 @@ export class GitHubIssueCreationError extends Error {
     this.name = 'GitHubIssueCreationError';
     this.kind = options.kind;
     this.status = options.status;
-    this.details = options.details;
   }
 }
 
@@ -116,24 +111,6 @@ export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   ].join('\n');
 }
 
-// A UTF-8 character is at most 4 bytes, so this many bytes always covers the snippet.
-const GITHUB_ERROR_BODY_SNIPPET_BYTES = GITHUB_ERROR_BODY_SNIPPET_MAX * 4;
-
-/**
- * Keeps the sanitized start of a GitHub error body without buffering the rest
- * of it. Sanitizing runs before the 300-character cut, and a token the bounded
- * read split is dropped, so no half-value survives either boundary.
- */
-async function readErrorSnippet(response: Response) {
-  const { text, truncated } = await readBoundedText(
-    response.body,
-    GITHUB_ERROR_BODY_SNIPPET_BYTES,
-  );
-  return sanitizeTelemetryText(text, GITHUB_ERROR_BODY_SNIPPET_MAX, {
-    inputWasCut: truncated,
-  });
-}
-
 /**
  * The one way the service calls GitHub: under `GITHUB_REQUEST_DEADLINE_MS`,
  * with failures classified by kind. Never retries, so a creation that timed
@@ -185,11 +162,12 @@ async function requestGitHub<T>({
           );
         }
         if (!response.ok) {
-          const details = await readErrorSnippet(response);
+          // The status says enough; GitHub's error body is free text, so it
+          // is never read, only cancelled.
+          await response.body?.cancel();
           throw new GitHubIssueCreationError(`GitHub ${action} failed.`, {
             kind: 'http',
             status: response.status,
-            details,
           });
         }
         return read(response);
@@ -250,6 +228,19 @@ async function fingerprintMarkers(telemetry: SanitizedErrorTelemetry) {
       `${FINGERPRINT_LABEL}${buildSanitizedTelemetryFingerprint(telemetry)}`,
     ],
   };
+}
+
+/**
+ * `Auto-reported error: TypeError at /summary`: the error name and path,
+ * never the message, which is free text.
+ */
+function autoReportedIssueTitle(telemetry: SanitizedErrorTelemetry) {
+  const { name } = stackSummary(telemetry.stackTrace ?? '', 0);
+  const { pathname } = new URL(telemetry.url);
+  return truncateText(
+    `${AUTO_REPORTED_TITLE_PREFIX}${name || 'Error'} at ${pathname}`,
+    GITHUB_ISSUE_TITLE_MAX,
+  );
 }
 
 async function findMatchingOpenAutoReportedIssue({
@@ -315,7 +306,7 @@ export async function createAutoReportedIssue({
   return createGitHubIssue({
     repo,
     token,
-    title: `${AUTO_REPORTED_TITLE_PREFIX}${truncateText(telemetry.message, GITHUB_ISSUE_TITLE_MAX - AUTO_REPORTED_TITLE_PREFIX.length)}`,
+    title: autoReportedIssueTitle(telemetry),
     body: buildAutoReportedIssueBody(telemetry, fingerprint),
     labels: ['bug', 'auto-reported'],
   });

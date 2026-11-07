@@ -49,7 +49,7 @@ test('logged report metadata, error text and provider URLs are path-only and red
     category: 'provider',
     url: 'https://scc.example/summary',
     providerUrl: 'https://scc.example/summary',
-    message: 'Save failed for [redacted], call [redacted]',
+    message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   });
   expect(String(entry.stack)).toContain(
     'at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',

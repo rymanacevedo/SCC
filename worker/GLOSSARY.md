@@ -53,7 +53,7 @@ The report a user writes in the Report an issue dialog, sent to `/api/report-iss
 _Avoid_: feedback, ticket
 
 ### Report sanitizing
-Keeping only the parts of a report known to be safe: URLs as http(s) origin + path, stack traces as canonical frames, free text as allowlisted tokens. Everything else becomes `[redacted]`, and each field is cut to fit its report field limit (`REPORT_FIELD_LIMITS`), `… [truncated]` marker included. The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
+Reducing a report to its structure: a canonical timestamp, the URL as origin + plain path, the error class name and canonical stack frames. Free text (a message, a description, an upstream response body) is never kept; it becomes a placeholder with only its length, such as `[description omitted: 142 characters]`. Every field fits its report field limit (`REPORT_FIELD_LIMITS`). The browser's callers run it before sending; the Worker runs it again before any issue, fingerprint or log line (see [ADR-0002](docs/adr/0002-reports-are-redacted-before-storage.md)).
 _Avoid_: scrubbing, anonymizing
 
 ## Generation architecture

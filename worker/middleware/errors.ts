@@ -5,7 +5,7 @@ import { UpstreamTimeoutError } from '../lib/deadline.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import {
   describeErrorForLog,
-  redactForLog,
+  logToken,
   redactUrlForLog,
   timestampForLog,
 } from '../lib/log.ts';
@@ -84,8 +84,8 @@ type RouteErrorClassification = {
 
 /**
  * Maps a route failure to its log category, response status and the fields
- * logged with it. Every logged string is redacted (`redactForLog`, or
- * `redactUrlForLog` for URLs) before it reaches Workers Logs. Upstream
+ * logged with it. No free text is logged: strings are machine tokens
+ * (`logToken`) or path-only URLs (`redactUrlForLog`). Upstream
  * failures are 502, a deadline is 504, a missing variable is 500; an
  * unrecognized error is 500 on a generation route and 502 on a reporting
  * route, whose only work is the GitHub call.
@@ -102,7 +102,7 @@ function classifyRouteError(
       category: 'timeout',
       status: 504,
       details: {
-        upstream: redactForLog(error.upstream),
+        upstream: logToken(error.upstream),
         timeoutMs: error.timeoutMs,
       },
     };
@@ -111,10 +111,7 @@ function classifyRouteError(
     return {
       category: `github_${error.kind}`,
       status: 502,
-      details: {
-        githubStatus: error.status,
-        githubResponseSnippet: redactForLog(error.details),
-      },
+      details: { githubStatus: error.status },
     };
   }
   // Once the retry budget is spent the SDK wraps the provider's failures in a
@@ -132,7 +129,7 @@ function classifyRouteError(
         ...(RetryError.isInstance(error)
           ? {
               attempts: error.errors.length,
-              retryReason: redactForLog(error.reason),
+              retryReason: logToken(error.reason),
             }
           : {}),
       },

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { sanitizeStackTrace } from './stackFrames.ts';
+import { sanitizeStackTrace, stackSummary } from './stackFrames.ts';
 
 describe('sanitizeStackTrace', () => {
   test('a real V8 stack comes out as clean canonical frames', () => {
@@ -15,7 +15,7 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        "TypeError: Cannot read properties of undefined (reading 'name')",
+        'TypeError',
         '    at saveSummary (https://scc.example/assets/main-abcdef12.js:12:34)',
         '    at <anonymous> (https://scc.example/assets/index-Bx9q.js:1:113)',
         '    at Array.map (<anonymous>)',
@@ -59,7 +59,7 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        'Error: Save failed for [redacted]',
+        'Error',
         '    [frame omitted]',
         '    at retry (https://scc.example/a.js:9:9)',
         '    [frame omitted]',
@@ -70,19 +70,43 @@ describe('sanitizeStackTrace', () => {
     );
   });
 
-  test('the header line keeps credential context: the whole line is free text', () => {
+  test('the header line is reduced to an error class name; its message is dropped', () => {
     expect(sanitizeStackTrace('apiKey: short-secret', 8_000)).toBe(
-      'apiKey: [redacted]',
+      '[redacted]',
     );
     expect(
       sanitizeStackTrace(
         'TokenError: correcthorse\n    at f (https://scc.example/a.js:1:2)',
         8_000,
       ),
-    ).toBe('TokenError: [redacted]\n    at f (https://scc.example/a.js:1:2)');
+    ).toBe('TokenError\n    at f (https://scc.example/a.js:1:2)');
     expect(
       sanitizeStackTrace('DOMException: The operation was aborted.', 8_000),
-    ).toBe('DOMException: The operation was aborted.');
+    ).toBe('DOMException');
+    expect(sanitizeStackTrace('ChunkLoadError', 8_000)).toBe('ChunkLoadError');
+  });
+
+  test('stackSummary reads the error name and the top frames', () => {
+    const stack = sanitizeStackTrace(
+      [
+        'TypeError: Boom',
+        '    at a (https://scc.example/a.js:1:2)',
+        '    random line',
+        '    at b (https://scc.example/b.js:3:4)',
+        '    at c (https://scc.example/c.js:5:6)',
+      ].join('\n'),
+      8_000,
+    );
+    expect(stackSummary(stack, 2)).toEqual({
+      name: 'TypeError',
+      frames: [
+        '    at a (https://scc.example/a.js:1:2)',
+        '    at b (https://scc.example/b.js:3:4)',
+      ],
+    });
+    expect(
+      stackSummary('    at a (https://scc.example/a.js:1:2)', 5).name,
+    ).toBe('');
   });
 
   test('a function name must be an identifier shape, else <anonymous>', () => {
@@ -98,7 +122,7 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        'Error: Broken',
+        'Error',
         '    at <anonymous> (https://scc.example/a.js:1:2)',
         '    at <anonymous> (https://scc.example/a.js:3:4)',
         '    at <anonymous> (https://scc.example/a.js:5:6)',
@@ -119,7 +143,7 @@ describe('sanitizeStackTrace', () => {
     ].join('\n');
     expect(sanitizeStackTrace(stack, 8_000)).toBe(
       [
-        'Error: Broken',
+        'Error',
         '    at call (https://scc.example/call/[redacted]/a.js:1:2)',
         '    at call (/srv/users/[redacted]/a.js:3:4)',
         '    at main (https://scc.example/assets/index-C4kL9x.js:5:6)',

@@ -2,6 +2,8 @@ import { afterEach, expect, jest, mock, spyOn, test } from 'bun:test';
 import { APICallError } from 'ai';
 import {
   ERROR_TELEMETRY_MAX_LENGTH,
+  sanitizeErrorTelemetry,
+  sanitizeUserIssueReport,
   USER_ISSUE_REPORT_MAX_LENGTH,
 } from '../shared/errorReporting.ts';
 import { MAX_PROMPT_LENGTH } from '../shared/schemas/generation.ts';
@@ -408,6 +410,32 @@ test('both reporting routes preserve GitHub payloads and return ok', async () =>
   });
 });
 
+test('a browser-sanitized report from a dev URL with an IP host is accepted by both routes', async () => {
+  globalThis.fetch = mock(async (input: string | URL | Request) =>
+    String(input).includes('?')
+      ? Response.json([])
+      : Response.json({ number: 1 }, { status: 201 }),
+  ) as unknown as typeof fetch;
+  const router = createApiRouter(env);
+  const fields = {
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: 'http://127.0.0.1:5173/info?step=2',
+  };
+  const telemetry = sanitizeErrorTelemetry({ ...fields, message: 'Broken' });
+  const report = sanitizeUserIssueReport({ ...fields, description: 'Broken' });
+  expect(report.url).toBe('https://redacted.invalid/info');
+  for (const [path, body] of [
+    ['/api/errors', telemetry],
+    ['/api/report-issue', report],
+  ] as const)
+    expect(
+      await assertResponse(
+        await router.fetch(contractRequest(path, body)),
+        200,
+      ),
+    ).toEqual({ ok: true });
+});
+
 test('GitHub config failures are 500; HTTP and network failures are 502', async () => {
   spyOn(console, 'error').mockImplementation(() => {});
   for (const path of ['/api/errors', '/api/report-issue']) {
@@ -464,13 +492,12 @@ test('report route failure logs are path-only, redacted and truncated', async ()
       expect(entry.url).toBe('https://scc.example/summary');
       expect(entry.category).toBe(`github_${failure}`);
       if (failure === 'network') {
-        expect(entry.causeMessage).toMatch(
-          /^Save failed for \[redacted\], call \[redacted\] [word ]+… \[truncated\]$/,
-        );
-        expect(String(entry.causeMessage).length).toBeLessThan(1_100);
+        expect(entry.causeName).toBe('Error');
       } else {
-        expect(entry.githubResponseSnippet).toBe('Bad credentials [redacted]');
+        expect(entry.githubStatus).toBe(401);
+        expect(entry).not.toHaveProperty('githubResponseSnippet');
       }
+      expect(entry.message).toMatch(/^\[message omitted: \d+ characters\]$/);
       expect(String(entry.stack)).toContain('GitHubIssueCreationError');
     }
   }
