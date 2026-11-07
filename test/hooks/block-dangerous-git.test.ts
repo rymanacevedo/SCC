@@ -75,6 +75,11 @@ beforeAll(() => {
       'init',
     );
     git(repo, 'remote', 'add', 'origin', join(root, 'remote.git'));
+    if (where === 'main') {
+      git(repo, 'branch', 'feat');
+      git(repo, 'branch', 'ryan/feat-1.2');
+    }
+    git(repo, 'tag', 'v1.0');
     if (where === 'detached') git(repo, 'checkout', '-q', '--detach');
     else if (where !== 'main') git(repo, 'checkout', '-q', '-b', 'feat');
     for (const [key, value] of config) git(repo, 'config', key, value);
@@ -101,6 +106,8 @@ const allowed: [string, Where][] = [
   ['git log -- p', 'aliased'],
   ['git commit -m "fix the git hook"', 'main'],
   ['echo git is great', 'main'],
+  ['if git diff --quiet; then echo clean; fi', 'main'],
+  ['find . -name "*.ts" -exec grep -l git {} +', 'main'],
   ['git log --oneline >/tmp/log.txt 2>&1', 'main'],
   ['git status | grep feat', 'main'],
   ['git -C /tmp status', 'main'],
@@ -123,6 +130,9 @@ const blocked: [string, Where][] = [
   ['git push upstream feat', 'feature'],
   ['git push https://example.com/repo.git feat', 'feature'],
   ['git push origin feat other', 'feature'],
+  ['git push origin v1.0', 'feature'],
+  ['git push origin refs/tags/v1.0', 'feature'],
+  ['git push origin no-such-branch', 'feature'],
   // Refspec syntax is outside the grammar.
   ['git push origin feat:main', 'feature'],
   ['git push origin +feat', 'feature'],
@@ -188,6 +198,11 @@ const blocked: [string, Where][] = [
   ['cd ../aliased && git ship', 'feature'],
   ['git -C ../aliased ship', 'feature'],
   ['git pussh origin main', 'feature'],
+  ['if true; then git ship; fi', 'aliased'],
+  ['while true; do git ship; done', 'aliased'],
+  ['! git ship', 'aliased'],
+  ["sh -c 'git ship'", 'aliased'],
+  ['find . -maxdepth 0 -exec git ship \\;', 'aliased'],
   ['git p origin feat', 'aliased'],
   ['git ship', 'aliased'],
   ['git -c alias.q=push q origin feat', 'feature'],

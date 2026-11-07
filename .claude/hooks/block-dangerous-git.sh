@@ -9,7 +9,8 @@
 #
 # built from [A-Za-z0-9 ._/-] only: no chaining, subshells, quotes,
 # variables, env prefixes, git global options, refspec colons or `+`. The
-# remote must be configured, the pushed branch must not be main/master
+# remote must be configured, the pushed ref must be a local branch (not a
+# tag) and must not be main/master
 # (compared by last path component), and config must not redirect the push.
 #
 # Pushes that never spell `push` are blocked too: in each simple command
@@ -38,9 +39,9 @@ PROTECTED_BRANCHES="main|master"
 PUSH_FLAGS="-u|--set-upstream|-v|--verbose|-q|--quiet|-n|--dry-run"
 SIMPLE_PUSH="run 'git push [-u] <remote> <branch>' as its own command"
 PUSH_PLUMBING="send-pack|http-push"
-# Words that may precede git in a simple command: VAR=value, wrappers, and
-# their options or numeric arguments.
-COMMAND_PREFIX="[A-Za-z_][A-Za-z0-9_]*=.*|-.*|[0-9.]+[smhd]?|env|sudo|exec|command|builtin|nohup|time|nice|xargs|timeout|stdbuf|watch"
+# Words that may precede git in a simple command: VAR=value, shell control
+# words, wrappers and shells, and their options or numeric arguments.
+COMMAND_PREFIX="[A-Za-z_][A-Za-z0-9_]*=.*|-.*|[0-9.]+[smhd]?|!|if|then|elif|else|do|while|until|env|sudo|exec|command|builtin|nohup|time|nice|xargs|timeout|stdbuf|watch|sh|bash|zsh|dash"
 
 # Git global options (git --help): those taking a separate value, and flags.
 GLOBAL_WITH_VALUE="-C|-c|--git-dir|--work-tree|--namespace|--config-env|--attr-source|--super-prefix"
@@ -77,12 +78,14 @@ check_dangerous_patterns() {
 }
 
 # simple_commands: NORMALIZED split into simple commands, one per line.
-# Redirections are removed (git p>/dev/null runs p) and each backtick
-# becomes a '$' marker, so a substituted subcommand counts as dynamic.
+# Redirections are removed (git p>/dev/null runs p), each backtick becomes
+# a '$' marker so a substituted subcommand counts as dynamic, and find's
+# -exec starts a new command.
 simple_commands() {
   printf '%s\n' "$NORMALIZED" | sed -E '
     s/`/ $\n/g
     s/[0-9]*[<>]+[&|]?[[:space:]]*[^[:space:];&|(){}<>]*/ /g
+    s/[[:space:]]-(exec|execdir|ok|okdir)[[:space:]]/\n/g
     s/(;|&|\||\(|\)|\{|\})/\n/g'
 }
 
@@ -94,7 +97,7 @@ check_git_subcommands() {
   fi
 
   local commands segment words n i j w program sub
-  commands=" $(git --list-cmds=main,others 2>/dev/null | tr '\n' ' ') "
+  commands=" $(git --list-cmds=builtins,main,others 2>/dev/null | tr '\n' ' ') "
 
   while IFS= read -r segment; do
     read -ra words <<< "$segment"
@@ -164,10 +167,14 @@ check_push_config() {
   return 0
 }
 
-# check_push_target: configured remote, not a protected or detached branch.
+# check_push_target: configured remote, and a local branch (not a tag or
+# other ref) that is not protected or a detached HEAD.
 check_push_target() {
   if [ -n "$REMOTE" ]; then
     repo_git remote | grep -qxF -- "$REMOTE" || block "pushes to '$REMOTE', which is not a configured remote"
+  fi
+  if [ -n "$BRANCH" ] && [ "$BRANCH" != "HEAD" ]; then
+    repo_git show-ref --verify -q "refs/heads/$BRANCH" || block "pushes '$BRANCH', which is not a local branch"
   fi
   if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
     BRANCH=$(repo_git symbolic-ref --short -q HEAD)
