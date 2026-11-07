@@ -8,10 +8,27 @@ const hook = join(
   '../../.claude/hooks/block-dangerous-git.sh',
 );
 
+// Throwaway repos, each with an `origin` remote. Keys are where a case runs.
+const repoConfig = {
+  main: [],
+  feature: [],
+  detached: [],
+  matching: [['push.default', 'matching']],
+  upstream: [['push.default', 'upstream']],
+  mapped: [['remote.origin.push', 'HEAD:main']],
+  mirror: [['remote.origin.mirror', 'true']],
+  submodules: [['push.recurseSubmodules', 'on-demand']],
+  recurse: [['submodule.recurse', 'true']],
+  aliased: [
+    ['alias.p', 'push'],
+    ['alias.ship', '!git push origin main'],
+    ['alias.st', 'status'],
+  ],
+} satisfies Record<string, string[][]>;
+type Where = keyof typeof repoConfig;
+
 let root: string;
-let mainRepo: string;
-let featureTree: string;
-let matchingRepo: string;
+const dirs = {} as Record<Where, string>;
 
 function git(cwd: string, ...args: string[]) {
   const run = Bun.spawnSync(['git', ...args], { cwd });
@@ -27,10 +44,8 @@ function runHook(command: string, cwd: string) {
 
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), 'block-git-'));
-  mainRepo = join(root, 'repo');
-  featureTree = join(root, 'feature');
-  matchingRepo = join(root, 'matching');
-  for (const repo of [mainRepo, matchingRepo]) {
+  for (const [where, config] of Object.entries(repoConfig)) {
+    const repo = join(root, where);
     git(root, 'init', '-q', '-b', 'main', repo);
     git(
       repo,
@@ -44,142 +59,117 @@ beforeAll(() => {
       '-m',
       'init',
     );
+    git(repo, 'remote', 'add', 'origin', join(root, 'remote.git'));
+    if (where === 'detached') git(repo, 'checkout', '-q', '--detach');
+    else if (where !== 'main') git(repo, 'checkout', '-q', '-b', 'feat');
+    for (const [key, value] of config) git(repo, 'config', key, value);
+    dirs[where as Where] = repo;
   }
-  git(mainRepo, 'worktree', 'add', '-q', '-b', 'feat', featureTree);
-  git(matchingRepo, 'checkout', '-q', '-b', 'feat');
-  git(matchingRepo, 'config', 'push.default', 'matching');
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-type Where = 'main' | 'feature' | 'matching';
-const dirs = (): Record<Where, string> => ({
-  main: mainRepo,
-  feature: featureTree,
-  matching: matchingRepo,
-});
-
 const allowed: [string, Where][] = [
   ['git push origin feat', 'main'],
   ['git push -u origin feat', 'main'],
+  ['git push --set-upstream origin feat', 'main'],
+  ['git push -v -n origin feat', 'main'],
+  ['git push origin ryan/feat-1.2', 'main'],
   ['git push', 'feature'],
+  ['git push origin', 'feature'],
   ['git push origin HEAD', 'feature'],
-  ['git push origin HEAD:feat', 'main'],
-  ['git push -o ci.skip origin feat', 'main'],
-  ['git push --repo=origin feat', 'main'],
-  ['git push --follow-tags origin feat', 'main'],
-  ['git -C {feature} push', 'main'],
-  ['git -c core.pager=cat push origin feat', 'main'],
-  ['git status && git push origin feat', 'main'],
-  ['git stash push -m wip', 'main'],
+  ['  git push origin feat  ', 'main'],
+  // Commands that do not push.
   ['git status', 'main'],
-  ['GIT_OPTIONAL_LOCKS=0 git push origin feat', 'main'],
-  ['env git push origin feat', 'main'],
-  ['git push -uv origin feat', 'main'],
-  ['git push -n origin feat', 'main'],
-  ['git -c push.default=current push', 'feature'],
-  ['git -c push.default=simple push origin feat', 'main'],
-  // Earlier segments that are resolved precisely.
-  ['cd {feature} && git push', 'main'],
-  ['cd ../feature && git push origin HEAD', 'main'],
-  ['git checkout -b feat2 && git push -u origin feat2', 'main'],
-  ['git -c alias.st=status st', 'main'],
+  ['git status && git log --oneline -3', 'main'],
+  ['git commit -m "allow pushes"', 'main'],
+  ['git st', 'aliased'],
 ];
 
 const blocked: [string, Where][] = [
+  // Protected or unknown destinations.
   ['git push', 'main'],
+  ['git push origin', 'main'],
   ['git push origin HEAD', 'main'],
   ['git push origin main', 'feature'],
-  ['git push origin "main"', 'feature'],
+  ['git push origin master', 'feature'],
+  ['git push origin heads/main', 'feature'],
+  ['git push origin refs/heads/main', 'feature'],
+  ['git push', 'detached'],
+  ['git push upstream feat', 'feature'],
+  ['git push https://example.com/repo.git feat', 'feature'],
+  ['git push origin feat other', 'feature'],
+  // Refspec syntax is outside the grammar.
   ['git push origin feat:main', 'feature'],
-  ['git push origin feat:refs/heads/master', 'feature'],
-  ['git push origin @', 'main'],
+  ['git push origin +feat', 'feature'],
+  ['git push origin :feat', 'feature'],
+  ['git push origin "refs/heads/*:refs/heads/*"', 'feature'],
+  ['git push origin @', 'feature'],
+  // Options outside the allowlist, including abbreviations.
   ['git push --force origin feat', 'feature'],
   ['git push -f origin feat', 'feature'],
   ['git push -uf origin feat', 'feature'],
   ['git push --force-with-lease origin feat', 'feature'],
-  ['git push --force-with-lease=feat:abc origin feat', 'feature'],
-  ['git push origin +feat', 'feature'],
-  ['git push origin :feat', 'feature'],
-  ['git push origin --delete feat', 'feature'],
+  ['git push --force-with-l origin feat', 'feature'],
+  ['git push --delete origin feat', 'feature'],
+  ['git push --del origin feat', 'feature'],
+  ['git push -d origin feat', 'feature'],
   ['git push --mirror origin', 'feature'],
   ['git push --all origin', 'feature'],
   ['git push --branches origin', 'feature'],
   ['git push --tags origin', 'feature'],
-  ['git push origin "refs/heads/*:refs/heads/*"', 'feature'],
-  ['git push --repo origin main', 'feature'],
-  ['git push --repo=origin main', 'feature'],
-  ['git push -o ci.skip origin', 'main'],
-  ['git push --push-option ci.skip origin', 'main'],
-  ['git push', 'matching'],
-  ['git -C {main} push', 'feature'],
-  ['git -C {main} push origin HEAD', 'feature'],
-  ['git -c k=v push --force origin feat', 'feature'],
-  ['git --no-pager push -f origin feat', 'feature'],
-  ['/usr/bin/git push origin main', 'feature'],
-  ['(git push origin main)', 'feature'],
-  ['{ git push origin main; }', 'feature'],
-  ['echo $(git push origin main)', 'feature'],
-  ['sh -c "git push origin main"', 'feature'],
-  ['git status && git push origin feat && git push origin main', 'feature'],
-  ['git status || git push origin main', 'feature'],
-  // Prefixes before git: the push is still found and checked.
-  ['GIT_OPTIONAL_LOCKS=0 git push origin main', 'feature'],
-  ['env git push --force origin feat', 'feature'],
-  ['GIT_DIR={main}/.git git push', 'feature'],
-  // Destination taken from config rather than the command.
-  ['git -c remote.origin.push=HEAD:main push origin', 'feature'],
-  ['git -c remote.origin.push=HEAD:main push origin feat', 'feature'],
-  ['git -c remote.origin.mirror=true push origin', 'feature'],
-  ['git -c push.default=upstream push', 'feature'],
-  ['git -c push.default=tracking push origin feat', 'feature'],
-  ['git push origin feat', 'matching'],
-  // Abbreviated or unknown options are not on the allowlist.
-  ['git push --del origin feat', 'feature'],
-  ['git push --force-with-l origin feat', 'feature'],
-  ['git push --mirr origin', 'feature'],
-  ['git push --no-verify --forc origin feat', 'feature'],
-  ['git push -nf origin feat', 'feature'],
-  ['git push --unknown origin feat', 'feature'],
+  ['git push --prune origin feat', 'feature'],
   ['git push --no-verify origin feat', 'feature'],
-  // Abbreviated destination refs.
-  ['git push origin heads/main', 'feature'],
-  ['git push origin feat:heads/main', 'feature'],
-  // Earlier segments change the directory or branch the push runs in.
+  ['git push --recurse-submodules=on-demand origin feat', 'feature'],
+  ['git push -o ci.skip origin feat', 'feature'],
+  ['git push --repo=origin feat', 'feature'],
+  // Anything but a lone `git push`: global options, prefixes, wrappers.
+  ['git -C /tmp push origin feat', 'feature'],
+  ['git -c push.default=current push', 'feature'],
+  ["git -c user.name='Jane Doe' push --force origin main", 'feature'],
+  ['git --no-pager push origin feat', 'feature'],
+  ['git --attr-source HEAD push origin main', 'feature'],
+  ['/usr/bin/git push origin feat', 'feature'],
+  ['env git push origin feat', 'feature'],
+  ['GIT_DIR=/tmp git push origin feat', 'feature'],
+  ['HOME=/tmp git push origin feat', 'feature'],
+  ['sh -c "git push origin feat"', 'feature'],
+  ['(git push origin feat)', 'feature'],
+  ['echo $(git push origin feat)', 'feature'],
+  ['cd /tmp && git push origin feat', 'feature'],
+  ['(cd /tmp && git status); git push', 'feature'],
   ['git switch main && git push origin HEAD', 'feature'],
-  ['git checkout main && git push', 'feature'],
-  ['cd {main} && git push', 'feature'],
-  ['cd {main} && git push origin HEAD', 'feature'],
-  ['cd ../repo && git push', 'feature'],
-  ['cd $HOME && git push origin feat', 'feature'],
-  ['cd /nonexistent; git push origin feat', 'feature'],
-  ['popd && git push origin feat', 'feature'],
-  ['env -C {main} git push', 'feature'],
-  // Aliases that expand to push cannot be parsed.
-  ['git -c alias.p=push p origin main', 'feature'],
-  ['git -c alias.p=push p origin feat', 'feature'],
-  ['git -c "alias.p=!git push origin main" p', 'feature'],
-  [
-    'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.p GIT_CONFIG_VALUE_0=push git p origin feat',
-    'feature',
-  ],
+  ['git config remote.origin.push HEAD:main && git push origin', 'feature'],
+  ['git status && git push origin feat', 'feature'],
+  ['git push origin feat; git push origin main', 'feature'],
+  ['git push origin feat\ngit push origin main', 'feature'],
+  ['git push origin feat | cat', 'feature'],
+  ['git stash push -m wip', 'feature'],
+  // Config that redirects where the push lands.
+  ['git push', 'matching'],
+  ['git push origin feat', 'matching'],
+  ['git push', 'upstream'],
+  ['git push origin feat', 'mapped'],
+  ['git push origin', 'mirror'],
+  ['git push origin feat', 'submodules'],
+  ['git push origin feat', 'recurse'],
+  // Aliases that expand to push.
+  ['git p origin feat', 'aliased'],
+  ['git ship', 'aliased'],
+  ['git -c alias.q=push q origin feat', 'feature'],
+  // Unchanged destructive patterns.
   ['git reset --hard', 'feature'],
   ['git clean -fd', 'feature'],
   ['git branch -D feat', 'feature'],
+  ['git checkout .', 'feature'],
 ];
-
-function expand(command: string) {
-  return command
-    .replaceAll('{main}', mainRepo)
-    .replaceAll('{feature}', featureTree);
-}
 
 describe('block-dangerous-git hook', () => {
   test.each(allowed)('allows %p from %s', (command, where) => {
-    expect(runHook(expand(command), dirs()[where])).toBe(0);
+    expect(runHook(command, dirs[where])).toBe(0);
   });
 
   test.each(blocked)('blocks %p from %s', (command, where) => {
-    expect(runHook(expand(command), dirs()[where])).toBe(2);
+    expect(runHook(command, dirs[where])).toBe(2);
   });
 });
