@@ -49,7 +49,7 @@ export function normalizeEducationEntry(
 export function sortEducationEntries<T extends PartialEducationEntry>(
   education: T[],
 ): T[] {
-  return [...education].sort((a, b) => {
+  return education.toSorted((a, b) => {
     if (a.currentlyEnrolled && !b.currentlyEnrolled) return -1;
     if (!a.currentlyEnrolled && b.currentlyEnrolled) return 1;
 
