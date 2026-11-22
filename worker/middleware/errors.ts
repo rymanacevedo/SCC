@@ -51,7 +51,7 @@ export function createRouteErrorMiddleware<T>(
         error,
         generation,
       );
-      // oxlint-disable-next-line no-console -- Categorized failures belong in Workers Logs.
+      // oxlint-disable-next-line no-console
       console.error({
         route: path,
         category,

@@ -35,7 +35,9 @@ Source: `docs/agents/domain.md`.
 
 ## Comments
 
-Comments. Code carries no comments except license headers, `// prettier-ignore`, tool directives and pragmas, doc comments that define a public API contract, and style-only lint suppressions. Reasoning behind a decision lives in an existing ADR, not in the code. ADRs are kept sparse: extend an existing one rather than adding a new one for a single comment.
+Source: issue #275 and the ADRs in `docs/adr/`.
+
+Code carries no comments except license headers, `// prettier-ignore`, tool directives and pragmas, doc comments that define a public API contract, and style-only lint suppressions. Reasoning behind a decision lives in an existing ADR, not in the code. ADRs are kept sparse: extend an existing one rather than adding a new one for a single comment.
 
 ## Review
 

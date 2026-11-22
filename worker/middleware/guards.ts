@@ -36,7 +36,7 @@ export function createGeoRestrictionMiddleware({
       normalizedCountry === 'XX' ||
       !allowed.has(normalizedCountry)
     ) {
-      // oxlint-disable-next-line no-console -- Guard refusals belong in Workers Logs.
+      // oxlint-disable-next-line no-console
       console.log({
         event: 'geo_blocked',
         category: 'geo_blocked',
@@ -131,7 +131,7 @@ export function createProfanityFilter(
       ? terms.find(({ pattern }) => pattern.test(prompt))
       : undefined;
     if (match) {
-      // oxlint-disable-next-line no-console -- Guard refusals belong in Workers Logs.
+      // oxlint-disable-next-line no-console
       console.log({
         category: 'filtered',
         term: match.term,
