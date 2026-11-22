@@ -1,4 +1,3 @@
-/** Keep the object URL alive until the browser has started the native download. */
 export function downloadDocument(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

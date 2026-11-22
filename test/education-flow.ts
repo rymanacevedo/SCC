@@ -1,4 +1,3 @@
-// Explicit Flow test: bun run build && bun test/education-flow.ts
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { info, summary } from './builder-fixtures.ts';
@@ -28,7 +27,6 @@ try {
   });
   await page.setRequestInterception(true);
   page.on('request', (request) => {
-    // Keep the browser demo offline, including third-party analytics.
     if (new URL(request.url()).hostname.endsWith('cloudflareinsights.com')) {
       void request.respond({
         status: 200,
@@ -148,7 +146,6 @@ try {
   await page.goto(`${base}/education-summary`);
   await page.click('article a');
   await waitPath('/education-level');
-  // Revisit marks the saved level as current.
   await submit(
     '/education',
     'button[name="educationLevel"][aria-current="true"]',

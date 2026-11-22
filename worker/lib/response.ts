@@ -1,4 +1,3 @@
-/** Zod 4 `flattenError` shape carried by every 400 Error envelope. */
 export type Issues = {
   formErrors: string[];
   fieldErrors: Record<string, string[] | undefined>;

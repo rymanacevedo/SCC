@@ -33,6 +33,10 @@ Source: `docs/agents/domain.md`.
   directories are created with the first ADR. A change that contradicts an
   ADR says so and records the new decision; it does not override silently.
 
+## Comments
+
+Comments. Code carries no comments except license headers, `// prettier-ignore`, tool directives and pragmas, doc comments that define a public API contract, and style-only lint suppressions. Reasoning behind a decision lives in an existing ADR, not in the code. ADRs are kept sparse: extend an existing one rather than adding a new one for a single comment.
+
 ## Review
 
 Every PR goes through the same review before it merges, whoever opened it:

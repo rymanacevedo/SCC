@@ -51,7 +51,6 @@ export function createGeoRestrictionMiddleware({
   };
 }
 
-/** Reads at most `maxBytes` of a JSON body (413 past it), then validates it. */
 export function bodyValidation<T>(
   schema: z.core.$ZodType<T>,
   maxBytes: number,
@@ -108,8 +107,6 @@ filter.addWords(
   'Radicalizer',
   'Domestic Terrorist',
 );
-// Compile the existing bad-words list once. Matching the full prompt also covers
-// multi-word roles and terms inside the serialized XML, unlike splitting on spaces.
 const escapeTerm = (term: string) => term.replace(/\W/g, '\\$&');
 const terms = [...new Set(filter.list)]
   .sort((a, b) => b.length - a.length)
@@ -117,9 +114,6 @@ const terms = [...new Set(filter.list)]
     term,
     pattern: new RegExp(`\\b${escapeTerm(term)}\\b`, 'i'),
   }));
-// One alternation matches iff some per-term pattern matches, in a single scan of
-// the prompt instead of one per term. Clean prompts, the common case, stop here;
-// a hit falls back to the per-term scan so the named term stays the longest match.
 const anyTerm = new RegExp(
   `\\b(?:${terms.map(({ term }) => escapeTerm(term)).join('|')})\\b`,
   'i',

@@ -68,7 +68,6 @@ test('an Error is logged as its class name, frames, cause class and message leng
     name: 'Error',
     message: `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
     causeName: 'TypeError',
-    // The Worker's own code is no client asset: every asset file is redacted.
     stack: SANITIZED_SENSITIVE_STACK.replace(
       /https:\/\/app\.invalid\/assets\/[^:]+/g,
       'https://app.invalid/[redacted]',
@@ -160,7 +159,6 @@ test('a logged stack is capped at 4,000 characters with a marker', () => {
   const error = new Error('Broken');
   error.stack = `Error: Broken\n${'    at frame (https://scc.example/assets/a-abcdef12.js:1:2)\n'.repeat(500)}`;
   const { stack } = describeErrorForLog(error) as { stack: string };
-  // Cut at the last whole frame inside 4,000 characters.
   expect(
     stack.endsWith(`(https://app.invalid/[redacted]:1:2)\n${TRUNCATED}`),
   ).toBe(true);

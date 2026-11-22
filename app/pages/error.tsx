@@ -3,7 +3,6 @@ import { ERROR_MODAL_MESSAGE } from '../error-reporting.ts';
 import { ButtonLink } from '../ui/button.tsx';
 import { ReportIssue } from './report-issue.tsx';
 
-/** The error and not-found pages share the old error dialog's card. */
 function ErrorCard(handle: Handle<{ title: string; message: string }>) {
   return () => (
     <section className="mx-auto w-[min(32rem,100%)] space-y-4 rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">

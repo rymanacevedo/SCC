@@ -47,7 +47,6 @@ import {
 } from './services/github.ts';
 import { resolveModel as defaultResolveModel } from './services/model.ts';
 
-// Each route's Body limit follows from the string caps its schema enforces.
 const generationBodyLimit = jsonBodyLimit(MAX_PROMPT_LENGTH);
 const errorTelemetryBodyLimit = jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH);
 const userIssueReportBodyLimit = jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH);
@@ -61,15 +60,12 @@ export function createApiRouter(
   const router = createRouter({
     defaultHandler: () => apiError(404, 'Not found'),
   });
-  // Each router serves one env, so config is validated once, on first use by a
-  // route that needs it. A missing variable stays a per-route failure.
   const geo = lazy(() =>
     createGeoRestrictionMiddleware(validateGeoEnvironment(env)),
   );
   const geoGuard: Middleware = (context, next) => geo()(context, next);
   const model = lazy(() => resolveModel(validateOpenAiEnvironment(env)));
   const github = lazy(() => validateGithubEnvironment(env));
-  // The asset paths the client build published, read once per isolate.
   const knownAssets = createWorkerKnownAssetsLoader(env);
   function register<T>(
     path: string,
@@ -87,7 +83,6 @@ export function createApiRouter(
       request.method === 'POST'
         ? next()
         : apiError(405, 'Method not allowed', undefined, { Allow: 'POST' });
-    // ANY lets routing decide 405 before security or body checks, with a JSON envelope.
     router.route('ANY', path, {
       middleware: [
         methodGuard,
@@ -117,8 +112,6 @@ export function createApiRouter(
       path,
       generationRequestSchema,
       generationBodyLimit,
-      // A client that disconnects cancels the provider call instead of paying for it.
-      // An over-limit result throws, and the route error middleware answers 502.
       async ({ prompt }, request) =>
         Response.json(await generate(prompt, model(), request.signal)),
       {
@@ -128,7 +121,6 @@ export function createApiRouter(
       (key) => [createProfanityFilter(key)],
     );
   }
-  // Public, read-only, no body: the route answers 405 for anything but GET.
   router.route('ANY', FLAGS_PATH, {
     handler: ({ request }) => handleFlagsRequest(request, env),
   });

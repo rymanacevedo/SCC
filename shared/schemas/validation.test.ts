@@ -7,8 +7,6 @@ import { generationRequestSchema } from './generation.ts';
 import { PersonalInfoSchema } from './info.ts';
 import { SummarySchema } from './summary.ts';
 
-// Expected messages were captured from the full `zod` build before the client moved to `zod/mini`;
-// Zod's own English messages reach Users and the Worker's 400 bodies, so they must not change.
 describe('Generation request', () => {
   test('keeps Zod default messages in the field errors', () => {
     expect(errorsFor(generationRequestSchema, { prompt: '' })).toEqual({

@@ -6,7 +6,6 @@ afterEach(() => {
 });
 
 const github = { upstream: 'github', timeoutMs: 1000 } as const;
-/** An upstream that never settles and ignores its signal. */
 const hang = () => new Promise<never>(() => {});
 
 describe('withDeadline', () => {

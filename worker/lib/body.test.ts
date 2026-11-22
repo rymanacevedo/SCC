@@ -29,7 +29,6 @@ test('readBoundedJson parses JSON and rejects oversized bodies', async () => {
     ok: false,
     reason: 'too_large',
   });
-  // Chunked bodies carry no length, so the streamed cap is what holds.
   const { stream } = streamOf(encode('"'), encode('x'.repeat(100)));
   expect(await readBoundedJson(post(stream), 64)).toEqual({
     ok: false,
@@ -40,7 +39,6 @@ test('readBoundedJson parses JSON and rejects oversized bodies', async () => {
 
 const post = (body: BodyInit, headers?: HeadersInit) =>
   new Request('https://scc.example/api', { method: 'POST', body, headers });
-// A 64-byte JSON body: the boundary the limit tests sit on.
 const atLimit = `"${'x'.repeat(62)}"`;
 
 test('readBoundedJson accepts a body of exactly the limit and refuses one byte over, with Content-Length', async () => {
@@ -92,7 +90,6 @@ test('readBoundedJson refuses a declared oversized body without reading it', asy
     await readBoundedJson(post(stream, { 'Content-Length': '1024000' }), 64),
   ).toEqual({ ok: false, reason: 'too_large' });
   expect(cancelled).toBe(true);
-  // At most the stream's own high-water-mark pull, never the declared body.
   expect(pulls).toBeLessThanOrEqual(1);
 });
 
@@ -105,7 +102,6 @@ test('readBoundedJson trusts the streamed count when Content-Length understates 
 
 test('jsonBodyLimit leaves room for the worst-case JSON encoding of its strings', () => {
   expect(jsonBodyLimit(1_000)).toBe(7_024);
-  // A control character escapes to six bytes, the most any code unit takes.
   const worst = JSON.stringify({ prompt: '\u0000'.repeat(1_000) });
   expect(encode(worst).byteLength).toBeLessThanOrEqual(jsonBodyLimit(1_000));
 });

@@ -1,4 +1,3 @@
-/** Shared failure vocabulary for browser persistence and API calls. */
 export type FailureCode =
   | 'storage'
   | 'validation'

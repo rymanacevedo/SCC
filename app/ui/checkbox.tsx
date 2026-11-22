@@ -3,13 +3,10 @@ import { type Handle, on } from 'remix/component';
 interface CheckboxProps {
   name: string;
   label: string;
-  /** Initial state only: the box stays uncontrolled so re-renders never reset it. */
   defaultChecked: boolean;
-  /** Called with the new checked state whenever the user toggles the box. */
   onToggle?: (checked: boolean) => void;
 }
 
-/** A labelled checkbox in the old app's style; it submits "on" when checked. */
 export function Checkbox(handle: Handle<CheckboxProps>) {
   return () => {
     const { name, label, defaultChecked, onToggle } = handle.props;

@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# Usage: extract-flows.sh <perf-dir>  -> writes <perf-dir>/flows.json (per form factor, per step: medians across run-*/)
-# Contract: flow.mjs output files <perf-dir>/lighthouse/flows/run-N/flow-<formFactor>-<ai>.json (Lighthouse 13.x flow result).
 set -euo pipefail
 dir="$1"
 rows="$(mktemp)"
 for f in "$dir"/lighthouse/flows/run-*/flow-*.json; do
   run="$(basename "$(dirname "$f")")"
-  base="$(basename "$f" .json)"           # flow-mobile-mock
+  base="$(basename "$f" .json)"
   ff="$(echo "$base" | cut -d- -f2)"; ai="$(echo "$base" | cut -d- -f3)"
   jq -c --arg run "$run" --arg ff "$ff" --arg ai "$ai" '.steps | to_entries[] | {
     run:$run, formFactor:$ff, ai:$ai, step:.key, name:.value.name, mode:.value.lhr.gatherMode,

@@ -1,7 +1,6 @@
 import type { UserStorage } from '../user.ts';
 import { SAVE_ERROR } from './controller.tsx';
 
-/** Shared confirmation and storage failure rules for Start over. */
 export function startOverAction(
   data: FormData,
   storage: UserStorage,

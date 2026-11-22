@@ -1,4 +1,3 @@
-// Local OpenAI Responses API stub shared by Flow tests and perf runs. POST <anything>/responses -> fixed completion.
 import { summaries, summaryResponse } from './fixtures.ts';
 
 export { summaryResponse };

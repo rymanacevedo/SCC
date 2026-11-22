@@ -8,8 +8,6 @@ const hook = join(
   '../../.claude/hooks/block-dangerous-git.sh',
 );
 
-// Throwaway repos, each with an `origin` remote pointing at this repo's
-// GitHub URL (the hook never contacts it). Keys are where a case runs.
 const repoConfig = {
   main: [],
   feature: [],
@@ -46,8 +44,6 @@ type Where = keyof typeof repoConfig;
 let root: string;
 const dirs = {} as Record<Where, string>;
 
-// Ignore the developer's global and system git config so results do not
-// depend on the machine.
 const env = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
@@ -116,7 +112,6 @@ const allowed: [string, Where][] = [
   ['git push origin', 'feature'],
   ['git push origin HEAD', 'feature'],
   ['  git push origin feat  ', 'main'],
-  // Commands that do not push.
   ['git status', 'main'],
   ['git status && git log --oneline -3', 'main'],
   ['git commit -m "allow pushes"', 'main'],
@@ -142,7 +137,6 @@ const allowed: [string, Where][] = [
 ];
 
 const blocked: [string, Where][] = [
-  // Protected or unknown destinations.
   ['git push', 'main'],
   ['git push origin', 'main'],
   ['git push origin HEAD', 'main'],
@@ -157,13 +151,11 @@ const blocked: [string, Where][] = [
   ['git push origin v1.0', 'feature'],
   ['git push origin refs/tags/v1.0', 'feature'],
   ['git push origin no-such-branch', 'feature'],
-  // Refspec syntax is outside the grammar.
   ['git push origin feat:main', 'feature'],
   ['git push origin +feat', 'feature'],
   ['git push origin :feat', 'feature'],
   ['git push origin "refs/heads/*:refs/heads/*"', 'feature'],
   ['git push origin @', 'feature'],
-  // Options outside the allowlist, including abbreviations.
   ['git push --force origin feat', 'feature'],
   ['git push -f origin feat', 'feature'],
   ['git push -uf origin feat', 'feature'],
@@ -181,7 +173,6 @@ const blocked: [string, Where][] = [
   ['git push --recurse-submodules=on-demand origin feat', 'feature'],
   ['git push -o ci.skip origin feat', 'feature'],
   ['git push --repo=origin feat', 'feature'],
-  // Anything but a lone `git push`: global options, prefixes, wrappers.
   ['git -C /tmp push origin feat', 'feature'],
   ['git -c push.default=current push', 'feature'],
   ["git -c user.name='Jane Doe' push --force origin main", 'feature'],
@@ -203,7 +194,6 @@ const blocked: [string, Where][] = [
   ['git push origin feat\ngit push origin main', 'feature'],
   ['git push origin feat | cat', 'feature'],
   ['git stash push -m wip', 'feature'],
-  // Config that redirects where the push lands.
   ['git push', 'matching'],
   ['git push origin feat', 'matching'],
   ['git push', 'upstream'],
@@ -218,8 +208,6 @@ const blocked: [string, Where][] = [
   ['git push origin feat', 'redirected'],
   ['git push origin feat', 'multiurl'],
   ['git push origin feat', 'insteadof'],
-  // Aliases (any, since a push alias may be defined in another repo) and
-  // typos git may autocorrect.
   ['git st', 'aliased'],
   ['git loop1', 'aliased'],
   ['git ship>/dev/null', 'aliased'],
@@ -248,7 +236,6 @@ const blocked: [string, Where][] = [
   ['git publish', 'aliased'],
   ['git -c alias.q=publish q', 'feature'],
   ['GIT_CONFIG_COUNT=1 git q', 'feature'],
-  // Spellings of push that the shell assembles.
   ["git pu''sh origin main", 'feature'],
   ['git pu\\sh origin main', 'feature'],
   ['git "push" origin main', 'feature'],
@@ -258,11 +245,9 @@ const blocked: [string, Where][] = [
   ['git `echo push` origin main', 'feature'],
   ['git --unknown-opt HEAD p', 'feature'],
   ["git `printf '\\160ush'` origin main", 'feature'],
-  // Push plumbing.
   ['git send-pack origin HEAD:refs/heads/main', 'feature'],
   ['git http-push https://example.com/repo.git main', 'feature'],
   ['git-send-pack origin main', 'feature'],
-  // Unchanged destructive patterns.
   ['git reset --hard', 'feature'],
   ["git reset --ha''rd", 'feature'],
   ['git clean -fd', 'feature'],

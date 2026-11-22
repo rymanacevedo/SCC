@@ -1,4 +1,3 @@
-/** US states (plus DC) offered by the State select on the Info and Experience Builder pages. */
 export const usStates = [
   { value: 'AL', label: 'Alabama' },
   { value: 'AK', label: 'Alaska' },

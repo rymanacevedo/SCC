@@ -1,4 +1,3 @@
-// Browser-only fixture; never included in the production entry.
 import { run } from 'remix/spa';
 import { installErrorReporting } from '../app/error-runtime.tsx';
 import { createAppRouter } from '../app/router.tsx';

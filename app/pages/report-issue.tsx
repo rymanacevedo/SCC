@@ -10,14 +10,9 @@ const REPORT_SUCCESS_MESSAGE =
   "Thank you. We've sent this page and the time to support.";
 
 interface ReportIssueProps {
-  /** The opener's style: outline in the footer, primary on the error page. */
   variant?: ButtonVariant;
 }
 
-/**
- * The Report an issue button and the dialog it opens. A User report carries
- * only the page and the time: nothing the user could type is sent.
- */
 export function ReportIssue(handle: Handle<ReportIssueProps>) {
   let dialog: HTMLDialogElement;
   let pending = false;

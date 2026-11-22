@@ -15,7 +15,6 @@ import { Checkbox } from '../ui/checkbox.tsx';
 
 export function ExperiencePage(handle: Handle<BuilderPageProps>) {
   let saveError: string | undefined;
-  // The user's toggle wins until the page renders a new set of values.
   let toggled: boolean | undefined;
   let renderedValues: FormValues | undefined;
   return () => {

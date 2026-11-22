@@ -260,7 +260,6 @@ test('Experience Suggestions fail with fixed copy and do not overwrite details; 
   expect(html).toContain(
     '/experience?jobId=job-1&amp;returnUrl=%2Fexperience-summary',
   );
-  // Numbered entry cards with Edit / Delete, then a full-width "add another".
   const hub = new DOMParser().parseFromString(html, 'text/html');
   const card = hub.querySelector('article')!;
   expect(card.querySelector('span')!.textContent).toBe('1');
@@ -364,7 +363,6 @@ test('"I currently work here" disables End date, and unticking enables it again'
   await view.act(() => box.click());
   expect(box.checked).toBe(true);
   expect(endDate().disabled).toBe(true);
-  // A disabled End date is left out of the submission.
   expect(new FormData(box.form!).has('endDate')).toBe(false);
   await view.act(() => box.click());
   expect(box.checked).toBe(false);

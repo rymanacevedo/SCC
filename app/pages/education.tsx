@@ -22,7 +22,6 @@ export function EducationLevelPage(handle: Handle<BuilderPageProps>) {
         subtitle="Select the best option and we'll help you structure your education section."
         hideSubmit
       >
-        {/* Each level submits the form, as in the old app; the saved one is primary. */}
         <fieldset className="mx-auto flex max-w-xs flex-col justify-center gap-4 md:max-w-4xl md:flex-row md:flex-wrap">
           <legend className="sr-only">Education level</legend>
           {educationLevels.map((value) => {
@@ -94,7 +93,6 @@ function educationFields(handle: Handle<BuilderPageProps>, details: boolean) {
         />
         {details ? (
           <>
-            {/* The school cap is reported against schoolName, asked on the previous Step. */}
             {handle.props.errors?.schoolName ? (
               <Alert tone="error">
                 {handle.props.errors.schoolName.join(' ')}

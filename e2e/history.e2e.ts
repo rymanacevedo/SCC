@@ -38,7 +38,6 @@ test('Summary preserves soft navigation, accepted duplicate history, Back, Forwa
       ),
     ).toBe('too short');
     expect(new URL(page.url()).pathname).toBe('/summary');
-    // Remix reads push before the 400 response; this duplicate is the accepted #197 tradeoff.
     expect(await page.evaluate(() => history.length)).toBe(length + 1);
     await page.waitForSelector('aside button');
     await page.click('aside button');

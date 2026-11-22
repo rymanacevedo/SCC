@@ -1,6 +1,5 @@
 import type { z } from 'zod';
 
-// Reusable sandboxes return stdout; structured output is exposed only by run().
 export function readTaggedOutput<T>(
   stdout: string,
   tag: 'plan' | 'pull-request',

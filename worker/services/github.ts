@@ -19,17 +19,11 @@ export type { ErrorTelemetry, UserIssueReport };
 export { errorTelemetrySchema, userIssueReportSchema };
 
 const GITHUB_ISSUE_TITLE_MAX = 256;
-/** GitHub refuses an issue body longer than this many characters. */
 export const GITHUB_ISSUE_BODY_MAX = 65_536;
 const AUTO_REPORTED_TITLE_PREFIX = 'Auto-reported error: ';
 const GITHUB_USER_AGENT = 'scc-backend-worker';
 const FINGERPRINT_LABEL = '- Fingerprint: ';
 const GITHUB_ISSUES_PAGE_SIZE = 100;
-/**
- * Longest one GitHub API call may take, response body included. GitHub
- * answers in well under a second; past this it is degraded, and holding the
- * request open would not help.
- */
 export const GITHUB_REQUEST_DEADLINE_MS = 10_000;
 
 export type GitHubIssueCreationErrorKind = 'http' | 'network' | 'timeout';
@@ -53,14 +47,6 @@ export class GitHubIssueCreationError extends Error {
   }
 }
 
-/**
- * The fingerprint an issue body carries and deduplication searches for: the
- * SHA-256 hex digest of the sanitized telemetry fingerprint (error name, path
- * and top frames). A fixed 64 characters, so it never crowds the body past
- * GitHub's limit, and distinct reports never share a prefix match. An issue
- * filed under an earlier fingerprint shape does not match and gets one
- * duplicate; matching it would mean keeping raw report text.
- */
 export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
   const digest = await crypto.subtle.digest(
     'SHA-256',
@@ -71,13 +57,6 @@ export async function issueFingerprint(telemetry: SanitizedErrorTelemetry) {
   ).join('');
 }
 
-/**
- * The issue body for auto-reported telemetry. It takes sanitized telemetry:
- * the route-pattern URL, the message's length placeholder and the canonical
- * stack, so no browser text reaches it. Those fields still render as code,
- * so an identifier cannot fake issue structure; the
- * fingerprint line stays outside, where deduplication finds it.
- */
 export function buildAutoReportedIssueBody(
   payload: SanitizedErrorTelemetry,
   fingerprint: string,
@@ -95,11 +74,6 @@ export function buildAutoReportedIssueBody(
   ].join('\n');
 }
 
-/**
- * The issue body for a user report: the page and the time. It takes a
- * sanitized report; the URL comes from the browser, so it renders as code
- * and cannot fake issue structure.
- */
 export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   return [
     '# User-reported issue',
@@ -109,11 +83,6 @@ export function buildUserReportedIssueBody(payload: SanitizedUserIssueReport) {
   ].join('\n');
 }
 
-/**
- * The one way the service calls GitHub: under `GITHUB_REQUEST_DEADLINE_MS`,
- * with failures classified by kind. Never retries, so a creation that timed
- * out (and may have landed) is never sent twice.
- */
 async function requestGitHub<T>({
   action,
   token,
@@ -122,13 +91,10 @@ async function requestGitHub<T>({
   body,
   read,
 }: {
-  /** Names the call in error messages, e.g. `issue creation`. */
   action: string;
   token: string;
-  /** Path under `https://api.github.com`, query string included. */
   path: string;
   method: 'GET' | 'POST';
-  /** Sent as JSON. */
   body?: unknown;
   read: (response: Response) => Promise<T>;
 }): Promise<T> {
@@ -160,8 +126,6 @@ async function requestGitHub<T>({
           );
         }
         if (!response.ok) {
-          // The status says enough; GitHub's error body is free text, so it
-          // is never read, only cancelled.
           await response.body?.cancel();
           throw new GitHubIssueCreationError(`GitHub ${action} failed.`, {
             kind: 'http',
@@ -202,7 +166,6 @@ async function createGitHubIssue({
     method: 'POST',
     body: {
       title,
-      // The field limits already fit; this holds GitHub's limit for any body.
       body: truncateText(body, GITHUB_ISSUE_BODY_MAX),
       labels,
     },
@@ -210,10 +173,6 @@ async function createGitHubIssue({
   });
 }
 
-/**
- * `Auto-reported error: TypeError at /summary`: the error name and path,
- * never the message, which is free text.
- */
 function autoReportedIssueTitle(telemetry: SanitizedErrorTelemetry) {
   const { name } = stackSummary(telemetry.stackTrace ?? '', 0);
   const { pathname } = new URL(telemetry.url);
@@ -268,15 +227,8 @@ export async function createAutoReportedIssue({
   repo: string;
   token: string;
   payload: ErrorTelemetry;
-  /**
-   * The asset paths the client build published; any other asset file is
-   * redacted. Without a list, every one is: no pass falls back to the
-   * asset's shape.
-   */
   knownAssets?: ReadonlySet<string>;
 }) {
-  // Never trust the client to have sanitized. Sanitize once: the lookup,
-  // title and body all use the same values.
   const telemetry = sanitizeErrorTelemetry(payload, { knownAssets });
   const fingerprint = await issueFingerprint(telemetry);
   const matchingIssue = await findMatchingOpenAutoReportedIssue({

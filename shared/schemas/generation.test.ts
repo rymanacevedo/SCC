@@ -12,7 +12,6 @@ import {
   SummarySchema,
 } from './generation.ts';
 
-// Expected values were captured from the full `zod` build before the client moved to `zod/mini`.
 const jsonSchemaFor = async (schema: Parameters<typeof zodSchema>[0]) =>
   await zodSchema(schema).jsonSchema;
 

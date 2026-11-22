@@ -11,7 +11,6 @@ test('reads report-assets.json through the ASSETS binding', async () => {
   expect([...(await load())]).toEqual(ASSETS);
   const [url, init] = fetch.mock.calls[0] ?? [];
   expect(url).toBe('https://app.invalid/report-assets.json');
-  // The loader's deadline reaches the binding.
   expect(init?.signal).toBeInstanceOf(AbortSignal);
 });
 

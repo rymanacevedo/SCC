@@ -17,36 +17,16 @@ import {
 } from '../../shared/schemas/generation.ts';
 import { withDeadline } from '../lib/deadline.ts';
 
-/**
- * Longest a section generator may run, retries and backoff included. A
- * reasoning model answers a section in well under this; past it the user is
- * better served by a 504 they can retry than by an open request.
- */
 export const SECTION_GENERATION_DEADLINE_MS = 45_000;
 
-/**
- * One retry absorbs a transient 429 or 5xx. More would spend the deadline on
- * backoff and multiply the cost of a struggling provider.
- */
 export const SECTION_GENERATION_MAX_RETRIES = 1;
 
-/**
- * Output-token limits per section. The default model reasons, and reasoning
- * tokens count against the limit, so each sits well above its visible JSON:
- * summaries are 3-5 sentences per job, possibly several jobs; skills and
- * experience are two short string lists, experience bullets being longer.
- */
 export const SECTION_MAX_OUTPUT_TOKENS = {
   summaries: 6000,
   skills: 3000,
   experience: 4000,
 } as const;
 
-/**
- * A section generator's model stopped at its output-token limit, so it gave
- * no usable output: JSON cut short, or no text at all when a reasoning model
- * spent the whole budget thinking.
- */
 export class SectionTokenLimitError extends Error {
   readonly maxOutputTokens: number;
   readonly outputTokens: number | undefined;
@@ -66,7 +46,6 @@ export class SectionTokenLimitError extends Error {
   }
 }
 
-/** The one bounded model call every section generator makes. */
 async function generateSection<OUTPUT>({
   prompt,
   model,
@@ -106,7 +85,6 @@ async function generateSection<OUTPUT>({
           instructions,
         });
       } catch (error) {
-        // Text cut short at the limit fails to parse inside generateText.
         if (
           NoObjectGeneratedError.isInstance(error) &&
           error.finishReason === 'length'
@@ -115,8 +93,6 @@ async function generateSection<OUTPUT>({
         }
         throw error;
       }
-      // Stopping at the limit with no text at all skips parsing, and reading
-      // `output` throws. Output that parsed and validated is complete: use it.
       if (result.finishReason === 'length') {
         try {
           return result.output;
@@ -129,7 +105,6 @@ async function generateSection<OUTPUT>({
   );
 }
 
-/** A section generator's result has an array or string over its limit. */
 export class GeneratedOutputLimitError extends Error {
   constructor() {
     super('Generated output exceeds its limits.');
@@ -137,11 +112,6 @@ export class GeneratedOutputLimitError extends Error {
   }
 }
 
-/**
- * Returns a section generator's result, or throws if it fails the bounded
- * schema for that generator (the Generated output limits). Each generator
- * applies its own, so a result never leaves unbounded.
- */
 function boundGeneratedOutput<T>(schema: z.core.$ZodType, output: T): T {
   if (!z.safeParse(schema, output).success)
     throw new GeneratedOutputLimitError();

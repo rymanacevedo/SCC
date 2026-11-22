@@ -345,7 +345,6 @@ test('education Component tests render inline year and cap errors and retain typ
   expect(html).toContain('Graduation Year must be a four-digit year.');
   expect(html).toContain('value="98"');
   expect(html).toContain('aria-invalid="true"');
-  // A typed tick survives the invalid re-render.
   expect(html).toMatch(/id="currentlyEnrolled"[^>]*checked/);
   const cap = await renderToString(
     <EducationPage
@@ -366,7 +365,6 @@ test('typing a half-finished school persists its Draft through the real page cal
   const stored = storage.read();
   if (!stored.ok) throw Error('read');
   const controller = educationControllers(storage)[1]!;
-  // Get the page's persistence callback through the controller render props.
   let props: Parameters<typeof EducationPage>[0]['props'] | undefined;
   const action = controller.controller.actions.index;
   if (typeof action !== 'function') throw Error('Expected index action');
@@ -437,6 +435,5 @@ test('Education level offers each level as a submit button and marks the saved c
       expect(button).toContain('aria-current="true"');
     else expect(button).not.toContain('aria-current');
   }
-  // The level buttons submit the form; there is no separate nav submit.
   expect(html).not.toContain('Next Step');
 });

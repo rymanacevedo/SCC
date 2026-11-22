@@ -11,7 +11,6 @@ export function completedSections(user: User) {
   return steps.flatMap((step) => {
     if (!step.section || user[step.section] === undefined) return [];
     let label: string = step.label;
-    // Entry Sections are edited through their Hub page.
     switch (step.section) {
       case 'experience':
         if (step.id !== 'experience-summary') return [];

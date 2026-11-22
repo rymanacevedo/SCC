@@ -1,7 +1,6 @@
 import { type Handle, on } from 'remix/component';
 import { Button } from '../ui/button.tsx';
 
-/** Shared by finish-up and the Preview; only the explicit confirm submits. */
 export function StartOver(handle: Handle<{ action: string }>) {
   let confirming = false;
   const toggle = (next: boolean) => () => {

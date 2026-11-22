@@ -1,7 +1,6 @@
 import type { Handle } from 'remix/component';
 import { z } from '../../shared/zod.ts';
 export type FormValues = Record<string, string | string[]>;
-/** Repeated names become arrays; pages never decode their own POST bodies. */
 export function formValues(data: FormData): FormValues {
   const values: FormValues = Object.create(null);
   for (const [name, entry] of data) {
@@ -25,12 +24,10 @@ export function entryFormValues(entry: object): FormValues {
     ]),
   ) as FormValues;
 }
-/** A checkbox answer: "on" when typed, "true" when read back from the User. */
 export function isChecked(value: unknown): boolean {
   return value === true || value === 'on' || value === 'true';
 }
 export const checkbox = () => z.pipe(z.transform(isChecked), z.boolean());
-/** A stored ISO date (or typed "YYYY-MM") as the value of a month input. */
 export function monthValue(value: FormValues[string] | undefined): string {
   if (typeof value !== 'string') return '';
   return /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : value;
@@ -62,7 +59,6 @@ export function formPending<P>(handle: Handle<P>) {
   };
 }
 
-/** Normalize zero, one, or many repeated string fields before page validation. */
 export function repeatedStrings() {
   return z.pipe(
     z.transform((value: unknown) => {
@@ -73,7 +69,6 @@ export function repeatedStrings() {
   );
 }
 
-/** Repeated strings with blank and duplicate answers dropped: a list builder's pending typed entry submits alongside the picked items. */
 export function filledStrings() {
   return z.pipe(
     repeatedStrings(),

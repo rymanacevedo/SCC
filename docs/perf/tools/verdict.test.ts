@@ -27,10 +27,6 @@ const passingAfter = () => {
   after.lighthouse[1].median.bytesScript = 75000;
   return after;
 };
-// Git exports GIT_DIR and friends to hooks, and inside a worktree they point at
-// the enclosing repository. Child processes that inherit them would then commit
-// and tag there instead of in the temporary repository, so every git call and
-// the verdict script itself run with those variables removed.
 function isolatedEnv() {
   const env: Record<string, string | undefined> = { ...process.env };
   for (const key of Object.keys(env)) {
@@ -129,10 +125,10 @@ test('FCP/LCP require both relative and absolute regressions', () => {
     const b = structuredClone(before);
     const a = passingAfter();
     b.lighthouse[0].median[metric] = 2000;
-    a.lighthouse[0].median[metric] = 2150; // >100 ms, but <10%
+    a.lighthouse[0].median[metric] = 2150;
     expect(createVerdict(b, a, thresholds)).toEndWith('Overall: PASS\n');
     b.lighthouse[0].median[metric] = 500;
-    a.lighthouse[0].median[metric] = 590; // >10%, but <100 ms
+    a.lighthouse[0].median[metric] = 590;
     expect(createVerdict(b, a, thresholds)).toEndWith('Overall: PASS\n');
   }
 });

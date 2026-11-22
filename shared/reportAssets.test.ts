@@ -3,7 +3,6 @@ import { createKnownAssetsLoader } from './reportAssets.ts';
 
 const ASSETS = ['/assets/index-BOZHR0Lk.js', '/assets/index-BhuUxWMn.css'];
 
-/** A fetcher that answers every read with `respond()`. */
 function fetcher(respond: () => Response | Promise<Response>) {
   return mock(async () => respond());
 }
@@ -21,7 +20,6 @@ test('reads the published list once and reuses it', async () => {
 test('a 404, the SPA fallback page, invalid JSON or a wrong shape is the empty set', async () => {
   for (const respond of [
     () => new Response('Not found', { status: 404 }),
-    // not_found_handling serves index.html for a path it does not have.
     () =>
       new Response('<!doctype html><html></html>', {
         headers: { 'Content-Type': 'text/html' },
@@ -77,7 +75,6 @@ test('a stalled body is cancelled at the deadline, and the next report reads aga
   expect((await load()).size).toBe(0);
   expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
   await tick();
-  // The body was cancelled, so the read ended: the next report retries.
   expect(cancelled).toBe(1);
   expect((await load()).size).toBe(0);
   expect(fetchAssets).toHaveBeenCalledTimes(2);
@@ -90,8 +87,6 @@ test('a fetch that ignores the abort holds the only read: reports get the empty 
   const load = createKnownAssetsLoader(fetchAssets, 10);
   expect((await load()).size).toBe(0);
   expect(fetchAssets.mock.calls[0]?.[0].aborted).toBe(true);
-  // Every later report shares the one settled result: no new read and no
-  // new handler on the stalled one.
   const first = load();
   for (let index = 0; index < 5; index += 1) {
     expect(load()).toBe(first);

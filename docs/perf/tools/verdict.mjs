@@ -190,7 +190,6 @@ export function createVerdict(
       const cell = beforeCell ?? afterCell;
       const context = describe(cell);
       for (const metric of metrics(cell)) {
-        // Historical baseline had no beacon and no excluded-byte column.
         function value(cell) {
           if (metric === 'bytesScriptThirdParty' && cell) {
             return cell.median[metric] ?? 0;

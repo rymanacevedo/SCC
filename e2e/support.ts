@@ -12,7 +12,6 @@ export async function openBrowser() {
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage();
-  // Local-only Flow tests: third-party beacon is covered by the dev-run Gate.
   await page.setRequestInterception(true);
   page.on('request', (request) => {
     const url = new URL(request.url());
@@ -56,7 +55,6 @@ export async function submit(
   await page.click(button);
   await waitPath(page, path);
 }
-/** The education level page submits through one button per level. */
 export const levelButton = (level: string) =>
   `button[name="educationLevel"][value="${level}"]`;
 export async function type(page: Page, name: string, value: string) {

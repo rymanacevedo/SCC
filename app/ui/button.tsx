@@ -2,7 +2,6 @@ import type { Handle, Props } from 'remix/component';
 import { classes } from './classes.ts';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'dark';
-/** `lg` is the old home page's call to action. */
 export type ButtonSize = 'md' | 'lg';
 
 const shared =
@@ -58,7 +57,6 @@ export function Button(handle: Handle<ButtonProps>) {
   };
 }
 
-// Props<'a'> is a union, so it can't be extended by an interface.
 type ButtonLinkProps = Props<'a'> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
