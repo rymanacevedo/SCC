@@ -34,7 +34,6 @@ export function createRouteErrorMiddleware<T>(
     try {
       return await next();
     } catch (error) {
-      // A disconnect is not a route failure. The Worker entry logs it once.
       if (isClientAbort(context.request, error)) throw error;
       const payload = context.get(key);
       const reportMetadata =
@@ -44,7 +43,6 @@ export function createRouteErrorMiddleware<T>(
         'timestamp' in payload &&
         'url' in payload
           ? {
-              // Valid ISO, but unbounded in length: logged in canonical form.
               timestamp: timestampForLog(payload.timestamp),
               url: redactUrlForLog(payload.url),
             }
@@ -53,7 +51,7 @@ export function createRouteErrorMiddleware<T>(
         error,
         generation,
       );
-      // oxlint-disable-next-line no-console -- Categorized failures belong in Workers Logs.
+      // oxlint-disable-next-line no-console
       console.error({
         route: path,
         category,
@@ -66,7 +64,6 @@ export function createRouteErrorMiddleware<T>(
   };
 }
 
-/** The `category` a route failure is logged under, for counting. */
 type RouteErrorCategory =
   | 'config'
   | 'timeout'
@@ -82,14 +79,6 @@ type RouteErrorClassification = {
   details: Record<string, unknown>;
 };
 
-/**
- * Maps a route failure to its log category, response status and the fields
- * logged with it. No free text is logged: strings are machine tokens
- * (`logToken`) or route patterns (`redactUrlForLog`). Upstream
- * failures are 502, a deadline is 504, a missing variable is 500; an
- * unrecognized error is 500 on a generation route and 502 on a reporting
- * route, whose only work is the GitHub call.
- */
 function classifyRouteError(
   error: unknown,
   generation: boolean,
@@ -114,9 +103,6 @@ function classifyRouteError(
       details: { githubStatus: error.status },
     };
   }
-  // Once the retry budget is spent the SDK wraps the provider's failures in a
-  // RetryError; classify the last one, so a 429 that outlasts the retry still
-  // counts as a provider failure with its status.
   const providerError = RetryError.isInstance(error) ? error.lastError : error;
   if (APICallError.isInstance(providerError)) {
     return {
@@ -144,7 +130,6 @@ function classifyRouteError(
       },
     };
   }
-  // The model answered, but with more than a section can hold: a bad upstream result.
   if (error instanceof GeneratedOutputLimitError) {
     return { category: 'generated_output_limit', status: 502, details: {} };
   }

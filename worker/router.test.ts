@@ -236,7 +236,6 @@ test('generated output at its limits is returned; one item or character over is 
     Array.from({ length: count }, () => 'x'.repeat(length));
   const summaries = (count: number, length = 10) =>
     items(count, length).map((text) => ({ title: text, text }));
-  // [path, model output at the limit, its route response, model outputs over it]
   const cases = [
     [
       '/api/skills',
@@ -290,7 +289,6 @@ test('a provider that stays rate-limited through the retry is a 502 logged as pr
       url: 'https://provider.example',
       requestBodyValues: {},
       statusCode: 429,
-      // Keeps the SDK's backoff short so the test stays fast.
       responseHeaders: { 'retry-after-ms': '1' },
       isRetryable: true,
     });
@@ -340,7 +338,6 @@ test('a generation route answers 504 when the model never answers within the dea
 
 test.each([
   ['truncated JSON', '{"summaries":[{"title":"Dev'],
-  // A reasoning model can spend the whole budget before writing any text.
   ['no text at all', ''],
 ])(
   'a generation cut off at its output-token limit with %s is a 502 logged as token_limit',
@@ -433,7 +430,6 @@ test('/api/errors keeps only the asset files the ASSETS binding publishes, read 
       await router.fetch(
         contractRequest(
           '/api/errors',
-          // The browser's pass, with the same published list.
           sanitizeErrorTelemetry(
             { ...report, stackTrace },
             { knownAssets: new Set(published) },
@@ -626,13 +622,11 @@ test('GET /api/flags returns every known flag and rejects other methods', async 
   }
 });
 
-// Each route's Body limit, in bytes; body.test.ts pins the jsonBodyLimit formula.
 const bodyLimits = {
   '/api/summaries': jsonBodyLimit(MAX_PROMPT_LENGTH),
   '/api/errors': jsonBodyLimit(ERROR_TELEMETRY_MAX_LENGTH),
   '/api/report-issue': jsonBodyLimit(USER_ISSUE_REPORT_MAX_LENGTH),
 } as const;
-/** A valid body padded with trailing JSON whitespace to exactly `bytes`. */
 const paddedBody = (payload: unknown, bytes: number) => {
   const json = JSON.stringify(payload);
   return json + ' '.repeat(bytes - json.length);
@@ -668,7 +662,6 @@ test('each route accepts a body of exactly its limit and refuses one byte over w
       await router.fetch(contractRequest(path, {}, { body: exact })),
       200,
     );
-    // Content-Length declared; neither the schema nor the model is reached.
     expect(
       (
         await assertResponse(
@@ -686,7 +679,6 @@ test('each route accepts a body of exactly its limit and refuses one byte over w
         )
       ).error,
     ).toBe('Request body too large');
-    // No Content-Length: the streamed byte count holds on both sides of the limit.
     const exactChunked = contractRequest(path, {}, { body: streamed(exact) });
     expect(exactChunked.headers.get('Content-Length')).toBeNull();
     await assertResponse(await router.fetch(exactChunked), 200);
@@ -741,11 +733,9 @@ test('a client disconnect aborts the provider call', async () => {
     controller.signal,
   );
   const error = spyOn(console, 'error').mockImplementation(() => {});
-  // The router rethrows the abort; the Worker entry turns it into a 499.
   await expect(
     createApiRouter(env, { resolveModel: () => model }).fetch(request),
   ).rejects.toMatchObject({ name: 'AbortError' });
   expect(providerSignal?.aborted).toBe(true);
-  // The route error middleware rethrows instead of logging a failure.
   expect(error).not.toHaveBeenCalled();
 });

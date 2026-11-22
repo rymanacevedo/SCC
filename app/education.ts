@@ -60,7 +60,6 @@ export function sortEducationEntries<T extends PartialEducationEntry>(
   });
 }
 
-/** "Degree | Level | School | Location", or "Certificate". */
 export function formatEducationCredential(education: PartialEducationEntry) {
   if (education.educationLevel === 'Certificate') return 'Certificate';
   const educationLevel =

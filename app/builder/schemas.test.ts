@@ -3,7 +3,6 @@ import { dataFor, errorsFor } from '../../test/validation.ts';
 import { detailsFormSchema } from './details.ts';
 import { skillsFormSchema } from './skills.ts';
 
-// Expected values were captured from the full `zod` build before the client moved to `zod/mini`.
 test('details drop blank and repeated answers and cap at six', () => {
   expect(
     dataFor(detailsFormSchema, { jobId: 'job-1', details: 'one' }),

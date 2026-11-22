@@ -19,7 +19,6 @@ export interface FinishUpProps extends BuilderPageProps {
   user: User;
 }
 
-/** The review card's order and headings, as on the old finish-up page. */
 const review: { section: Section; title: string }[] = [
   { section: 'info', title: 'Personal Information' },
   { section: 'summary', title: 'Professional Summary' },

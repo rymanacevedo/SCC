@@ -2,10 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import * as remixRoutes from 'remix/routes';
 import { APP_ROUTE_PATTERNS } from '../shared/routes.ts';
 
-// Records every pattern the app router and its controllers declare, then
-// passes the call through, so the real router is what the test reads.
 const declared = new Set<string>();
-// Read before the mock: the mock updates this module's live bindings.
 const { get, post } = remixRoutes;
 function record<F>(method: F): F {
   const call = method as unknown as (...args: unknown[]) => unknown;

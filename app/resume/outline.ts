@@ -25,7 +25,6 @@ export interface Block {
 }
 export type Outline = readonly Block[];
 
-/** The sole description of Resume content and ordering; no surface styling. */
 export function createOutline(user: User): Outline {
   const blocks: Block[] = [];
   const add = (section: Section, kind: BlockKind, text = '') =>

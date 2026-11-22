@@ -1,7 +1,6 @@
 import type { Handle, Props } from 'remix/component';
 import { classes } from './classes.ts';
 
-/** outlined: bordered box (entries, suggestion lists); raised: shadowed panel split into sections. */
 export type CardVariant = 'outlined' | 'raised';
 
 const variants: Record<CardVariant, string> = {

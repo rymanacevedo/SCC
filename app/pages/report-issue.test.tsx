@@ -89,7 +89,6 @@ test('report modal submits the page and time once, and shows failure then succes
   );
   cleanups.push(view.cleanup);
   const dialog = view.$('dialog') as HTMLDialogElement;
-  // happy-dom has no native modal implementation; real browser coverage exercises it.
   dialog.showModal = () => dialog.setAttribute('open', '');
   dialog.close = () => dialog.removeAttribute('open');
   await view.act(() => (view.$('footer button') as HTMLButtonElement).click());
@@ -110,7 +109,6 @@ test('report modal submits the page and time once, and shows failure then succes
   expect(requests[0]).toEqual({
     path: '/api/report-issue',
     body: {
-      // happy-dom's about:blank is not an http(s) URL: the unknown route.
       url: 'https://app.invalid/[unknown-route]',
       timestamp: expect.any(String),
     },
@@ -140,7 +138,6 @@ test('report modal submits the page and time once, and shows failure then succes
 test('the report sends only a route-pattern URL and the time', async () => {
   const bodies = captureFetchBodies();
   const previousUrl = window.location.href;
-  // happy-dom starts on about:blank; its setURL is the only way to navigate.
   const { happyDOM } = window as unknown as {
     happyDOM: { setURL(url: string): void };
   };

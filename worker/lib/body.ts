@@ -1,15 +1,8 @@
 import { readBoundedText } from '../../shared/boundedText.ts';
 
-/** The most UTF-8 bytes JSON spends on one UTF-16 code unit: a `\uXXXX` escape. */
 const MAX_JSON_BYTES_PER_CODE_UNIT = 6;
-/** Room for keys, punctuation and whitespace around a body's strings. */
 const JSON_STRUCTURE_BYTES = 1024;
 
-/**
- * The Body limit for a route whose schema caps its strings at `maxStringLength`
- * code units in total. Sized for the worst-case encoding, so every body the
- * schema would accept fits, and the schema, not the byte count, refuses the rest.
- */
 export function jsonBodyLimit(maxStringLength: number) {
   return maxStringLength * MAX_JSON_BYTES_PER_CODE_UNIT + JSON_STRUCTURE_BYTES;
 }
@@ -18,11 +11,6 @@ export type BoundedJson =
   | { ok: true; value: unknown }
   | { ok: false; reason: 'too_large' };
 
-/**
- * Reads a JSON body, or reports it too large without buffering it whole. A
- * declared Content-Length over the limit is refused before any byte is read;
- * the streamed count still holds when the header is absent or understated.
- */
 export async function readBoundedJson(
   request: Request,
   maxBytes: number,
@@ -34,6 +22,5 @@ export async function readBoundedJson(
   }
   const { text, truncated } = await readBoundedText(request.body, maxBytes);
   if (truncated) return { ok: false, reason: 'too_large' };
-  // JSON.parse throws on malformed input; callers map that to a 400.
   return { ok: true, value: JSON.parse(text) };
 }

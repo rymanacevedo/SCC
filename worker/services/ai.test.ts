@@ -58,7 +58,6 @@ describe.each(sectionGenerators)(
           url: 'https://provider.example',
           requestBodyValues: {},
           statusCode: 503,
-          // Keeps the SDK's backoff short so the test stays fast.
           responseHeaders: { 'retry-after-ms': '1' },
           isRetryable: true,
         });
@@ -73,7 +72,6 @@ describe.each(sectionGenerators)(
       jest.useFakeTimers();
       const model = createMockJsonModel(output);
       let providerSignal: AbortSignal | undefined;
-      // Never settles and ignores the signal: the worst-behaved upstream.
       model.doGenerate = ({ abortSignal }) => {
         providerSignal = abortSignal;
         return new Promise(() => {});

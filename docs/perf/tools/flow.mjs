@@ -1,5 +1,3 @@
-// Lighthouse user flow: seeded /summary and /resume Preview with Revisit typing.
-// Usage: CHROME_PATH=... node flow.mjs --origin=https://host --out=/dir --formFactor=mobile|desktop --ai=mock|live
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {Browser, computeExecutablePath} from '@puppeteer/browsers';
 import {desktopConfig, startFlow} from 'lighthouse';
@@ -32,7 +30,6 @@ if (ai === 'mock') {
     }
   });
 }
-// sessionStorage is per tab; seed it in the tab Lighthouse will drive.
 await page.goto(`${origin}/`, {waitUntil: 'networkidle0'});
 await page.evaluate((u) => sessionStorage.setItem('scc:user', JSON.stringify(u)), seededEnvelope());
 
@@ -41,7 +38,7 @@ const flow = await startFlow(page, {
   config: formFactor === 'desktop' ? desktopConfig : undefined,
 });
 await flow.navigate(`${origin}/summary`, {name: `/summary seeded, ai=${ai}`});
-await page.waitForSelector('h3', {timeout: 60_000}); // example summary cards rendered
+await page.waitForSelector('h3', {timeout: 60_000});
 await flow.navigate(`${origin}/resume`, {name: '/resume seeded (warm: storage not reset)'});
 await page.waitForSelector('a[href="/summary"]');
 await flow.startTimespan({name: '/resume Preview Revisit interaction'});

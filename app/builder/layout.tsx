@@ -20,10 +20,8 @@ interface LayoutProps extends BuilderPageProps {
   subtitle?: string;
   children: RemixNode;
   suggestions?: RemixNode;
-  /** From md up, show Suggestions in the left column; the form stays first in DOM order. */
   suggestionsFirst?: boolean;
   beforeForm?: RemixNode;
-  /** Pages whose own buttons submit the form (education level) drop the nav submit. */
   hideSubmit?: boolean;
 }
 export function BuilderLayout(handle: Handle<LayoutProps>) {
@@ -36,7 +34,6 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     if (errors && errors !== focusedErrors) {
       focusedErrors = errors;
       handle.queueTask(() => {
-        // Reused SPA frames receive new errors; wait until the frame is attached.
         requestAnimationFrame(() => {
           if (!handle.signal.aborted)
             form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
@@ -47,7 +44,6 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
     let submitLabel = 'Next Step';
     if (step === 'finish-up') submitLabel = 'Preview Resume';
     else if (step.endsWith('-summary')) {
-      // The old Hubs named the next section: "Continue to Education".
       const section = steps.find(({ path }) => path === nav.next)?.section;
       submitLabel = section
         ? `Continue to ${section[0].toUpperCase()}${section.slice(1)}`
@@ -73,7 +69,6 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
             data-rmx-history="push"
             data-rmx-reset-scroll="false"
             noValidate
-            // Push intentionally permits a duplicate history entry after a 400.
             className="space-y-6"
             aria-busy={pending.pending}
             mix={[
@@ -124,7 +119,6 @@ interface FieldProps extends Omit<UiFieldProps, 'value' | 'errors'> {
   values: FormValues;
   errors?: FieldErrors;
 }
-/** A Field bound to a builder page's form values and Field errors. */
 export function BuilderField(handle: Handle<FieldProps>) {
   return () => {
     const { name, values, errors, ...field } = handle.props;

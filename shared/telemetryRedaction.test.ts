@@ -9,7 +9,6 @@ import {
   toRouteUrl,
 } from './telemetryRedaction.ts';
 
-// A key, assembled at runtime so none sits in source.
 const KEY = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
 
 describe('toRouteUrl', () => {
@@ -20,7 +19,6 @@ describe('toRouteUrl', () => {
       ['http://scc.example', '/'],
       ['http://127.0.0.1:5173/summary/?x=1', '/summary'],
       ['https://janedoe.example/experience-entry', '/experience-entry'],
-      // A second pass keeps what the first made.
       [`${REPORT_ORIGIN}/finish-up`, '/finish-up'],
       [`${REPORT_ORIGIN}/[unknown-route]`, '/[unknown-route]'],
     ])
@@ -83,7 +81,6 @@ describe('free text is reduced to its length', () => {
     const once = omittedText('message', 'Save failed for jane.doe@example.com');
     expect(omittedText('message', once)).toBe(once);
     expect(once).toBe('[message omitted: 36 characters]');
-    // A crafted placeholder cannot carry a number through.
     const crafted = '[message omitted: 5551234567 characters]';
     expect(omittedText('message', crafted)).toBe(
       '[message omitted: 40 characters]',
@@ -103,7 +100,6 @@ describe('free text is reduced to its length', () => {
       expect(omittedText('message', crafted)).toBe(
         `[message omitted: ${crafted.length} characters]`,
       );
-    // A recognized placeholder is rebuilt from its number, not passed on.
     expect(omittedText('message', '[message omitted: 0012 characters]')).toBe(
       '[message omitted: 12 characters]',
     );
@@ -169,11 +165,9 @@ describe('markTruncated', () => {
     expect(markTruncated('word '.repeat(50), 23)).toBe(
       `word word ${TRUNCATED}`,
     );
-    // Ten code units fit before the marker; the emoji at 9-10 straddles it.
     const cut = markTruncated(`${'a'.repeat(9)}${'😀'.repeat(10)}`, 23);
     expect(cut).toBe(`${'a'.repeat(9)}${TRUNCATED}`);
     expect(cut.isWellFormed()).toBe(true);
-    // Text the caller already cut is marked even when it fits.
     expect(markTruncated('short', 23)).toBe(`short${TRUNCATED}`);
   });
 });

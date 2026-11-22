@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 
-/* Self-hosted so first paint never waits on a third-party font origin. */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -19,7 +18,6 @@
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* Tailwind 4 borders default to currentColor; the old design relied on gray-200. */
 @layer base {
   *,
   ::after,

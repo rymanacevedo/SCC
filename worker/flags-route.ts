@@ -1,7 +1,4 @@
 import { flagsBinding, readFlags } from './flags.ts';
-// The one route exposing the resolved flag set: GET /api/flags returns
-// {"flags": {...}} with every known flag. Register it in the Worker's API
-// router; it needs no request body and reveals nothing beyond the flag names.
 import { apiError } from './lib/response.ts';
 
 export async function handleFlagsRequest(

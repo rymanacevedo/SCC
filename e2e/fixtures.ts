@@ -8,7 +8,6 @@ export const user = JSON.parse(
 export function summaryResponse() {
   return JSON.stringify(summaries);
 }
-// The baseline User lacks the new prerequisites; preserve its bytes and adapt at the seed seam.
 export function seededEnvelope() {
   return {
     version: 1,

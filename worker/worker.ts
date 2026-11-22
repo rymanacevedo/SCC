@@ -10,17 +10,15 @@ export function createWorker(api: {
       try {
         return await api.fetch(request);
       } catch (error) {
-        // The router rethrows the abort reason once the client disconnects. Nobody
-        // reads this response, so log the cancellation without counting a failure.
         if (isClientAbort(request, error)) {
-          // oxlint-disable-next-line no-console -- Cancellations belong in Workers Logs.
+          // oxlint-disable-next-line no-console
           console.log({
             category: 'client_aborted',
             path: pathForLog(request.url),
           });
           return apiError(499, 'Client closed request');
         }
-        // oxlint-disable-next-line no-console -- Worker failures belong in Workers Logs.
+        // oxlint-disable-next-line no-console
         console.error({
           category: 'unknown',
           message: 'router.fetch threw',

@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Runs inside the sandbox before each agent iteration (see config.ts hooks).
-# Installs dependencies fresh from the lockfile every time: a worktree never
-# inherits node_modules from the host, and a sandbox that already installed once
-# may have merged branches that changed the lockfile since. A frozen install on
-# top of an existing tree does not prune packages the lockfile no longer places
-# there (a stale nested copy of a package shadows the hoisted one for TypeScript
-# and Bun), so the tree is wiped first. The Bun cache is a shared host mount, so
-# the install is a copy from cache rather than a download; the lock below keeps
-# concurrent sandboxes from populating that cache at the same time.
 set -euo pipefail
 
 codex_mount=/mnt/host-codex
@@ -67,8 +58,6 @@ NODE
 }
 
 remove_installed_dependencies() {
-  # Every node_modules directory in the worktree, including nested workspace
-  # and tooling copies, but never descending into one to look for more.
   find . -name node_modules -type d -prune -exec rm -rf {} +
 }
 

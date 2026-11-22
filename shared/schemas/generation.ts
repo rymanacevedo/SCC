@@ -1,18 +1,7 @@
 import { z } from '../zod.ts';
 
-/**
- * Caps on a section generator's result: at most `items` entries in any array
- * and `length` code units in any string. Far above a real section (top 5
- * suggestions, a summary of a few sentences per job).
- */
 export const GENERATED_OUTPUT_LIMITS = { items: 50, length: 2_000 } as const;
 
-/**
- * Each output shape is declared once and built twice. The provider gets the
- * unbounded schema: strict-mode structured outputs may reject `maxItems` and
- * `maxLength` in its JSON Schema. The bounded schema, with the Generated output
- * limits on every array and string, is the Worker's own check of the result.
- */
 function outputCaps(bounded: boolean) {
   const { items, length } = GENERATED_OUTPUT_LIMITS;
   return {
@@ -23,7 +12,6 @@ function outputCaps(bounded: boolean) {
   };
 }
 
-/** Skills and Experience share one shape: the expert's top picks, then others. */
 function suggestionsSchema(kind: string, bounded = false) {
   const { text, list } = outputCaps(bounded);
   return z.object({
@@ -64,11 +52,6 @@ export const BoundedSkillsSchema = suggestionsSchema('skills', true);
 export const BoundedExperienceSchema = suggestionsSchema('experience', true);
 export const BoundedSummarySchema = summarySchema(true);
 
-/**
- * The longest prompt a Generation request may carry, in UTF-16 code units. A
- * full resume's jobs serialize to a few thousand; this bounds Worker CPU and the
- * provider payload without refusing a real one.
- */
 export const MAX_PROMPT_LENGTH = 50_000;
 
 export const generationRequestSchema = z.object({

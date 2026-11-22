@@ -3,7 +3,6 @@ import { isNotFoundResponse, reportErrorTelemetry } from './error-reporting.ts';
 import { ErrorPage, NotFoundPage } from './pages/error.tsx';
 import { Shell } from './pages/shell.tsx';
 
-/** Component and navigation errors occur after the controller response. */
 export function installErrorReporting(app: Runtime) {
   app.addEventListener('error', (event) => {
     void reportErrorTelemetry(event.error);

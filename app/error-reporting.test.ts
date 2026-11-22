@@ -32,8 +32,6 @@ test('auto-report allowlists telemetry fields, dedupes and ignores 404 Responses
   expect(JSON.parse(bodies[0] ?? '{}')).toEqual({
     url: 'https://app.invalid/info',
     message: `[message omitted: ${error.message.length} characters]`,
-    // A real stack, as canonical frames; a source path is not a bundle
-    // asset, so it is redacted.
     stackTrace: expect.stringMatching(
       /^Error\n    at <anonymous> \(https:\/\/app\.invalid\/\[redacted\]:\d+:\d+\)/,
     ),
@@ -48,15 +46,12 @@ test('auto-report sends a route-pattern URL and a redacted message and stack', a
   });
   await reportErrorTelemetry(error, SENSITIVE_URL);
   expect(bodies).toHaveLength(1);
-  // The whole body, unmasked: no file name the build did not publish
-  // (`/assets/password_correcthorse-abcdef12.js`) leaves the page.
   expectNoSensitiveValues(bodies[0] ?? '');
   const sent = JSON.parse(bodies[0] ?? '{}');
   expect(sent.url).toBe('https://app.invalid/summary');
   expect(sent.message).toBe(
     `[message omitted: ${SENSITIVE_MESSAGE.length} characters]`,
   );
-  // The browser holds the stack to the published list, as the Worker does.
   expect(sent.stackTrace).toBe(SANITIZED_SENSITIVE_STACK);
 });
 test('with no published list, every asset file is redacted before sending', async () => {

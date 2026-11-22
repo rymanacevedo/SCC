@@ -1,4 +1,3 @@
-// Explicit offline browser demo: bun test/reporting-flow.ts
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { ERROR_MODAL_MESSAGE } from '../app/error-reporting.ts';
@@ -22,7 +21,6 @@ const server = Bun.serve({
         path,
         body: (await request.json()) as Record<string, unknown>,
       });
-      // Stub both GitHub reporting endpoints; no external requests.
       return Response.json({ ok: true });
     }
     return new Response(
@@ -59,11 +57,9 @@ try {
       path === '/throw' ? 1 : 2,
     );
   }
-  // The error page's primary Report an issue opens its own dialog.
   await page.click('main section button');
   const dialog = 'main section dialog';
   assert.equal(await page.$eval(dialog, (node) => node.open), true);
-  // A User report carries only the page and the time: there is no text box.
   assert.equal(await page.$(`${dialog} textarea`), null);
   await page.click(`${dialog} button[type="submit"]`);
   await page.waitForFunction(() =>
@@ -73,8 +69,6 @@ try {
   );
   const issue = reports.find((report) => report.path === '/api/report-issue');
   assert.ok(issue);
-  // The report carries a route pattern, never the path: a demo-only route is
-  // on no route list, so it is the unknown route.
   assert.equal(issue.body.url, 'https://app.invalid/[unknown-route]');
   assert.deepEqual(Object.keys(issue.body).sort(), ['timestamp', 'url']);
   await page.click(`${dialog} button[type="button"]`);

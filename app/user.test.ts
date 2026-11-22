@@ -140,7 +140,6 @@ test('unparseable envelope is backed up, replaced by a fresh User, and reported 
 test('the default storage telemetry sends a route-pattern URL', async () => {
   const originalFetch = globalThis.fetch;
   const previousUrl = window.location.href;
-  // happy-dom starts on about:blank; its setURL is the only way to navigate.
   const { happyDOM } = window as unknown as {
     happyDOM: { setURL(url: string): void };
   };

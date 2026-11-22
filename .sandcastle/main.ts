@@ -31,7 +31,6 @@ const batchId = Date.now().toString();
 const batchBranch = `sandcastle/batch-${batchId}`;
 const agent = () => sandcastle.codex(SANDCASTLE_MODEL);
 
-// Each run submits one batch for human review before selecting more work.
 const batch = await sandcastle.createSandbox({
   branch: batchBranch,
   baseBranch,

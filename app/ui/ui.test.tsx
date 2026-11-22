@@ -66,7 +66,6 @@ test('ButtonLink is a link styled as a button', async () => {
   expect(html).toContain('<a');
   expect(html).toContain('href="/info"');
   expect(html).toContain(buttonClass('secondary'));
-  // The large size replaces the medium padding, text and shadow, never adds to them.
   const large = buttonClass('primary', undefined, 'lg');
   expect(large).toContain('px-8 py-4 text-lg');
   expect(large).not.toContain('px-4');
@@ -93,7 +92,6 @@ test('an invalid Field shows red Field error text wired to the control', async (
 });
 
 test('a select Field marks the current value and offers a placeholder', async () => {
-  // happy-dom mis-resolves option.selected on detached options; assert markup.
   const html = await renderToString(
     <Field
       name="state"

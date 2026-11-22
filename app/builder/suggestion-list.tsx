@@ -10,27 +10,18 @@ import {
   type Suggestions,
 } from './suggestions.ts';
 
-/**
- * Shared UI for the Suggestion pages (experience details, skills, summary):
- * the Suggestions panel with its loading and failure states, the "+" Suggestion
- * rows, the bordered box of picked items, the typed-entry input and the cap notice.
- */
-
 interface SuggestionPanelProps {
   title: string;
   suggestions: Pick<Suggestions<unknown>, 'state' | 'failure' | 'retry'>;
-  /** The Suggestions; rendered only once they have loaded. */
   children?: RemixNode;
 }
 
-/** Heading plus the Suggestions, or the loading or failure state in their place. */
 export function SuggestionPanel(handle: Handle<SuggestionPanelProps>) {
   return () => {
     const { title, suggestions, children } = handle.props;
     const { state, failure } = suggestions;
     let body: RemixNode = children;
     if (state === 'idle' || state === 'loading') {
-      // Reserves the panel's height so the page doesn't shift once Suggestions load.
       body = (
         <Spinner label="Loading Suggestions…" className="h-80 items-start" />
       );
@@ -63,17 +54,14 @@ export function SuggestionPanel(handle: Handle<SuggestionPanelProps>) {
 export interface SuggestionGroup {
   title: string;
   items: readonly string[];
-  /** Adds the picked Suggestion to this group's answers. */
   pick: (text: string) => void;
 }
 
 interface SuggestionGroupsProps {
   groups: readonly SuggestionGroup[];
-  /** True once the user can't pick this Suggestion (already picked, or at the cap). */
   disabled: (text: string) => boolean;
 }
 
-/** Bordered box of Suggestion groups, each a heading and a list of "+" rows. */
 export function SuggestionGroups(handle: Handle<SuggestionGroupsProps>) {
   return () => {
     const { groups, disabled } = handle.props;
@@ -102,16 +90,13 @@ export function SuggestionGroups(handle: Handle<SuggestionGroupsProps>) {
 
 interface PickedBoxProps {
   title: string;
-  /** Short line under the title, such as how many picks remain. */
   note?: string;
-  /** Shown inside the box while nothing is picked. */
   emptyText: string;
   empty: boolean;
   className?: string;
   children?: RemixNode;
 }
 
-/** Titled, bordered box holding the items the user picked or wrote. */
 export function PickedBox(handle: Handle<PickedBoxProps>) {
   return () => {
     const { title, note, emptyText, empty, className, children } = handle.props;
@@ -130,17 +115,14 @@ export function PickedBox(handle: Handle<PickedBoxProps>) {
 
 interface ManualEntryProps {
   id: string;
-  /** Submits a typed entry the user didn't press Enter on; the schema drops blanks. */
   name: string;
   label: string;
   placeholder: string;
-  /** Returns false to keep the text in the input, such as for a duplicate. */
   onAdd: (text: string) => boolean;
   invalid?: boolean;
   describedBy?: string;
 }
 
-/** Text input that adds the typed entry when the user presses Enter. */
 export function ManualEntry(handle: Handle<ManualEntryProps>) {
   let input: HTMLInputElement | undefined;
   return () => {
@@ -175,7 +157,6 @@ export function ManualEntry(handle: Handle<ManualEntryProps>) {
   };
 }
 
-/** Visible notice that the list is full; replaces the typed-entry input. */
 export function LimitNotice(handle: Handle<{ max: number; noun: string }>) {
   return () => (
     <p role="status" className="text-sm text-yellow-700">

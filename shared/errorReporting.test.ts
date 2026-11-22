@@ -21,7 +21,6 @@ const telemetry = {
     'TypeError: Broken page\n    at render (https://scc.example/assets/main-abcdef12.js:12:34)',
 };
 afterEach(resetReportedTelemetryForTests);
-// Two builds of the same file, both published.
 const PUBLISHED: ReadonlySet<string> = new Set([
   ...KNOWN_TEST_ASSETS,
   '/assets/main-ghijkl34.js',
@@ -38,7 +37,6 @@ test("fingerprint is the error name, route and top frames' files, normalized acr
       files: ['https://app.invalid/assets/main-[hash].js'],
     }),
   );
-  // Another build, another time, another message: the same error.
   expect(
     buildTelemetryFingerprint({
       ...telemetry,
@@ -48,8 +46,6 @@ test("fingerprint is the error name, route and top frames' files, normalized acr
         'TypeError: other text\n    at render (https://scc.example/assets/main-ghijkl34.js:56:78)',
     }),
   ).toBe(buildTelemetryFingerprint(telemetry));
-  // Another name, route or file: another error. A function name is never
-  // kept, so it does not split one.
   expect(
     buildTelemetryFingerprint({
       ...telemetry,
@@ -110,7 +106,6 @@ test('normalizes an oversized timestamp to a bounded canonical value in both rep
   expect(sanitizeReportTimestamp('2026-10-13T05:00:00+05:00')).toBe(
     '2026-10-13T00:00:00.000Z',
   );
-  // An unparseable timestamp becomes the epoch, still a valid ISO datetime.
   expect(sanitizeReportTimestamp(`x${'9'.repeat(70_000)}`)).toBe(
     '1970-01-01T00:00:00.000Z',
   );

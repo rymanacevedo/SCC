@@ -3,7 +3,6 @@ import type { RemixNode } from 'remix/component/jsx-runtime';
 
 interface ChipProps {
   children?: RemixNode;
-  /** Shows a × button labelled by removeLabel. */
   onRemove?: () => void;
   removeLabel?: string;
 }

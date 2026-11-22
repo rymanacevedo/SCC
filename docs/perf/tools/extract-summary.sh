@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Usage: extract-summary.sh <perf-dir> [thresholds.json]   -> merges lighthouse medians into <perf-dir>/summary.json and writes tier1.md (table)
-# Contract: Lighthouse 13.x audit IDs below; LHCI manifest.json fields url/isRepresentativeRun/jsonPath.
 set -euo pipefail
 dir="$1"
 thresholds="${2:-$(dirname "$0")/../thresholds.json}"
@@ -41,7 +39,6 @@ for manifest in "$dir"/lighthouse/*/*/manifest.json; do
   ' "$runs" >> "$rows"
   rm -f "$runs"
 done
-# Merge into an existing summary.json (keeps bundle/api/flows keys) or create it.
 if [ -f "$dir/summary.json" ]; then
   jq -s '.[0] + {lighthouse: .[1:]}' "$dir/summary.json" "$rows" > "$dir/summary.tmp"
 else

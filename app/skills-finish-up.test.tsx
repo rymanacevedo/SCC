@@ -43,7 +43,6 @@ test('Skills factory GET/400/303 preserves User on invalid submit and supports z
       .status,
   ).toBe(400);
   expect(mock.getItem(STORAGE_KEY)).toBe(before);
-  // A blank typed entry submits alongside the chips and is dropped.
   expect(
     (await router.fetch(skillsRequest(['1', '2', '3', '4', '5', '6', ''])))
       .status,
@@ -193,7 +192,6 @@ test('Skills markup carries values and errors; finish-up lists completed Section
   for (const label of ['Info', 'Experience', 'Education', 'Skills', 'Summary'])
     expect(finish).toContain(`Edit ${label}`);
   expect(finish).not.toContain('name="confirm"');
-  // The review card shows each Section's answers in the old order.
   const doc = new DOMParser().parseFromString(finish, 'text/html');
   expect(
     Array.from(doc.querySelectorAll('section[aria-label] h2')).map(

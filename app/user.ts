@@ -48,7 +48,6 @@ export function createUserStorage(
   telemetry: (message: string) => void = (message) => {
     queueMicrotask(() => {
       void reportError(
-        // No stack, so no asset file to keep.
         sanitizeErrorTelemetry(
           {
             message,
@@ -82,7 +81,6 @@ export function createUserStorage(
       try {
         parsed = envelopeSchema.parse(JSON.parse(raw));
       } catch {
-        // Back up before replacing: if either write fails, preserve the original.
         storage().setItem(BACKUP_KEY, raw);
         const result = save(createEnvelope());
         if (result.ok)
@@ -147,7 +145,6 @@ export function createUserStorage(
       Object.assign(envelope.drafts, { [section]: parsed.data });
     });
   }
-  /** Commit by identity and clear only this Section's Draft in the same write. */
   function writeEntry<K extends keyof Drafts>(
     section: K,
     entry: NonNullable<User[K]>[number],
@@ -224,7 +221,6 @@ export type UserStorage = ReturnType<typeof createUserStorage>;
 
 const escapePromptText = (text: string) =>
   text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-/** The only serializer for Generation requests derived from the stored User. */
 export function serializePrompt(user: User): string | undefined {
   if (!user.experience?.length) return undefined;
   return user.experience

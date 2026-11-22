@@ -53,7 +53,6 @@ const applicationErrors: Middleware = async (context, next) => {
   }
 };
 
-// Importing this module constructs routes only; browser startup lives in main.
 export function createAppRouter(storage: UserStorage = userStorage) {
   const router = createRouter({
     middleware: [

@@ -1,7 +1,5 @@
-/** The upstream services the Worker calls under a deadline. */
 export type Upstream = 'provider' | 'github';
 
-/** An upstream call ran past its deadline and was aborted. */
 export class UpstreamTimeoutError extends Error {
   readonly upstream: Upstream;
   readonly timeoutMs: number;
@@ -14,13 +12,6 @@ export class UpstreamTimeoutError extends Error {
   }
 }
 
-/**
- * Runs `run` with a signal that aborts after `timeoutMs`, or when `signal`
- * (the client's) aborts first. Settles as soon as either fires, even if the
- * upstream ignores the signal, so a hung upstream never holds the request.
- * On abort it rejects with the signal's reason: an `UpstreamTimeoutError` for
- * the deadline, the client's own reason for a disconnect.
- */
 export async function withDeadline<T>(
   {
     upstream,
@@ -44,11 +35,9 @@ export async function withDeadline<T>(
   merged.addEventListener('abort', onAbort, { once: true });
   if (merged.aborted) onAbort();
   try {
-    // A client already gone gets no upstream call at all.
     if (merged.aborted) return await aborted;
     return await Promise.race([run(merged), aborted]);
   } catch (error) {
-    // Once aborted, the abort explains the failure, whatever the upstream threw.
     throw merged.aborted ? merged.reason : error;
   } finally {
     clearTimeout(timer);

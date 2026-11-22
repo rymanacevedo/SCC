@@ -8,7 +8,6 @@ export function formatExperienceLocation(
   return [job.city, job.state].filter(Boolean).join(', ');
 }
 
-/** month: "March 2021"; year: "2021". Unparseable dates are shown as typed. */
 function formatExperienceDate(value: string | undefined, style: DateStyle) {
   if (!value) return '';
   const parsed = new Date(value);

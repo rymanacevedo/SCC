@@ -1,7 +1,6 @@
 import { z } from '../zod.ts';
 import { EducationLevelSchema } from './education.ts';
 
-// Persistence validates shape, not the limits imposed by individual Builder pages.
 export const storedInfoSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
@@ -31,7 +30,6 @@ export const storedEducationSchema = z.object({
   graduationDate: z.optional(z.string()),
   currentlyEnrolled: z.optional(z.boolean()),
 });
-/** One entry of each list Section, validated alone when it is committed. */
 export const entrySchemas = {
   experience: storedExperienceSchema,
   education: storedEducationSchema,

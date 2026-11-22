@@ -13,9 +13,7 @@ export interface FieldProps {
   value?: string;
   errors?: readonly string[];
   type?: 'text' | 'tel' | 'email' | 'month';
-  /** Disabled controls are greyed out and left out of the form submission. */
   disabled?: boolean;
-  /** Renders a select with an empty placeholder option first. */
   options?: readonly FieldOption[];
   placeholder?: string;
   textarea?: boolean;
@@ -131,7 +129,6 @@ export function Field(handle: Handle<FieldProps>) {
   };
 }
 
-/** Red Field error text under an answer; the answer points at it with aria-describedby. */
 export function FieldError(
   handle: Handle<{ id: string; errors?: readonly string[] }>,
 ) {

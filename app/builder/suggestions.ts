@@ -1,7 +1,6 @@
 import type { Handle } from 'remix/component';
 import type { FailureCode, Result } from '../../shared/result.ts';
 
-/** Why a Builder page could not offer Suggestions; see the Suggestion failure glossary entry. */
 export type SuggestionFailure = 'region' | 'offline' | 'generator';
 
 const WRITE_YOUR_OWN = 'You can still write your own answer.';
@@ -17,7 +16,6 @@ export function suggestionFailure(code: FailureCode): SuggestionFailure {
   return 'generator';
 }
 
-/** Only the region rules out retrying. */
 export const canRetrySuggestions = (failure: SuggestionFailure) =>
   failure !== 'region';
 
@@ -57,7 +55,6 @@ export function loadSuggestions<T, P>(
     get failure() {
       return failure;
     },
-    /** Loads again after a retryable Suggestion failure; otherwise does nothing. */
     retry() {
       if (state !== 'error' || !failure || !canRetrySuggestions(failure))
         return;

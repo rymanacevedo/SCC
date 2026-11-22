@@ -14,7 +14,6 @@ export interface HubEntry {
 interface HubLayoutProps extends BuilderPageProps {
   step: StepId;
   title: string;
-  /** Form field that names the entry to delete, read by createEntryHub. */
   idField: string;
   entries: HubEntry[];
   addHref: string;
@@ -23,7 +22,6 @@ interface HubLayoutProps extends BuilderPageProps {
 
 const actionClass = 'cursor-pointer underline hover:text-blue-700';
 
-/** A Hub page: numbered entry cards with Edit and Delete, then "add another". */
 export function HubLayout(handle: Handle<HubLayoutProps>) {
   return () => {
     const { idField, entries, addHref, addLabel, ...layout } = handle.props;

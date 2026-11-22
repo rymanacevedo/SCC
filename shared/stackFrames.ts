@@ -9,44 +9,18 @@ import {
   TRUNCATED,
 } from './telemetryRedaction.ts';
 
-/**
- * Stack traces as structured frames, closed-world: nothing the browser can
- * choose is kept. Each line must parse as a V8 (`at fn (loc)`, `at loc`) or
- * Firefox/Safari (`fn@loc`) frame and is re-emitted canonically as
- * `    at <anonymous> (<file>:<line>:<col>)`: the function name is always
- * dropped, the file is one the app ships or `https://app.invalid/[redacted]`,
- * and the line and column are bounded numbers. Any other line becomes
- * `    [frame omitted]`. The first line, when it is not a frame, is reduced
- * to the error name: its message is free text, never kept.
- */
-
 export type StackSanitizeOptions = {
-  /**
-   * The asset paths the client build published (`report-assets.json`), as
-   * the browser and the Worker each read it. An asset file is kept only if
-   * it is in the set; with the empty set (`NO_ASSETS`: the list could not be
-   * read, or Workers Logs, whose stacks hold no client asset) every asset
-   * file is redacted.
-   */
   knownAssets: ReadonlySet<string>;
 };
 
 const FRAME_OMITTED = '    [frame omitted]';
-// A line longer than this is not a frame anyone wrote.
 const FRAME_LINE_MAX = 1_000;
 const LOCATION = /^(.+):(\d{1,9}):(\d{1,9})$/;
-// The largest bundle is about 417 KB on one minified line: a real column
-// has at most 6 digits, a real line at most 5. A frame past either is omitted.
 const LINE_DIGITS_MAX = 5;
 const COLUMN_DIGITS_MAX = 6;
-// Locations V8 prints without a line and column.
 const BARE_LOCATION = /^(?:<anonymous>|native|index \d{1,4})$/;
 const HTTP_SCHEME = /^https?:\/\//i;
-// A Node.js location (`node:fs`, `node:internal/vm`): its first segment.
 const NODE_MODULE = /^node:([a-z_]{1,24})(?![^/])/;
-// The Node.js built-in modules a frame may name, plus `internal`. A fixed
-// list, so the browser cannot put a word or a key-shaped value of its own
-// (`node:sk_live_…`) into an issue. Checked against Node's own list by a test.
 export const NODE_BUILTIN_MODULES: ReadonlySet<string> = new Set([
   'assert',
   'async_hooks',
@@ -90,10 +64,8 @@ export const NODE_BUILTIN_MODULES: ReadonlySet<string> = new Set([
   'worker_threads',
   'zlib',
 ]);
-// What any other file becomes: the frame keeps its position.
 const FILE_REDACTED = `${REPORT_ORIGIN}/${REDACTED}`;
 
-/** The path of a root-relative or http(s) file reference, if it has one. */
 function filePath(file: string): string | undefined {
   if (file.startsWith('/') && !file.startsWith('//'))
     return file.split(/[?#]/, 1)[0];
@@ -105,20 +77,11 @@ function filePath(file: string): string | undefined {
   }
 }
 
-/**
- * A frame's file, reduced to what the app ships: a Vite bundle asset
- * (`/assets/<name>-<hash>.js`, under the synthetic origin) or a known Node.js
- * built-in module (`node:fs`). An asset is kept only if the build published
- * it (`knownAssets`), never for its shape alone. Any other file (a dev module path, an
- * extension, `blob:`, `file:`, `webpack:`, a path of words) becomes
- * `https://app.invalid/[redacted]`, and the frame is kept.
- */
 function sanitizeFile(file: string, knownAssets: ReadonlySet<string>): string {
   const node = NODE_MODULE.exec(file)?.[1];
   if (node !== undefined)
     return NODE_BUILTIN_MODULES.has(node) ? `node:${node}` : FILE_REDACTED;
   const path = filePath(file);
-  // The loaded list holds only asset paths (`reportAssetsSchema`).
   return path !== undefined && knownAssets.has(path)
     ? `${REPORT_ORIGIN}${path}`
     : FILE_REDACTED;
@@ -137,8 +100,6 @@ function sanitizeLocation(
   return `${sanitizeFile(file, knownAssets)}:${line}:${column}`;
 }
 
-// Every frame starts so: the function name is never kept, since the
-// browser can choose it (`password_correcthorse`).
 const FRAME_START = '    at <anonymous> (';
 
 function frame(
@@ -149,10 +110,6 @@ function frame(
   return sanitized === undefined ? undefined : `${FRAME_START}${sanitized})`;
 }
 
-/**
- * One stack line as a canonical frame, or undefined if it is not one. The
- * function name only locates the location; it is never kept.
- */
 function parseFrame(
   line: string,
   knownAssets: ReadonlySet<string>,
@@ -172,22 +129,8 @@ function parseFrame(
   return frame(trimmed.slice(at + 1), knownAssets);
 }
 
-// The first line of a V8 stack, `Name: message` or a bare `Name`: only the
-// name is kept. An identifier then `:` or the end of the line, which no
-// frame line starts with (`at …`, `fn@…`, `global code@…`).
 const HEADER = /^\s*([A-Za-z_$][\w$.]*)(?::|\s*$)/;
 
-/**
- * Sanitizes a stack trace into canonical frames, then truncates it at a
- * frame boundary to at most `max` characters, visible marker included.
- * The first line is read as `Name: message` before it is tried as a frame,
- * so `Error: …@host:1:2` is not taken for a Firefox frame; it becomes the
- * error name alone (`TypeError`), or `Error` if that is not a known error
- * class name. Input past four times `max` is never read, and a frame the
- * bound cut in half is dropped. A trailing truncation marker, as a first
- * pass leaves it, is kept, so a second pass does not hide that frames were
- * cut.
- */
 export function sanitizeStackTrace(
   stack: string,
   max: number,
@@ -221,12 +164,6 @@ export function sanitizeStackTrace(
   );
 }
 
-/**
- * A stack whose first line is the error's header. V8 starts with
- * `Name: message`; Firefox and Safari start with a frame, so the error's
- * class name is put first. The title and fingerprint then read the name the
- * same way whatever the browser. With no stack, the name alone.
- */
 export function stackWithHeader(
   name: string,
   stack: string | undefined,
@@ -236,15 +173,8 @@ export function stackWithHeader(
   return HEADER.test(firstLine) ? stack : `${name}\n${stack}`;
 }
 
-// A canonical frame's file: the frame start, the file, its coordinates.
 const FRAME_FILE = /^ {4}at <anonymous> \((.*?)(?::\d+:\d+)?\)$/;
 
-/**
- * A canonical frame's file, without its line and column and with an asset's
- * content hash replaced (`https://app.invalid/assets/main-[hash].js`), so a
- * new build of the same code reads the same. A bare location (`native`)
- * stays as it is.
- */
 function frameFile(frame: string): string | undefined {
   const file = FRAME_FILE.exec(frame)?.[1];
   if (file === undefined) return undefined;
@@ -253,11 +183,6 @@ function frameFile(frame: string): string | undefined {
     : file;
 }
 
-/**
- * The error name and the files of the first `frameCount` frames of a
- * sanitized stack: what an issue title and the telemetry fingerprint are
- * built from.
- */
 export function stackSummary(sanitizedStack: string, frameCount: number) {
   const lines = sanitizedStack.split('\n');
   const header = lines[0] ?? '';

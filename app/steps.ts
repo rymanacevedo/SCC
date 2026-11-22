@@ -96,7 +96,6 @@ export const steps = [
   },
 ] as const satisfies readonly Step[];
 export type StepId = (typeof steps)[number]['id'];
-/** Only root-relative paths are accepted; URL parsing also rejects backslash escapes. */
 export function validatedReturnUrl(url: URL): string | undefined {
   const value = url.searchParams.get('returnUrl');
   if (
@@ -154,7 +153,6 @@ export function guardStep(
   }
 }
 
-/** Initial SPA reloads follow redirects without updating the browser address. */
 export function guardInitialUrl(
   url: URL,
   user: User,

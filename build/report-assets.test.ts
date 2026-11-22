@@ -36,6 +36,5 @@ test('the plugin publishes the client bundle asset paths as report-assets.json',
     '/assets/index-BOZHR0Lk.js',
     '/assets/index-BhuUxWMn.css',
   ]);
-  // What the plugin publishes is what the Worker accepts.
   expect(reportAssetsSchema.safeParse(list).success).toBe(true);
 });

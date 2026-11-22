@@ -9,13 +9,9 @@ import {
 } from './stackFrames.ts';
 import { TRUNCATED } from './telemetryRedaction.ts';
 
-// Keys, assembled at runtime so none sits in source.
 const DASHED_KEY = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('-');
 const AKIA_NAME = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
-// What a file that is not one of the app's own shapes becomes.
 const REDACTED_FILE = 'https://app.invalid/[redacted]';
-// The asset paths this file's build published: real Vite names, and the
-// short fixtures. A well-shaped name not on it is redacted.
 const PUBLISHED: ReadonlySet<string> = new Set([
   '/assets/ButtonLink-DCO1CjnW.js',
   '/assets/a-abcdef12.js',
@@ -113,7 +109,6 @@ describe('sanitizeStackTrace', () => {
     ).toBe(
       'TypeError\n    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
     );
-    // Error-shaped is not enough: only a known class name is kept.
     const key = ['sk', 'live', 'abcdefghijklmnopqrstuvwx'].join('_');
     expect(
       sanitizeStackTrace(`Token_${key}Error: x`, 8_000, {
@@ -235,7 +230,6 @@ describe('sanitizeStackTrace', () => {
     const stack = [
       'Error',
       '    at a (https://scc.example/assets/index-BOZHR0Lk.js:1:2)',
-      // Well-shaped, but not a file this build ships.
       '    at b (https://scc.example/assets/main-abcdef12.js:1:2)',
       '    at c (https://scc.example/assets/password_correcthorse-abcdef12.js:1:2)',
       '    at d (node:fs:1:2)',
@@ -249,11 +243,8 @@ describe('sanitizeStackTrace', () => {
         '    at <anonymous> (node:fs:1:2)',
       ].join('\n'),
     );
-    // A second pass with the same list (the Worker, after the browser)
-    // changes nothing.
     const once = sanitizeStackTrace(stack, 8_000, { knownAssets });
     expect(sanitizeStackTrace(once, 8_000, { knownAssets })).toBe(once);
-    // The empty list (the list could not be read) redacts every asset.
     expect(
       sanitizeStackTrace(stack, 8_000, { knownAssets: NO_ASSETS }),
     ).not.toContain('/assets/');
@@ -270,7 +261,6 @@ describe('sanitizeStackTrace', () => {
       '    at f (node:internal/vm:1:2)',
       `    at g (${DASHED_KEY}:module.js:1:2)`,
       '    at h (javascript:alert(1):1:2)',
-      // A dev module path: words the browser chose.
       '    at i (http://localhost:5173/app/pages/summary.tsx:1:2)',
       `    at j (https://scc.example${INJECTION_PATH}.js:1:2)`,
       '    at k (https://scc.example/assets/ignore-previous-AbCdEfGh.txt:1:2)',
@@ -303,7 +293,6 @@ describe('sanitizeStackTrace', () => {
         '    at <anonymous> (https://app.invalid/assets/ButtonLink-DCO1CjnW.js:1:2)',
       ].join('\n'),
     );
-    // A second pass keeps what the first made.
     expect(
       sanitizeStackTrace(sanitized, 8_000, { knownAssets: PUBLISHED }),
     ).toBe(sanitized);
@@ -312,7 +301,6 @@ describe('sanitizeStackTrace', () => {
   test('an authority in a stack location is never kept', () => {
     const stack = [
       'Error',
-      // A network-path reference: V8 prints eval'd code this way.
       '    at eval (//janedoe.example.com/script.js:1:7)',
       '    at a (node:https://janedoe.example.com/a.js:1:2)',
       '    at n (node://janedoe.example.com/script.js:1:2)',
@@ -351,7 +339,6 @@ describe('sanitizeStackTrace', () => {
   });
 
   test('the first line is read as a header before it is tried as a frame', () => {
-    // `Error: …@host:1:2` would otherwise parse as a Firefox frame.
     expect(
       sanitizeStackTrace(
         'Error: failed for jane@example.com:1:2\n    at f (https://scc.example/assets/a-abcdef12.js:1:2)',
@@ -361,7 +348,6 @@ describe('sanitizeStackTrace', () => {
     ).toBe(
       'Error\n    at <anonymous> (https://app.invalid/assets/a-abcdef12.js:1:2)',
     );
-    // A Firefox stack has no header: its first line is still a frame.
     expect(
       sanitizeStackTrace(
         'saveSummary@https://scc.example/assets/a-abcdef12.js:1:2',

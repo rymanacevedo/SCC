@@ -2,7 +2,6 @@ import type { Handle } from 'remix/component';
 import type { RemixNode } from 'remix/component/jsx-runtime';
 
 interface AlertProps {
-  /** error: announced Form error; tips: static writing guidance. */
   tone: 'error' | 'tips';
   title?: string;
   children?: RemixNode;

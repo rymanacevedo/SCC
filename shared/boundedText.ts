@@ -1,11 +1,5 @@
 export type BoundedText = { text: string; truncated: boolean };
 
-/**
- * Reads at most `maxBytes` of a body stream and cancels the rest, so an
- * oversized or unbounded body never has to fit in memory. When `signal`
- * aborts, the stream is cancelled, so a pending read ends at once even if
- * the body never would, and the read rejects with the signal's reason.
- */
 export async function readBoundedText(
   body: ReadableStream<Uint8Array> | null,
   maxBytes: number,

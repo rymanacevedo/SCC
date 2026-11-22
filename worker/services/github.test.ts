@@ -49,9 +49,7 @@ const auth = {
   token: 'token-123',
   knownAssets: KNOWN_TEST_ASSETS,
 };
-// What a stack file that is not a bundle asset becomes.
 const REDACTED_FILE = 'https://app.invalid/[redacted]';
-/** The body GitHub holds for an issue auto-reported from `payload`. */
 const filedBody = async (payload: ErrorTelemetryPayload) => {
   const telemetry = sanitizeErrorTelemetry(payload, {
     knownAssets: KNOWN_TEST_ASSETS,
@@ -61,10 +59,8 @@ const filedBody = async (payload: ErrorTelemetryPayload) => {
     await issueFingerprint(telemetry),
   );
 };
-/** The user-reported body GitHub holds for `payload`. */
 const filedUserBody = (payload: UserIssueReportPayload) =>
   buildUserReportedIssueBody(sanitizeUserIssueReport(payload));
-/** Serves `pages` of open issues, then accepts any created issue. */
 function githubWith(...pages: { number: number; body: string }[][]) {
   const fetchMock = mock(async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -76,7 +72,6 @@ function githubWith(...pages: { number: number; body: string }[][]) {
   globalThis.fetch = fetchMock as unknown as typeof fetch;
   return fetchMock;
 }
-/** Records each issue GitHub is asked to create; the open-issue list is empty. */
 function captureCreatedIssues() {
   const sent: { title: string; body: string }[] = [];
   globalThis.fetch = mock(
@@ -96,7 +91,6 @@ const chunkFailure = {
   stackTrace:
     'TypeError: Chunk failed\n    at https://example.com/assets/app-a1b2c3d4.js:12:34',
 };
-// The same failure from another build: a new asset hash and stack coordinates.
 const chunkFailureNextBuild = {
   ...chunkFailure,
   timestamp: '2026-04-28T09:00:00.000Z',
@@ -107,7 +101,6 @@ const chunkFailureNextBuild = {
 
 describe('issueFingerprint', () => {
   test('is the SHA-256 hex digest of the sanitized telemetry fingerprint', async () => {
-    // The digest of {"name":"","url":"https://app.invalid/","files":[]}.
     expect(
       await issueFingerprint(
         sanitizeErrorTelemetry(
@@ -278,7 +271,6 @@ describe('issue bodies sent to GitHub', () => {
 
   test('through both sanitizing passes, nothing sensitive reaches title, body or fingerprint', async () => {
     const sent = captureCreatedIssues();
-    // The browser sanitizes first; the Worker sanitizes what it receives.
     const fromBrowser = sanitizeErrorTelemetry(telemetry, {
       knownAssets: KNOWN_TEST_ASSETS,
     });
@@ -310,8 +302,6 @@ describe('issue bodies sent to GitHub', () => {
       { ...chunkFailure, stackTrace },
       { knownAssets: KNOWN_TEST_ASSETS },
     );
-    // The browser holds frames to the published list too: a well-shaped
-    // name it was never built with does not leave the page.
     expect(fromBrowser.stackTrace).not.toContain('password_correcthorse');
     expect(fromBrowser.stackTrace).toContain(
       '    at <anonymous> (https://app.invalid/[redacted]:5:6)',
@@ -629,8 +619,6 @@ describe('createAutoReportedIssue', () => {
 });
 
 describe('GitHub issue body size', () => {
-  // U+0001 passes every field limit yet JSON-escapes to six characters. It is
-  // not a safe shape, so sanitizing reduces it to [redacted].
   const worstCase = {
     timestamp: '2026-04-27T12:00:00.000Z',
     url: '\u0001'.repeat(2_048),
@@ -735,10 +723,6 @@ describe('GitHub request deadline', () => {
     message: 'Chunk failed',
   };
 
-  /**
-   * Stubs fetch so calls matching `hangOn` never answer, ignoring their
-   * signal; the rest answer with an empty issue list. Records every call.
-   */
   function hangingFetch(hangOn: (init?: RequestInit) => boolean) {
     const calls: RequestInit[] = [];
     const hung = Promise.withResolvers<void>();
