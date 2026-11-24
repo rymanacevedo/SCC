@@ -7,6 +7,7 @@
   "include": [
     "worker/**/*.ts",
     "shared/**/*.ts",
+    "packages/**/*.ts",
     "evals/**/*.ts",
     "test/mock-model.ts"
   ]

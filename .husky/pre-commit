@@ -3,3 +3,4 @@ if git diff --cached --name-only | grep -qE '\.(env|pem|key)$'; then
   exit 1
 fi
 bun x lint-staged --concurrent false --relative
+bun run lint:boundaries
