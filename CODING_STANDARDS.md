@@ -41,9 +41,9 @@ Code carries no comments except license headers, `// prettier-ignore`, tool dire
 
 ## Review
 
-Every PR goes through the same review before it merges, whoever opened it:
+Every PR goes through Jev classification and its assigned review tier before it merges, whoever opened it:
 
-- Every PR gets a council round and a security review, run from this repo's attached sandbox with `/council <PR>`, before merge.
-- The `standard` ruleset on the default branch requires both statuses, `council/review` and `security/daybreak`, beside `ci`; a PR cannot merge without them.
-- A PR opened outside a sandbox (by hand from the host, or by another runner) waits, red, until someone runs `/council <PR>` in the attached sandbox.
-- A push that changes the diff needs a new round and a new security review. Merging the base into the branch without changing the diff only re-posts the statuses.
+- Run `/council <PR>` from this repo's attached everyday sandbox before merge. Jev classifies the diff from git into a review tier (`T0` human review only, `T1` one-judge council round, `T2` three-judge council round and security review, `T3` adding a host-started CVP blue review). Use `/council <PR> --full` to raise a PR to at least `T2`.
+- The `standard` ruleset on the default branch requires `council/review`, `security/daybreak`, and `security/claude-cvp` beside `ci`; a PR cannot merge without them. Below `T3`, reporting posts `security/claude-cvp` as not required at that tier; at `T3`, only the host posts its result via `sbxc cvp blue` in a containment profile.
+- A PR opened outside an everyday sandbox (by hand from the host, or by another runner) waits, red, until someone runs `/council <PR>` in the attached everyday sandbox.
+- A push that changes the diff is classified again and needs the review its new tier demands. Merging the base into the branch without changing the diff only re-posts the statuses (and on `T3` PRs, the human re-runs `sbxc cvp blue` on the host).
