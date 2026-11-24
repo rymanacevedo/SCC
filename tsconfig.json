@@ -11,6 +11,8 @@
     "build/**/*.ts",
     "app/**/*.tsx",
     "shared/**/*.ts",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
     "test/**/*.ts",
     "test/**/*.tsx",
     "e2e/**/*.ts"

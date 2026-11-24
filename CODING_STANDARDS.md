@@ -2,9 +2,10 @@
 
 - The rules a reviewer applies by judgement. A rule a tool enforces is not
   repeated here.
-- `bun run check` (oxfmt, oxlint), `bun run typecheck`, `bun test` and
-  `bun run build` run in the `ci` workflow. Pre-commit runs lint-staged on
-  the staged files; pre-push runs typecheck and the tests.
+- `bun run check` (oxfmt, oxlint, `lint:boundaries`), `bun run typecheck`,
+  `bun test` and `bun run build` run in the `ci` workflow. Pre-commit runs
+  lint-staged on the staged files and `lint:boundaries`; pre-push runs
+  typecheck and the tests.
 - `.oxlintrc.json`, `.oxfmtrc.json` and `tsconfig*.json` are the source of
   truth for formatting, lint and type rules.
 - The Review section is the Standard's fixed text. The ruleset it describes
@@ -13,13 +14,15 @@
 
 ## Tests
 
-Source: the repo layout (`app/`, `shared/`, `worker/`).
+Source: the repo layout (`app/`, `shared/`, `worker/`, `packages/`).
 
 - Tests sit beside the module they cover, as `<module>.test.ts` or
   `.test.tsx`, not in a separate tree.
   - Exception: `bun test` skips dot-directories, so tests for code under
     `.claude/` sit in `test/` at the same relative path (e.g.
     `test/hooks/` for `.claude/hooks/`).
+  - Exception: a package under `packages/` keeps its tests in its `tests/`
+    folder (`packages/README.md`).
 - A behaviour change comes with a test in that file.
 
 ## Domain vocabulary
