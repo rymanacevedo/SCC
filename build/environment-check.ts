@@ -11,50 +11,64 @@ const VARLOCK = join(
 );
 const WRANGLER_CONFIG = 'wrangler.jsonc';
 
-function asText(value: unknown): string {
-  return typeof value === 'string' ? value : JSON.stringify(value);
-}
+type Environment = Record<string, string | undefined>;
 
-export function wranglerVars(directory: string): Record<string, string> {
-  const { vars } = unstable_readConfig({
-    config: join(directory, WRANGLER_CONFIG),
-  });
-
+function textValues(values: Record<string, unknown>): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(vars).map(([key, value]) => [key, asText(value)]),
-  );
-}
-
-export function localWorkerValues(directory: string): Record<string, string> {
-  const configPath = join(directory, WRANGLER_CONFIG);
-  const { vars } = unstable_readConfig({ config: configPath });
-  const bindings = unstable_getVarsForDev(
-    configPath,
-    undefined,
-    vars,
-    undefined,
-    true,
-  );
-
-  return Object.fromEntries(
-    Object.entries(bindings).map(([key, binding]) => [
+    Object.entries(values).map(([key, value]) => [
       key,
-      asText(binding.value),
+      typeof value === 'string' ? value : JSON.stringify(value),
     ]),
   );
 }
 
-export function checkEnvironment(
+function readWranglerConfig(directory: string) {
+  const path = join(directory, WRANGLER_CONFIG);
+
+  return { path, vars: unstable_readConfig({ config: path }).vars };
+}
+
+export function wranglerVars(directory: string): Record<string, string> {
+  return textValues(readWranglerConfig(directory).vars);
+}
+
+export function localWorkerValues(directory: string): Record<string, string> {
+  const { path, vars } = readWranglerConfig(directory);
+  const bindings = unstable_getVarsForDev(path, undefined, vars, undefined, true);
+
+  return textValues(
+    Object.fromEntries(
+      Object.entries(bindings).map(([key, binding]) => [key, binding.value]),
+    ),
+  );
+}
+
+export function runVarlock(
   directory: string,
-  ambient: Record<string, string | undefined>,
-): { status: number; output: string } {
-  const run = spawnSync(VARLOCK, ['load'], {
+  environment: Environment,
+  args: string[] = ['load'],
+): { status: number; stdout: string; output: string } {
+  const run = spawnSync(VARLOCK, args, {
     cwd: directory,
     encoding: 'utf8',
-    env: { ...ambient, ...localWorkerValues(directory) },
+    env: environment,
   });
 
-  return { status: run.status ?? 1, output: run.stdout + run.stderr };
+  return {
+    status: run.status ?? 1,
+    stdout: run.stdout,
+    output: run.stdout + run.stderr,
+  };
+}
+
+export function checkEnvironment(
+  directory: string,
+  processEnvironment: Environment,
+): { status: number; output: string } {
+  return runVarlock(directory, {
+    ...processEnvironment,
+    ...localWorkerValues(directory),
+  });
 }
 
 if (import.meta.main) {
