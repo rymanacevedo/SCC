@@ -4,7 +4,7 @@ SCC is split into contexts, each with its own bounded vocabulary. This map point
 
 | Context | Glossary | What lives here |
 |---------|----------|-----------------|
-| System | [`GLOSSARY.md`](GLOSSARY.md) | Terms spanning every context: the kinds of Test, Eval, Bake-off |
+| System | [`GLOSSARY.md`](GLOSSARY.md) | Terms spanning every context: the kinds of Test, Eval, Bake-off, the migration Verdict and Gate, Feature flag, the Environment schema |
 | Worker | [`worker/GLOSSARY.md`](worker/GLOSSARY.md) | Cloudflare Worker API: AI resume generation, GitHub issue reporting, environment validation |
 | App | [`app/GLOSSARY.md`](app/GLOSSARY.md) | The section-by-section builder UI: builder pages, the User record, the Outline, Preview and Exports |
 
