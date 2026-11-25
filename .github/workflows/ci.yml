@@ -21,5 +21,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run typecheck
+      - run: bun run env:check
+        env:
+          GITHUB_TOKEN: ci-stub-token
+          OPENAI_API_KEY: ci-stub-openai-key
       - run: bun run test
       - run: bun run build
