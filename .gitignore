@@ -21,7 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .netlify
-.env
+.env*
+!.env.schema
 .dev.vars
 
 worker-configuration.d.ts
