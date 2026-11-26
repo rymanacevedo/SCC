@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const evalEnvironmentFileName = '.dev.vars';
 
-const evalEnvironmentSchema = z.object({
+export const evalEnvironmentSchema = z.object({
   OPENAI_API_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
 });

@@ -3,9 +3,9 @@
 - The rules a reviewer applies by judgement. A rule a tool enforces is not
   repeated here.
 - `bun run check` (oxfmt, oxlint, `lint:boundaries`), `bun run typecheck`,
-  `bun test` and `bun run build` run in the `ci` workflow. Pre-commit runs
-  lint-staged on the staged files and `lint:boundaries`; pre-push runs
-  typecheck and the tests.
+  `bun run env:check`, `bun test` and `bun run build` run in the `ci`
+  workflow. Pre-commit runs lint-staged on the staged files and
+  `lint:boundaries`; pre-push runs typecheck and the tests.
 - `.oxlintrc.json`, `.oxfmtrc.json` and `tsconfig*.json` are the source of
   truth for formatting, lint and type rules.
 - The Review section is the Standard's fixed text. The ruleset it describes

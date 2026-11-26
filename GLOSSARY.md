@@ -51,3 +51,9 @@ _Avoid_: vendor bytes, analytics overhead
 ### Feature flag
 A named on/off switch, off by default, read through the `FLAGS` Flagship binding and flipped with `wrangler flagship flags` without a deploy (see `docs/runbooks/feature-flags.md`). Every flag is temporary: the PR that adds it files the issue that removes it.
 _Avoid_: toggle, feature switch, kill switch
+
+## Configuration
+
+### Environment schema
+`.env.schema` at the repo root: the one declared list of the environment keys SCC reads, saying which are secrets, which are required and what each accepts. Varlock checks values against it (`bun run env:check`); the Worker's own request-time validation stays in `worker/lib/environment.ts` and a Test holds the two to the same keys (see [ADR-0002](docs/adr/0002-varlock-environment-schema.md)).
+_Avoid_: env example, env template, `.dev.vars.example`
