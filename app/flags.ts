@@ -12,6 +12,15 @@ export interface FlagClient<D extends FlagDefaults> {
   subscribe(listener: (flags: FlagSet<D>) => void): () => void;
 }
 
+function notifyListenerSafely<D extends FlagDefaults>(
+  listener: (flags: FlagSet<D>) => void,
+  flags: FlagSet<D>,
+) {
+  try {
+    listener(flags);
+  } catch {}
+}
+
 export function createFlagClient<
   D extends FlagDefaults = typeof FLAG_DEFAULTS,
 >({
@@ -29,9 +38,7 @@ export function createFlagClient<
 
   function notify(flags: FlagSet<D>) {
     for (const listener of listeners) {
-      try {
-        listener(flags);
-      } catch {}
+      notifyListenerSafely(listener, flags);
     }
   }
 
