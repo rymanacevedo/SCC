@@ -369,6 +369,62 @@ test('"I currently work here" disables End date, and unticking enables it again'
   expect(endDate().disabled).toBe(false);
 });
 
+test('"I currently work here" toggle persists for the same values and resets when new values render', async () => {
+  const url = new URL('https://scc.example/experience');
+  const firstValues = { jobId: 'job-1' };
+  const view = render(<ExperiencePage url={url} values={firstValues} />);
+  cleanups.push(view.cleanup);
+  const endDate = () => view.$('#endDate') as HTMLInputElement;
+  const box = view.$('#currentlyEmployed') as HTMLInputElement;
+  const jobTitle = view.$('#jobTitle') as HTMLInputElement;
+
+  await view.act(() => box.click());
+  expect(endDate().disabled).toBe(true);
+
+  await view.act(() => {
+    jobTitle.value = 'Developer';
+    jobTitle.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(endDate().disabled).toBe(true);
+
+  await view.act(() => {
+    view.root.render(<ExperiencePage url={url} values={firstValues} />);
+  });
+  expect(endDate().disabled).toBe(true);
+
+  await view.act(() => {
+    view.root.render(<ExperiencePage url={url} values={{ jobId: 'job-2' }} />);
+  });
+  expect(endDate().disabled).toBe(false);
+
+  await view.act(() => {
+    view.root.render(<ExperiencePage url={url} values={firstValues} />);
+  });
+  expect(endDate().disabled).toBe(false);
+
+  const currentView = render(
+    <ExperiencePage
+      url={url}
+      values={{ jobId: 'job-3', currentlyEmployed: 'true' }}
+    />,
+  );
+  cleanups.push(currentView.cleanup);
+  const currentEndDate = () => currentView.$('#endDate') as HTMLInputElement;
+  const currentBox = currentView.$('#currentlyEmployed') as HTMLInputElement;
+  expect(currentEndDate().disabled).toBe(true);
+  await currentView.act(() => currentBox.click());
+  expect(currentEndDate().disabled).toBe(false);
+  await currentView.act(() => {
+    currentView.root.render(
+      <ExperiencePage
+        url={url}
+        values={{ jobId: 'job-4', currentlyEmployed: 'true' }}
+      />,
+    );
+  });
+  expect(currentEndDate().disabled).toBe(true);
+});
+
 function suggestionButton(view: ReturnType<typeof render>, text: string) {
   return Array.from(view.$$('aside button')).find(
     (button) => button.textContent === `+ ${text}`,
