@@ -115,7 +115,8 @@ export function createApiRouter(
       async ({ prompt }, request) =>
         Response.json(await generate(prompt, model(), request.signal)),
       {
-        generation: true,
+        unknownErrorStatus: 500,
+        logReportMetadata: false,
         errorMessage: 'Failed to generate content',
       },
       (key) => [createProfanityFilter(key)],
@@ -141,7 +142,11 @@ export function createApiRouter(
       });
       return Response.json({ ok: true });
     },
-    { errorMessage: 'Failed to report application error' },
+    {
+      unknownErrorStatus: 502,
+      logReportMetadata: true,
+      errorMessage: 'Failed to report application error',
+    },
   );
   register(
     '/api/report-issue',
@@ -156,7 +161,11 @@ export function createApiRouter(
       });
       return Response.json({ ok: true });
     },
-    { errorMessage: 'Failed to submit issue report' },
+    {
+      unknownErrorStatus: 502,
+      logReportMetadata: true,
+      errorMessage: 'Failed to submit issue report',
+    },
   );
   return router;
 }
