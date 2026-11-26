@@ -27,6 +27,8 @@ secret. Clear stray keys out of `.env.local` before running `bun run env:check`.
   value comes from `.dev.vars` if it is there, then from the `wrangler.jsonc` vars,
   then from the shell environment. A secret that is exported in the shell and absent
   from `.dev.vars` therefore passes, although the local Worker would not get it.
+  A Worker key that is set to an empty string fails the check, because the Worker
+  rejects it: leave an optional key such as `OPENAI_BASE_URL` out instead.
 - `bun run test`: deterministic Tests, with one shared happy-dom preload.
 - `bun run test:e2e`: fails until the Flow test ticket supplies the runner.
 - `bun run evals`: reserved for the replacement harness in #189; never part of Tests.

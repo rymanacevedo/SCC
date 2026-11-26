@@ -8,38 +8,67 @@ import {
   validateEnvironment,
   validateGeoEnvironment,
 } from '../worker/lib/environment.ts';
-import { runVarlock, wranglerVars } from './environment-check.ts';
+import { checkValues, runVarlock, wranglerVars } from './environment-check.ts';
 import {
   ROOT,
+  SPAWN_TIMEOUT,
   STUB_SECRETS,
   useEnvironmentProjects,
 } from './environment-fixture.ts';
 
 const project = useEnvironmentProjects();
 
-function varlock(values: Record<string, string>, args?: string[]) {
-  const { directory, environment } = project();
-  return runVarlock(directory, { ...environment, ...values }, args);
-}
-
 const CI_VALUES = { ...wranglerVars(ROOT), ...STUB_SECRETS };
 
-test('the environment schema loads with the four required Worker keys and no values file', () => {
-  const run = varlock(CI_VALUES);
+interface LoadedSchema {
+  output: string;
+  keys: string[];
+  secretKeys: string[];
+}
+
+let loaded: LoadedSchema | undefined;
+
+function loadedSchema(): LoadedSchema {
+  if (loaded) return loaded;
+
+  const { directory, environment } = project();
+  const run = runVarlock(
+    directory,
+    { ...environment, ...CI_VALUES, DEBUG: 'varlock*' },
+    ['load', '--format', 'json-full'],
+  );
   expect(run.status, run.output).toBe(0);
-});
 
-test('Varlock sends no telemetry from this repo', () => {
-  const run = varlock({ ...CI_VALUES, DEBUG: 'varlock*' });
-  expect(run.output).toMatch(/telemetry opted out - config file/);
-  expect(run.output).not.toMatch(/handed off/);
-});
+  const items: Record<string, { isSensitive: boolean }> = JSON.parse(
+    run.stdout,
+  ).config;
+  const keys = Object.keys(items).sort();
+  loaded = {
+    output: run.output,
+    keys,
+    secretKeys: keys.filter((key) => items[key].isSensitive),
+  };
+  return loaded;
+}
 
-const schemaItems: Record<string, { isSensitive: boolean }> = JSON.parse(
-  varlock(CI_VALUES, ['load', '--format', 'json-full']).stdout,
-).config;
-const schemaKeys = Object.keys(schemaItems).sort();
-const secretKeys = schemaKeys.filter((key) => schemaItems[key].isSensitive);
+test(
+  'the environment schema loads with the four required Worker keys and no values file',
+  () => {
+    expect(loadedSchema().keys).toEqual(expect.arrayContaining(workerKeys));
+  },
+  SPAWN_TIMEOUT,
+);
+
+test(
+  'Varlock sends no telemetry from this repo',
+  () => {
+    const { output } = loadedSchema();
+    expect(output).toMatch(/telemetry opted out - config file/);
+    expect(output).not.toMatch(/handed off/);
+  },
+  SPAWN_TIMEOUT,
+);
+
 const workerKeys = Object.keys(environmentSchema.shape).sort();
 const evalKeys = Object.keys(evalEnvironmentSchema.shape);
 
@@ -114,7 +143,10 @@ function sourceFiles(): string[] {
     ],
     { cwd: ROOT, encoding: 'utf8' },
   );
-  expect(listing.status, listing.stderr).toBe(0);
+  expect(
+    listing.status,
+    `This test lists source files with git ls-files, so it needs a git checkout and git on PATH. ${listing.error?.message ?? listing.stderr}`,
+  ).toBe(0);
   return listing.stdout
     .split('\0')
     .filter((file) => file && !/\.test\.tsx?$/.test(file));
@@ -141,8 +173,8 @@ test('the environment schema declares every key the repo reads, and no others', 
   ]);
   for (const key of OPERATING_SYSTEM_KEYS) keysRead.delete(key);
 
-  expect(schemaKeys).toEqual([...keysRead].sort());
-});
+  expect(loadedSchema().keys).toEqual([...keysRead].sort());
+}, SPAWN_TIMEOUT);
 
 test('the only key Evals read that the Worker does not is GEMINI_API_KEY', () => {
   expect(evalKeys.filter((key) => !workerKeys.includes(key))).toEqual([
@@ -151,22 +183,23 @@ test('the only key Evals read that the Worker does not is GEMINI_API_KEY', () =>
 });
 
 test('the environment schema marks the four credentials as secrets and nothing else', () => {
-  expect(secretKeys).toEqual([
+  expect(loadedSchema().secretKeys).toEqual([
     'GEMINI_API_KEY',
     'GH_TOKEN',
     'GITHUB_TOKEN',
     'OPENAI_API_KEY',
   ]);
-});
+}, SPAWN_TIMEOUT);
 
 test('every Wrangler var is a declared key that is not a secret', () => {
   const vars = Object.keys(wranglerVars(ROOT));
+  const { keys, secretKeys } = loadedSchema();
   expect(vars.length).toBeGreaterThan(0);
   for (const key of vars) {
-    expect(schemaKeys).toContain(key);
+    expect(keys).toContain(key);
     expect(secretKeys).not.toContain(key);
   }
-});
+}, SPAWN_TIMEOUT);
 
 const FLOW_TEST_VALUES = {
   ALLOWED_COUNTRIES: 'US',
@@ -202,20 +235,20 @@ interface SchemaCase {
   name: string;
   values: Record<string, string>;
   workerAccepts: boolean;
-  schemaRejects?: { key: string; reason: RegExp };
+  checkRejects?: { key: string; reason: RegExp; reportedBy?: 'check' };
 }
 
 function changed(
   name: string,
   change: Record<string, string>,
   workerAccepts: boolean,
-  schemaRejects?: SchemaCase['schemaRejects'],
+  checkRejects?: SchemaCase['checkRejects'],
 ): SchemaCase {
   return {
     name,
     values: { ...FLOW_TEST_VALUES, ...change },
     workerAccepts,
-    schemaRejects,
+    checkRejects,
   };
 }
 
@@ -229,7 +262,7 @@ function missing(key: string): SchemaCase {
     name: `values with no ${key}`,
     values,
     workerAccepts: !required,
-    schemaRejects: required
+    checkRejects: required
       ? { key, reason: /Value is required but is currently empty/ }
       : undefined,
   };
@@ -294,25 +327,40 @@ const SCHEMA_CASES: SchemaCase[] = [
     true,
     { key: 'ALLOWED_COUNTRIES', reason: MATCH },
   ),
-  changed('an empty base URL', { OPENAI_BASE_URL: '' }, false),
-  changed('an empty model id', { OPENAI_MODEL: '' }, false),
+  changed('an empty base URL', { OPENAI_BASE_URL: '' }, false, {
+    key: 'OPENAI_BASE_URL',
+    reason: /^Empty env vars: OPENAI_BASE_URL\./m,
+    reportedBy: 'check',
+  }),
+  changed('an empty model id', { OPENAI_MODEL: '' }, false, {
+    key: 'OPENAI_MODEL',
+    reason: /^Empty env vars: OPENAI_MODEL\./m,
+    reportedBy: 'check',
+  }),
 ];
 
 for (const schemaCase of SCHEMA_CASES) {
-  const { name, values, schemaRejects } = schemaCase;
+  const { name, values, checkRejects } = schemaCase;
   const agreement =
-    schemaCase.workerAccepts === !schemaRejects
+    schemaCase.workerAccepts === !checkRejects
       ? 'as the Worker does'
       : `which the Worker ${schemaCase.workerAccepts ? 'accepts' : 'rejects'}`;
 
-  test(`the environment schema ${schemaRejects ? 'rejects' : 'accepts'} ${name}, ${agreement}`, () => {
-    const run = varlock(values);
-    expect(workerAccepts(values)).toBe(schemaCase.workerAccepts);
-    expect(run.status, run.output).toBe(schemaRejects ? 1 : 0);
-    if (schemaRejects) {
-      expect(problemLines(run.output, schemaRejects.key)).toMatch(
-        schemaRejects.reason,
-      );
-    }
-  });
+  test(
+    `the environment check ${checkRejects ? 'rejects' : 'accepts'} ${name}, ${agreement}`,
+    () => {
+      const { directory, environment } = project();
+      const run = checkValues(directory, { ...environment, ...values });
+      expect(workerAccepts(values)).toBe(schemaCase.workerAccepts);
+      expect(run.status, run.output).toBe(checkRejects ? 1 : 0);
+      if (checkRejects) {
+        expect(
+          checkRejects.reportedBy === 'check'
+            ? run.output
+            : problemLines(run.output, checkRejects.key),
+        ).toMatch(checkRejects.reason);
+      }
+    },
+    SPAWN_TIMEOUT,
+  );
 }

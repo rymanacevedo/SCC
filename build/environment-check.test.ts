@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
+import { join } from 'node:path';
 import {
   checkEnvironment,
   localWorkerValues,
+  runVarlock,
   wranglerVars,
 } from './environment-check.ts';
 import {
+  SPAWN_TIMEOUT,
   STUB_SECRETS,
   WRANGLER_VARS,
   useEnvironmentProjects,
@@ -45,7 +48,7 @@ test('the environment check passes on Wrangler vars plus the secrets in .dev.var
   const run = checkEnvironment(directory, environment);
 
   expect(run.status, run.output).toBe(0);
-});
+}, SPAWN_TIMEOUT);
 
 test('the environment check passes with no .dev.vars when the process environment holds the secrets, as in CI', () => {
   const { directory, environment } = project();
@@ -53,7 +56,7 @@ test('the environment check passes with no .dev.vars when the process environmen
   const run = checkEnvironment(directory, { ...environment, ...STUB_SECRETS });
 
   expect(run.status, run.output).toBe(0);
-});
+}, SPAWN_TIMEOUT);
 
 test('the environment check fails on a .dev.vars that lacks a required secret, naming it', () => {
   const { directory, environment } = project({
@@ -64,7 +67,7 @@ test('the environment check fails on a .dev.vars that lacks a required secret, n
 
   expect(run.status, run.output).toBe(1);
   expect(run.output).toMatch(/Invalid env vars: GITHUB_TOKEN/);
-});
+}, SPAWN_TIMEOUT);
 
 test('the environment check fails on a malformed value in .dev.vars even when the process environment holds a good one', () => {
   const { directory, environment } = project({
@@ -78,4 +81,27 @@ test('the environment check fails on a malformed value in .dev.vars even when th
 
   expect(run.status, run.output).toBe(1);
   expect(run.output).toMatch(/Invalid env vars: OPENAI_BASE_URL/);
-});
+}, SPAWN_TIMEOUT);
+
+for (const key of ['OPENAI_BASE_URL', 'OPENAI_MODEL']) {
+  test(`the environment check fails on a .dev.vars that sets ${key} to an empty string, naming it`, () => {
+    const { directory, environment } = project({
+      devVars: `${LOCAL_SECRETS}${key}=\n`,
+    });
+
+    const run = checkEnvironment(directory, environment);
+
+    expect(run.status, run.output).toBe(1);
+    expect(run.output).toMatch(new RegExp(`Empty env vars: ${key}\\.`));
+  }, SPAWN_TIMEOUT);
+}
+
+test('running Varlock reports a failure to start it instead of throwing', () => {
+  const { directory, environment } = project();
+
+  const run = runVarlock(join(directory, 'missing'), environment);
+
+  expect(run.status).toBe(1);
+  expect(run.stdout).toBe('');
+  expect(run.output).toMatch(/Could not run .*varlock: .*ENOENT/);
+}, SPAWN_TIMEOUT);

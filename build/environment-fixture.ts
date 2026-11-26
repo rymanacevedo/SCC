@@ -5,6 +5,8 @@ import { join } from 'node:path';
 
 export const ROOT = join(import.meta.dirname, '..');
 
+export const SPAWN_TIMEOUT = 60_000;
+
 export const STUB_SECRETS = {
   GITHUB_TOKEN: 'ci-stub-token',
   OPENAI_API_KEY: 'ci-stub-openai-key',
