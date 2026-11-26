@@ -605,6 +605,49 @@ test('a GitHub call that never answers is a 502 logged as github_timeout, with o
   }
 });
 
+test('unrecognized errors are 500 on generation routes and 502 on reporting routes', async () => {
+  const log = spyOn(console, 'error').mockImplementation(() => {});
+  for (const path of ['/api/summaries', '/api/skills', '/api/experience']) {
+    log.mockClear();
+    const model = createMockJsonModel({});
+    model.doGenerate = async () => {
+      throw new Error('unexpected generation failure');
+    };
+    const body = await assertResponse(
+      await createApiRouter(env, { resolveModel: () => model }).fetch(
+        contractRequest(path),
+      ),
+      500,
+    );
+    expect(body.error).toBe('Failed to generate content');
+    expect(log).toHaveBeenCalledWith(
+      expect.objectContaining({ route: path, category: 'unknown' }),
+    );
+  }
+  for (const [path, errorMessage] of [
+    ['/api/errors', 'Failed to report application error'],
+    ['/api/report-issue', 'Failed to submit issue report'],
+  ] as const) {
+    log.mockClear();
+    globalThis.fetch = mock(
+      async () => new Response('not json', { status: 200 }),
+    ) as unknown as typeof fetch;
+    const body = await assertResponse(
+      await createApiRouter(env).fetch(contractRequest(path, report)),
+      502,
+    );
+    expect(body.error).toBe(errorMessage);
+    expect(log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: path,
+        category: 'unknown',
+        timestamp: '2026-10-13T00:00:00.000Z',
+        url: 'https://app.invalid/summary',
+      }),
+    );
+  }
+});
+
 test('GET /api/flags returns every known flag and rejects other methods', async () => {
   const router = createApiRouter({});
   const response = await router.fetch(

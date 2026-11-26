@@ -11,27 +11,52 @@ import {
   SENSITIVE_UNKNOWN_URL,
   SENSITIVE_URL,
 } from '../../test/sensitive-reports.ts';
+import { EnvironmentValidationError } from '../lib/environment.ts';
 import { errorTelemetrySchema } from '../services/github.ts';
 import { createRouteErrorMiddleware } from './errors.ts';
 import { bodyValidation } from './guards.ts';
 
 afterEach(() => mock.restore());
 
-async function logFor(error: unknown, payload?: unknown) {
+async function runErrorMiddleware(
+  error: unknown,
+  {
+    payload,
+    unknownErrorStatus = 502,
+    logReportMetadata = true,
+    errorMessage = 'Failed',
+  }: {
+    payload?: unknown;
+    unknownErrorStatus?: 500 | 502;
+    logReportMetadata?: boolean;
+    errorMessage?: string;
+  } = {},
+) {
   const log = spyOn(console, 'error').mockImplementation(() => {});
+  log.mockClear();
   const { key } = bodyValidation(errorTelemetrySchema, 1_024);
   const middleware = createRouteErrorMiddleware('/api/errors', key, {
-    errorMessage: 'Failed',
+    unknownErrorStatus,
+    logReportMetadata,
+    errorMessage,
   });
   const context = {
     request: new Request('https://scc.example/api/errors'),
     get: () => payload,
   } as unknown as RequestContext;
-  const response = await middleware(context, async () => {
+  const response = (await middleware(context, async () => {
     throw error;
-  });
-  expect((response as Response).status).toBe(502);
-  return log.mock.calls[0]?.[0] as Record<string, unknown>;
+  })) as Response;
+  return {
+    response,
+    entry: log.mock.calls[0]?.[0] as Record<string, unknown>,
+  };
+}
+
+async function logFor(error: unknown, payload?: unknown) {
+  const { response, entry } = await runErrorMiddleware(error, { payload });
+  expect(response.status).toBe(502);
+  return entry;
 }
 
 test('logged report metadata and error text are route patterns and placeholders; no provider URL is logged', async () => {
@@ -99,4 +124,80 @@ test('an over-long logged stack is truncated with a marker', async () => {
   const entry = await logFor(error);
   expect(String(entry.stack).endsWith(TRUNCATED)).toBe(true);
   expect(String(entry.stack).length).toBeLessThan(4_100);
+});
+
+test('an unrecognized error returns the declared unknownErrorStatus and logs category unknown', async () => {
+  const serverError = await runErrorMiddleware(new Error('Broken'), {
+    unknownErrorStatus: 500,
+    errorMessage: 'Generation failed',
+  });
+  expect(serverError.response.status).toBe(500);
+  expect(await serverError.response.json()).toEqual({
+    error: 'Generation failed',
+  });
+  expect(serverError.entry).toMatchObject({
+    route: '/api/errors',
+    category: 'unknown',
+  });
+
+  const gatewayError = await runErrorMiddleware(new Error('Broken'), {
+    unknownErrorStatus: 502,
+    errorMessage: 'Reporting failed',
+  });
+  expect(gatewayError.response.status).toBe(502);
+  expect(await gatewayError.response.json()).toEqual({
+    error: 'Reporting failed',
+  });
+  expect(gatewayError.entry).toMatchObject({
+    route: '/api/errors',
+    category: 'unknown',
+  });
+});
+
+test('classified errors keep their own status regardless of unknownErrorStatus', async () => {
+  const providerFailure = await runErrorMiddleware(
+    new APICallError({
+      message: 'upstream failed',
+      url: 'https://provider.example',
+      requestBodyValues: {},
+      statusCode: 503,
+      isRetryable: false,
+    }),
+    { unknownErrorStatus: 500 },
+  );
+  expect(providerFailure.response.status).toBe(502);
+  expect(providerFailure.entry.category).toBe('provider');
+
+  const configFailure = await runErrorMiddleware(
+    new EnvironmentValidationError('github', new Error('missing')),
+    { unknownErrorStatus: 502 },
+  );
+  expect(configFailure.response.status).toBe(500);
+  expect(configFailure.entry.category).toBe('config');
+});
+
+test('report metadata is logged when logReportMetadata is true', async () => {
+  const { entry } = await runErrorMiddleware(new Error('Broken'), {
+    logReportMetadata: true,
+    payload: {
+      timestamp: '2026-10-13T00:00:00.000Z',
+      url: SENSITIVE_URL,
+    },
+  });
+  expect(entry).toMatchObject({
+    timestamp: '2026-10-13T00:00:00.000Z',
+    url: 'https://app.invalid/summary',
+  });
+});
+
+test('report metadata is omitted when logReportMetadata is false', async () => {
+  const { entry } = await runErrorMiddleware(new Error('Broken'), {
+    logReportMetadata: false,
+    payload: {
+      timestamp: '2026-10-13T00:00:00.000Z',
+      url: SENSITIVE_URL,
+    },
+  });
+  expect(entry).not.toHaveProperty('timestamp');
+  expect(entry).not.toHaveProperty('url');
 });

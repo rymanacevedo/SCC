@@ -21,23 +21,23 @@ import {
 import type { bodyValidation } from './guards.ts';
 
 export type RouteErrorPolicy = {
-  generation?: boolean;
+  unknownErrorStatus: 500 | 502;
+  logReportMetadata: boolean;
   errorMessage: string;
 };
 
 export function createRouteErrorMiddleware<T>(
   path: string,
   key: ReturnType<typeof bodyValidation<T>>['key'],
-  { generation = false, errorMessage }: RouteErrorPolicy,
+  { unknownErrorStatus, logReportMetadata, errorMessage }: RouteErrorPolicy,
 ): Middleware {
   return async (context, next) => {
     try {
       return await next();
     } catch (error) {
       if (isClientAbort(context.request, error)) throw error;
-      const payload = context.get(key);
+      const payload = logReportMetadata ? context.get(key) : undefined;
       const reportMetadata =
-        !generation &&
         payload &&
         typeof payload === 'object' &&
         'timestamp' in payload &&
@@ -49,7 +49,7 @@ export function createRouteErrorMiddleware<T>(
           : {};
       const { category, status, details } = classifyRouteError(
         error,
-        generation,
+        unknownErrorStatus,
       );
       // oxlint-disable-next-line no-console
       console.error({
@@ -81,7 +81,7 @@ type RouteErrorClassification = {
 
 function classifyRouteError(
   error: unknown,
-  generation: boolean,
+  unknownErrorStatus: 500 | 502,
 ): RouteErrorClassification {
   if (error instanceof EnvironmentValidationError) {
     return { category: 'config', status: 500, details: {} };
@@ -133,5 +133,5 @@ function classifyRouteError(
   if (error instanceof GeneratedOutputLimitError) {
     return { category: 'generated_output_limit', status: 502, details: {} };
   }
-  return { category: 'unknown', status: generation ? 500 : 502, details: {} };
+  return { category: 'unknown', status: unknownErrorStatus, details: {} };
 }
