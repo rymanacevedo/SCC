@@ -20,7 +20,7 @@ interface LayoutProps extends BuilderPageProps {
   subtitle?: string;
   children: RemixNode;
   suggestions?: RemixNode;
-  suggestionsFirst?: boolean;
+  suggestionsOnLeft?: boolean;
   beforeForm?: RemixNode;
   hideSubmit?: boolean;
 }
@@ -103,7 +103,7 @@ export function BuilderLayout(handle: Handle<LayoutProps>) {
             <aside
               aria-label="Suggestions"
               className={
-                handle.props.suggestionsFirst ? 'md:order-first' : undefined
+                handle.props.suggestionsOnLeft ? 'md:order-first' : undefined
               }
               style={{ minHeight: '24rem' }}
             >
