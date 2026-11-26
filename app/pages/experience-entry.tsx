@@ -62,7 +62,7 @@ export function ExperienceEntryPage(handle: Handle<BuilderPageProps>) {
         step="experience-entry"
         title={roleQuestion(handle.props.values.jobTitle)}
         subtitle="Choose from our pre-written examples below or write your own."
-        suggestionsFirst
+        suggestionsOnLeft
         suggestions={
           <SuggestionPanel
             title="Suggested Experience"

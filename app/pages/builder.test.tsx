@@ -2,10 +2,13 @@ import { afterEach, expect, test } from 'bun:test';
 import { renderToString } from 'remix/component/server';
 import { render } from 'remix/component/test';
 import { info, summary } from '../../test/builder-fixtures.ts';
+import { BuilderLayout } from '../builder/layout.tsx';
 import { SUGGESTION_FAILURE_MESSAGES } from '../builder/suggestions.ts';
 import { buttonClass } from '../ui/button.tsx';
+import { ExperienceEntryPage } from './experience-entry.tsx';
 import { InfoPage } from './info.tsx';
 import { Shell } from './shell.tsx';
+import { SkillsPage } from './skills.tsx';
 import { SummaryPage } from './summary.tsx';
 
 const url = new URL('https://scc.example/info?returnUrl=%2Ffinish-up');
@@ -259,4 +262,70 @@ test('builder navigation uses secondary Previous and primary submit, one column 
     <SummaryPage url={new URL('https://scc.example/summary')} values={{}} />,
   );
   expect(withSuggestions).toContain('md:grid-cols-2');
+});
+
+function suggestionsAside(html: string) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.querySelector('aside[aria-label="Suggestions"]');
+}
+
+test('BuilderLayout keeps the form first in DOM order and moves Suggestions left only with suggestionsOnLeft', async () => {
+  const right = await renderToString(
+    <BuilderLayout
+      url={new URL('https://scc.example/summary')}
+      values={{}}
+      step="summary"
+      title="Summary"
+      suggestions={<p>Examples</p>}
+    >
+      <p>Form</p>
+    </BuilderLayout>,
+  );
+  expect(right.indexOf('</form>')).toBeLessThan(right.indexOf('<aside'));
+  const rightAside = suggestionsAside(right);
+  expect(rightAside).not.toBeNull();
+  expect(rightAside?.className ?? '').not.toContain('md:order-first');
+
+  const left = await renderToString(
+    <BuilderLayout
+      url={new URL('https://scc.example/skills')}
+      values={{}}
+      step="skills"
+      title="Skills"
+      suggestions={<p>Examples</p>}
+      suggestionsOnLeft
+    >
+      <p>Form</p>
+    </BuilderLayout>,
+  );
+  expect(left.indexOf('</form>')).toBeLessThan(left.indexOf('<aside'));
+  const leftAside = suggestionsAside(left);
+  expect(leftAside).not.toBeNull();
+  expect(leftAside?.className).toContain('md:order-first');
+});
+
+test('Experience entry and Skills place Suggestions on the left while keeping the form first in DOM order', async () => {
+  const pages = await Promise.all([
+    renderToString(
+      <ExperienceEntryPage
+        url={new URL('https://scc.example/experience-entry?jobId=job-1')}
+        values={{ jobId: 'job-1' }}
+      />,
+    ),
+    renderToString(
+      <SkillsPage url={new URL('https://scc.example/skills')} values={{}} />,
+    ),
+  ]);
+  for (const html of pages) {
+    expect(html.indexOf('</form>')).toBeLessThan(html.indexOf('<aside'));
+    const aside = suggestionsAside(html);
+    expect(aside).not.toBeNull();
+    expect(aside?.className).toContain('md:order-first');
+  }
+  const summaryHtml = await renderToString(
+    <SummaryPage url={new URL('https://scc.example/summary')} values={{}} />,
+  );
+  const summaryAside = suggestionsAside(summaryHtml);
+  expect(summaryAside).not.toBeNull();
+  expect(summaryAside?.className ?? '').not.toContain('md:order-first');
 });

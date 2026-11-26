@@ -58,7 +58,7 @@ export function SkillsPage(handle: Handle<BuilderPageProps>) {
         step="skills"
         title="What skills would you like to highlight?"
         subtitle="Add skills that are relevant to your experience and the job you want."
-        suggestionsFirst
+        suggestionsOnLeft
         suggestions={
           <SuggestionPanel title="Suggested Skills" suggestions={suggestions}>
             <SuggestionGroups
