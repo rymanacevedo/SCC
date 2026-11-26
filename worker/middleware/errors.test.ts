@@ -13,7 +13,7 @@ import {
 } from '../../test/sensitive-reports.ts';
 import { EnvironmentValidationError } from '../lib/environment.ts';
 import { errorTelemetrySchema } from '../services/github.ts';
-import { createRouteErrorMiddleware } from './errors.ts';
+import { createRouteErrorMiddleware, type RouteErrorPolicy } from './errors.ts';
 import { bodyValidation } from './guards.ts';
 
 afterEach(() => mock.restore());
@@ -25,12 +25,7 @@ async function runErrorMiddleware(
     unknownErrorStatus = 502,
     logReportMetadata = true,
     errorMessage = 'Failed',
-  }: {
-    payload?: unknown;
-    unknownErrorStatus?: 500 | 502;
-    logReportMetadata?: boolean;
-    errorMessage?: string;
-  } = {},
+  }: Partial<RouteErrorPolicy> & { payload?: unknown } = {},
 ) {
   const log = spyOn(console, 'error').mockImplementation(() => {});
   log.mockClear();

@@ -81,7 +81,7 @@ type RouteErrorClassification = {
 
 function classifyRouteError(
   error: unknown,
-  unknownErrorStatus: 500 | 502,
+  unknownErrorStatus: RouteErrorPolicy['unknownErrorStatus'],
 ): RouteErrorClassification {
   if (error instanceof EnvironmentValidationError) {
     return { category: 'config', status: 500, details: {} };

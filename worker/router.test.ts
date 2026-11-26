@@ -623,6 +623,9 @@ test('unrecognized errors are 500 on generation routes and 502 on reporting rout
     expect(log).toHaveBeenCalledWith(
       expect.objectContaining({ route: path, category: 'unknown' }),
     );
+    const entry = log.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(entry).not.toHaveProperty('timestamp');
+    expect(entry).not.toHaveProperty('url');
   }
   for (const [path, errorMessage] of [
     ['/api/errors', 'Failed to report application error'],
