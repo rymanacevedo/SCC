@@ -54,3 +54,43 @@ place today and what is still a gap.
 - **Public reads leak nothing.** Unauthenticated routes such as `GET
   /api/flags` (`worker/flags-route.ts`) return fixed, enumerated data and
   never echo `env`, request headers or free-form input.
+
+## Accepted risks
+
+Each entry is a risk the owner has decided to carry: what is accepted, what
+is not, the bounds that must still hold, and the issue that records the
+decision. The security brief says how reviewers rate findings against an
+entry; this file does not. Add an entry in its own PR, never in the PR it
+covers.
+
+- **CI caches a pull request writes and then reads back**
+  (rymanacevedo/Projects#160).
+  - **Accepted:** `.github/workflows/ci.yml` runs on `pull_request` and may
+    restore caches that an earlier run of the same pull request wrote: the
+    Bun executable, which `oven-sh/setup-bun` caches by default, and Bun's
+    package cache (`~/.bun/install/cache`), cached under an exact `bun.lock`
+    key. Neither is checked against a digest after restore, and
+    `bun install --frozen-lockfile` links cached packages as they are.
+    Someone who can push to a pull request's branch can have one commit
+    leave a changed executable or package in the cache; a later commit on
+    that pull request then runs with it, and its `ci` result no longer
+    depends on that commit alone.
+  - **Covers:** findings that one of those two caches, the Bun executable
+    cache or the Bun package cache, restores content written by an earlier
+    run of the same pull request. Any other cache step in `ci.yml` is
+    outside this entry.
+  - **Does not cover:** a cache that a run on `main` or on another pull
+    request can restore; a cache restored by a workflow that holds a secret
+    or whose token has any write permission; a `restore-keys` or prefix
+    match; a workflow triggered by `pull_request_target` or `workflow_run`.
+    Each of those is rated on its own merits.
+  - **Bounds:**
+    - `ci.yml` triggers on `pull_request` only, so GitHub scopes every cache
+      it writes to `refs/pull/<number>/merge`;
+    - its job token is `contents: read`, and the job reads no secret,
+      uploads no artifact and deploys nothing. The `GITHUB_TOKEN` and
+      `OPENAI_API_KEY` its `env:check` step sets are stub strings written
+      in the workflow, not `secrets` values;
+    - every cache key is exact, with no `restore-keys`;
+    - `ci.yml` is the only workflow file in `.github/workflows/`, and no
+      other workflow restores these caches.
